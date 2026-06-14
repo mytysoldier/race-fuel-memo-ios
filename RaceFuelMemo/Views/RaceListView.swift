@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct RaceListView: View {
+    @State private var isShowingSettings = false
+
     var body: some View {
         NavigationStack {
             List {
@@ -15,8 +17,8 @@ struct RaceListView: View {
             .navigationTitle("レース一覧")
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    NavigationLink {
-                        SettingsView()
+                    Button {
+                        isShowingSettings = true
                     } label: {
                         Image(systemName: "gearshape")
                     }
@@ -30,6 +32,11 @@ struct RaceListView: View {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel("レースを追加")
+                }
+            }
+            .sheet(isPresented: $isShowingSettings) {
+                NavigationStack {
+                    SettingsView()
                 }
             }
         }
