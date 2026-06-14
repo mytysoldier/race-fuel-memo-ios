@@ -26,3 +26,4 @@
 ## 開発ドキュメント
 
 - [MVPスコープ](MVP.md)
+- [開発手順](docs/DEVELOPMENT.md)
