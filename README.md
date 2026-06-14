@@ -26,13 +26,4 @@
 ## 開発ドキュメント
 
 - [MVPスコープ](MVP.md)
-
-## 開発
-
-Xcodeで `RaceFuelMemo.xcodeproj` を開き、`RaceFuelMemo` スキームを実行します。
-
-コマンドラインでビルド確認する場合:
-
-```sh
-xcodebuild -project RaceFuelMemo.xcodeproj -scheme RaceFuelMemo -configuration Debug -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO build
-```
+- [開発手順](docs/DEVELOPMENT.md)
