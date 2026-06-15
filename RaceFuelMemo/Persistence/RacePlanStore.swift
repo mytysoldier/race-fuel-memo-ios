@@ -1,8 +1,9 @@
 import Foundation
-import Combine
+import Observation
 
-final class RacePlanStore: ObservableObject {
-    @Published private(set) var racePlans: [RacePlan]
+@Observable
+final class RacePlanStore {
+    private(set) var racePlans: [RacePlan]
 
     private let storage: RacePlanStorage
 
