@@ -11,7 +11,6 @@ final class RacePlanStore: ObservableObject {
         racePlans = storage.loadRacePlans()
     }
 
-    @discardableResult
     func addRacePlan(
         name: String,
         raceDate: Date,
@@ -21,7 +20,7 @@ final class RacePlanStore: ObservableObject {
         targetMinutes: Int,
         gelCount: Int,
         memo: String = ""
-    ) -> RacePlan {
+    ) {
         let racePlan = RacePlan(
             name: name,
             raceDate: raceDate,
@@ -34,7 +33,6 @@ final class RacePlanStore: ObservableObject {
         )
         racePlans.append(racePlan)
         persist()
-        return racePlan
     }
 
     func addRacePlan(_ racePlan: RacePlan) {
