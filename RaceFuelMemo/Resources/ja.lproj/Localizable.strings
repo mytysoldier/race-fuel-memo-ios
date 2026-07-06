@@ -15,3 +15,19 @@
 "race_create.value.items" = "%d個";
 "race_create.validation.target_time_required" = "目標タイムは1分以上にしてください。";
 "race_create.action.save" = "保存";
+
+"race_detail.section.basic_info" = "基本情報";
+"race_detail.section.target_pace" = "目標ペース";
+"race_detail.section.split_times" = "通過タイム";
+"race_detail.section.fueling" = "補給タイミング";
+"race_detail.section.checklist" = "持ち物チェックリスト";
+"race_detail.section.memo" = "メモ";
+"race_detail.field.name" = "レース名";
+"race_detail.field.race_date" = "日付";
+"race_detail.field.start_time" = "スタート時刻";
+"race_detail.field.distance" = "距離";
+"race_detail.field.target_time" = "目標時間";
+"race_detail.field.pace_per_kilometer" = "1kmあたり";
+"race_detail.empty.fuel_timings" = "補給予定なし";
+"race_detail.empty.memo" = "メモはありません。";
+"race_detail.action.notification_settings" = "通知設定";
