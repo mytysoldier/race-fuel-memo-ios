@@ -13,7 +13,7 @@ struct RaceListView: View {
                     List {
                         ForEach(racePlanStore.racePlans) { racePlan in
                             NavigationLink {
-                                RaceDetailPlaceholderView(racePlan: racePlan)
+                                RaceDetailView(racePlan: racePlan)
                             } label: {
                                 RacePlanRow(racePlan: racePlan)
                             }
