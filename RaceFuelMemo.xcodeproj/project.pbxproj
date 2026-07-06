@@ -18,6 +18,7 @@
 		8A1A001F2DFF000200000001 /* RacePlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00222DFF000200000001 /* RacePlan.swift */; };
 		8A1A00262DFF000200000001 /* RacePlanStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00242DFF000200000001 /* RacePlanStorage.swift */; };
 		8A1A00272DFF000200000001 /* RacePlanStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00252DFF000200000001 /* RacePlanStore.swift */; };
+		8A1A002B2DFF000200000001 /* RacePlanCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -33,6 +34,7 @@
 		8A1A00222DFF000200000001 /* RacePlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlan.swift; sourceTree = "<group>"; };
 		8A1A00242DFF000200000001 /* RacePlanStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStorage.swift; sourceTree = "<group>"; };
 		8A1A00252DFF000200000001 /* RacePlanStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStore.swift; sourceTree = "<group>"; };
+		8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculator.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -57,6 +59,7 @@
 			children = (
 				8A1A00122DFF000200000001 /* App */,
 				8A1A00232DFF000200000001 /* Models */,
+				8A1A00292DFF000200000001 /* Calculations */,
 				8A1A00282DFF000200000001 /* Persistence */,
 				8A1A00132DFF000200000001 /* Views */,
 				8A1A000A2DFF000200000001 /* Assets.xcassets */,
@@ -100,6 +103,14 @@
 				8A1A00252DFF000200000001 /* RacePlanStore.swift */,
 			);
 			path = Persistence;
+			sourceTree = "<group>";
+		};
+		8A1A00292DFF000200000001 /* Calculations */ = {
+			isa = PBXGroup;
+			children = (
+				8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */,
+			);
+			path = Calculations;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -186,6 +197,7 @@
 				8A1A001D2DFF000200000001 /* ChecklistItem.swift in Sources */,
 				8A1A001E2DFF000200000001 /* DistanceOption.swift in Sources */,
 				8A1A001F2DFF000200000001 /* RacePlan.swift in Sources */,
+				8A1A002B2DFF000200000001 /* RacePlanCalculator.swift in Sources */,
 				8A1A00262DFF000200000001 /* RacePlanStorage.swift in Sources */,
 				8A1A00272DFF000200000001 /* RacePlanStore.swift in Sources */,
 				8A1A000C2DFF000200000001 /* RaceListView.swift in Sources */,
