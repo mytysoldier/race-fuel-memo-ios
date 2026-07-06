@@ -84,6 +84,20 @@ struct RaceCreatePlaceholderView: View {
         !trimmedRaceName.isEmpty && hasValidTargetTime
     }
 
+    private var raceStartDateTime: Date {
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: raceDate)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+        var combinedComponents = DateComponents()
+        combinedComponents.year = dateComponents.year
+        combinedComponents.month = dateComponents.month
+        combinedComponents.day = dateComponents.day
+        combinedComponents.hour = timeComponents.hour
+        combinedComponents.minute = timeComponents.minute
+
+        return calendar.date(from: combinedComponents) ?? startTime
+    }
+
     private func saveRacePlan() {
         guard canSave else {
             return
@@ -92,7 +106,7 @@ struct RaceCreatePlaceholderView: View {
         racePlanStore.addRacePlan(
             name: trimmedRaceName,
             raceDate: raceDate,
-            startTime: startTime,
+            startTime: raceStartDateTime,
             distance: distance,
             targetHours: targetHours,
             targetMinutes: targetMinutes,
