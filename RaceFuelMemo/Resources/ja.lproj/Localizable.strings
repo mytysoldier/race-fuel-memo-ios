@@ -1,0 +1,17 @@
+"race_create.title" = "レース作成";
+"race_create.section.basic_info" = "基本情報";
+"race_create.section.target_time" = "目標タイム";
+"race_create.section.fueling" = "補給";
+"race_create.section.memo" = "メモ";
+"race_create.field.name" = "レース名";
+"race_create.field.race_date" = "レース日";
+"race_create.field.start_time" = "スタート時刻";
+"race_create.field.distance" = "距離";
+"race_create.field.target_hours" = "時間";
+"race_create.field.target_minutes" = "分";
+"race_create.field.gel_count" = "補給ジェル";
+"race_create.value.hours" = "%d時間";
+"race_create.value.minutes" = "%d分";
+"race_create.value.items" = "%d個";
+"race_create.validation.target_time_required" = "目標タイムは1分以上にしてください。";
+"race_create.action.save" = "保存";

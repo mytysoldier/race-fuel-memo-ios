@@ -19,6 +19,7 @@
 		8A1A00262DFF000200000001 /* RacePlanStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00242DFF000200000001 /* RacePlanStorage.swift */; };
 		8A1A00272DFF000200000001 /* RacePlanStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00252DFF000200000001 /* RacePlanStore.swift */; };
 		8A1A002B2DFF000200000001 /* RacePlanCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */; };
+		8A1A002C2DFF000200000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A1A002D2DFF000200000001 /* Localizable.strings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -35,6 +36,7 @@
 		8A1A00242DFF000200000001 /* RacePlanStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStorage.swift; sourceTree = "<group>"; };
 		8A1A00252DFF000200000001 /* RacePlanStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStore.swift; sourceTree = "<group>"; };
 		8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculator.swift; sourceTree = "<group>"; };
+		8A1A002E2DFF000200000001 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -62,6 +64,7 @@
 				8A1A00292DFF000200000001 /* Calculations */,
 				8A1A00282DFF000200000001 /* Persistence */,
 				8A1A00132DFF000200000001 /* Views */,
+				8A1A002F2DFF000200000001 /* Resources */,
 				8A1A000A2DFF000200000001 /* Assets.xcassets */,
 			);
 			path = RaceFuelMemo;
@@ -111,6 +114,14 @@
 				8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */,
 			);
 			path = Calculations;
+			sourceTree = "<group>";
+		};
+		8A1A002F2DFF000200000001 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				8A1A002D2DFF000200000001 /* Localizable.strings */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -183,10 +194,22 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A1A00102DFF000200000001 /* Assets.xcassets in Resources */,
+				8A1A002C2DFF000200000001 /* Localizable.strings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXVariantGroup section */
+		8A1A002D2DFF000200000001 /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				8A1A002E2DFF000200000001 /* ja */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8A1A00142DFF000200000001 /* Sources */ = {
