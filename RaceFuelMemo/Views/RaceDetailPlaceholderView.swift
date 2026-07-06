@@ -48,7 +48,7 @@ struct RaceDetailView: View {
                     Text(String(localized: "race_detail.empty.fuel_timings"))
                         .foregroundStyle(.secondary)
                 } else {
-                    ForEach(calculation.fuelTimings) { fuelTiming in
+                    ForEach(Array(calculation.fuelTimings.enumerated()), id: \.offset) { _, fuelTiming in
                         Label(fuelTiming.displayText, systemImage: "drop.fill")
                     }
                 }
