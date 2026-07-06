@@ -15,15 +15,15 @@ struct RaceCreatePlaceholderView: View {
 
     var body: some View {
         Form {
-            Section("基本情報") {
-                TextField("レース名", text: $raceName)
+            Section(String(localized: "race_create.section.basic_info")) {
+                TextField(String(localized: "race_create.field.name"), text: $raceName)
                     .textInputAutocapitalization(.never)
 
-                DatePicker("レース日", selection: $raceDate, displayedComponents: .date)
+                DatePicker(String(localized: "race_create.field.race_date"), selection: $raceDate, displayedComponents: .date)
 
-                DatePicker("スタート時刻", selection: $startTime, displayedComponents: .hourAndMinute)
+                DatePicker(String(localized: "race_create.field.start_time"), selection: $startTime, displayedComponents: .hourAndMinute)
 
-                Picker("距離", selection: $distance) {
+                Picker(String(localized: "race_create.field.distance"), selection: $distance) {
                     ForEach(DistanceOption.allCases) { distanceOption in
                         Text(distanceOption.label)
                             .tag(distanceOption)
@@ -31,38 +31,47 @@ struct RaceCreatePlaceholderView: View {
                 }
             }
 
-            Section("目標タイム") {
+            Section(String(localized: "race_create.section.target_time")) {
                 Stepper(value: $targetHours, in: 0...24) {
-                    LabeledContent("時間", value: "\(targetHours)時間")
+                    LabeledContent(
+                        String(localized: "race_create.field.target_hours"),
+                        value: String(format: String(localized: "race_create.value.hours"), targetHours)
+                    )
                 }
 
                 Stepper(value: $targetMinutes, in: 0...59) {
-                    LabeledContent("分", value: "\(targetMinutes)分")
+                    LabeledContent(
+                        String(localized: "race_create.field.target_minutes"),
+                        value: String(format: String(localized: "race_create.value.minutes"), targetMinutes)
+                    )
                 }
 
                 if !hasValidTargetTime {
-                    Text("目標タイムは1分以上にしてください。")
+                    Text(String(localized: "race_create.validation.target_time_required"))
                         .font(.footnote)
                         .foregroundStyle(.red)
                 }
             }
 
-            Section("補給") {
+            Section(String(localized: "race_create.section.fueling")) {
                 Stepper(value: $gelCount, in: 0...20) {
-                    LabeledContent("補給ジェル", value: "\(gelCount)個")
+                    LabeledContent(
+                        String(localized: "race_create.field.gel_count"),
+                        value: String(format: String(localized: "race_create.value.items"), gelCount)
+                    )
                 }
             }
 
-            Section("メモ") {
+            Section(String(localized: "race_create.section.memo")) {
                 TextEditor(text: $memo)
                     .frame(minHeight: 120)
             }
         }
-        .navigationTitle("レース作成")
+        .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .confirmationAction) {
-                Button("保存", action: saveRacePlan)
+                Button(String(localized: "race_create.action.save"), action: saveRacePlan)
                     .disabled(!canSave)
             }
         }
