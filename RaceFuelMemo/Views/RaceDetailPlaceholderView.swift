@@ -103,6 +103,9 @@ struct RaceDetailView: View {
         } message: {
             Text(notificationMessage)
         }
+        .onDisappear {
+            notificationRegistrationTask?.cancel()
+        }
     }
 
     private var currentRacePlan: RacePlan {
