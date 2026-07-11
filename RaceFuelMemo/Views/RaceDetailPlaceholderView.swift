@@ -117,6 +117,7 @@ struct RaceDetailView: View {
             .disabled(selectedReminderTimings.isEmpty)
             Button(String(localized: "notification.action.cancel_reminders"), role: .destructive) {
                 cancelNotificationRegistration()
+                shouldOfferSettings = false
                 notificationMessage = String(localized: "notification.message.cancelled")
                 isShowingNotificationAlert = true
             }
@@ -198,6 +199,7 @@ struct RaceDetailView: View {
 
     private func registerNotifications() {
         notificationRegistrationTask?.cancel()
+        shouldOfferSettings = false
         let racePlan = currentRacePlan
 
         notificationRegistrationTask = Task { @MainActor in
@@ -240,6 +242,10 @@ struct RaceDetailView: View {
     @MainActor
     private func refreshRegisteredReminderDates() async {
         registeredReminderDates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
+        let pendingTimings = await RaceReminderScheduler.pendingReminderTimings(for: currentRacePlan.id)
+        selectedReminderTimings = pendingTimings.isEmpty
+            ? Set(RaceReminderTiming.allCases)
+            : pendingTimings
     }
 }
 

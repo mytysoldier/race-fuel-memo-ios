@@ -77,6 +77,18 @@ enum RaceReminderScheduler {
             .sorted()
     }
 
+    static func pendingReminderTimings(for racePlanID: RacePlan.ID) async -> Set<RaceReminderTiming> {
+        let pendingIdentifiers = Set(
+            await notificationCenter.pendingNotificationRequests().map(\.identifier)
+        )
+
+        return Set(RaceReminderTiming.allCases.filter { timing in
+            pendingIdentifiers.contains(
+                notificationIdentifier(for: racePlanID, suffix: timing.notificationIdentifierSuffix)
+            )
+        })
+    }
+
     static func cancelReminders(for racePlanID: RacePlan.ID) {
         registrationLock.lock()
         if let activeRegistrationToken = activeRegistrationTokens[racePlanID] {
@@ -211,6 +223,14 @@ enum RaceReminderTiming: String, CaseIterable, Identifiable {
     case thirtyMinutesBefore
 
     var id: String { rawValue }
+
+    fileprivate var notificationIdentifierSuffix: String {
+        switch self {
+        case .dayBefore: "day-before"
+        case .twoHoursBefore: "two-hours-before"
+        case .thirtyMinutesBefore: "thirty-minutes-before"
+        }
+    }
 
     var label: String {
         switch self {
