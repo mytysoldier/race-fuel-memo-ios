@@ -27,6 +27,11 @@ enum RaceReminderScheduler {
             try await notificationCenter.add(request)
         }
 
+        let requestIdentifiers = Set(requests.map(\.identifier))
+        let staleIdentifiers = notificationIdentifiers(for: racePlan.id)
+            .filter { !requestIdentifiers.contains($0) }
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: staleIdentifiers)
+
         return requests.count
     }
 
@@ -61,7 +66,7 @@ enum RaceReminderScheduler {
 
     private static func reminderDates(for racePlan: RacePlan) -> [(identifier: String, date: Date, body: String)] {
         let calendar = Calendar.current
-        let startDate = raceStartDate(for: racePlan, calendar: calendar)
+        let startDate = racePlan.startTime
         let dayBefore = calendar.date(byAdding: .day, value: -1, to: startDate)
             .flatMap { calendar.date(bySettingHour: 20, minute: 0, second: 0, of: $0) }
 
@@ -72,19 +77,6 @@ enum RaceReminderScheduler {
         ].compactMap { identifier, date, body in
             date.map { (identifier, $0, body) }
         }
-    }
-
-    private static func raceStartDate(for racePlan: RacePlan, calendar: Calendar) -> Date {
-        let dateComponents = calendar.dateComponents([.year, .month, .day], from: racePlan.raceDate)
-        let timeComponents = calendar.dateComponents([.hour, .minute], from: racePlan.startTime)
-        var components = DateComponents()
-        components.year = dateComponents.year
-        components.month = dateComponents.month
-        components.day = dateComponents.day
-        components.hour = timeComponents.hour
-        components.minute = timeComponents.minute
-
-        return calendar.date(from: components) ?? racePlan.startTime
     }
 
     private static func notificationIdentifiers(for racePlanID: RacePlan.ID) -> [String] {
