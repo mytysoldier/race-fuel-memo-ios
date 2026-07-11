@@ -209,6 +209,10 @@ struct RaceDetailView: View {
         let reminderTimings = selectedReminderTimings
 
         guard !reminderTimings.isEmpty else {
+            guard !registeredReminderTimings.isEmpty else {
+                return
+            }
+
             cancelNotificationRegistration()
             notificationMessage = String(localized: "notification.message.cancelled")
             isShowingNotificationAlert = true
