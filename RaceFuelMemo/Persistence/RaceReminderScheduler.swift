@@ -8,44 +8,55 @@ enum RaceReminderScheduler {
 
     static func requestAuthorizationAndSchedule(for racePlan: RacePlan) async throws -> Int {
         let registrationToken = beginRegistration(for: racePlan.id)
-        defer { finishRegistration(for: racePlan.id, token: registrationToken) }
+        let reminderIdentifiers = notificationIdentifiers(for: racePlan.id)
+        let existingRequests = await notificationCenter.pendingNotificationRequests()
+            .filter { reminderIdentifiers.contains($0.identifier) }
 
-        let settings = await notificationCenter.notificationSettings()
-        try validateRegistration(for: racePlan.id, token: registrationToken)
-        try Task.checkCancellation()
+        do {
+            let settings = await notificationCenter.notificationSettings()
+            try validateRegistration(for: racePlan.id, token: registrationToken)
+            try Task.checkCancellation()
 
-        switch settings.authorizationStatus {
-        case .authorized, .provisional, .ephemeral:
-            break
-        case .notDetermined:
-            let granted = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
-            guard granted else {
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                break
+            case .notDetermined:
+                let granted = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
+                guard granted else {
+                    throw RaceReminderSchedulerError.permissionDenied
+                }
+            case .denied:
+                throw RaceReminderSchedulerError.permissionDenied
+            @unknown default:
                 throw RaceReminderSchedulerError.permissionDenied
             }
-        case .denied:
-            throw RaceReminderSchedulerError.permissionDenied
-        @unknown default:
-            throw RaceReminderSchedulerError.permissionDenied
-        }
 
-        let requests = notificationRequests(for: racePlan)
+            let requests = notificationRequests(for: racePlan)
 
-        for request in requests {
+            for request in requests {
+                try validateRegistration(for: racePlan.id, token: registrationToken)
+                try Task.checkCancellation()
+                try await notificationCenter.add(request)
+                try validateRegistration(for: racePlan.id, token: registrationToken)
+                try Task.checkCancellation()
+            }
+
             try validateRegistration(for: racePlan.id, token: registrationToken)
             try Task.checkCancellation()
-            try await notificationCenter.add(request)
-            try validateRegistration(for: racePlan.id, token: registrationToken)
-            try Task.checkCancellation()
+            let requestIdentifiers = Set(requests.map(\.identifier))
+            let staleIdentifiers = reminderIdentifiers.filter { !requestIdentifiers.contains($0) }
+            notificationCenter.removePendingNotificationRequests(withIdentifiers: staleIdentifiers)
+
+            finishRegistration(for: racePlan.id, token: registrationToken)
+            return requests.count
+        } catch {
+            await rollbackRegistration(
+                for: racePlan.id,
+                token: registrationToken,
+                existingRequests: existingRequests
+            )
+            throw error
         }
-
-        try validateRegistration(for: racePlan.id, token: registrationToken)
-        try Task.checkCancellation()
-        let requestIdentifiers = Set(requests.map(\.identifier))
-        let staleIdentifiers = notificationIdentifiers(for: racePlan.id)
-            .filter { !requestIdentifiers.contains($0) }
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: staleIdentifiers)
-
-        return requests.count
     }
 
     static func cancelReminders(for racePlanID: RacePlan.ID) {
@@ -72,6 +83,28 @@ enum RaceReminderScheduler {
         }
 
         activeRegistrationTokens[racePlanID] = nil
+    }
+
+    private static func rollbackRegistration(
+        for racePlanID: RacePlan.ID,
+        token: UUID,
+        existingRequests: [UNNotificationRequest]
+    ) async {
+        registrationLock.lock()
+        let shouldRollback = activeRegistrationTokens[racePlanID] == token
+        if shouldRollback {
+            activeRegistrationTokens[racePlanID] = nil
+        }
+        registrationLock.unlock()
+
+        guard shouldRollback else {
+            return
+        }
+
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
+        for request in existingRequests {
+            try? await notificationCenter.add(request)
+        }
     }
 
     private static func validateRegistration(for racePlanID: RacePlan.ID, token: UUID) throws {
