@@ -3,9 +3,16 @@ import UserNotifications
 
 enum RaceReminderScheduler {
     private static let notificationCenter = UNUserNotificationCenter.current()
+    private static let registrationLock = NSLock()
+    private static var activeRegistrationTokens: [RacePlan.ID: UUID] = [:]
 
     static func requestAuthorizationAndSchedule(for racePlan: RacePlan) async throws -> Int {
+        let registrationToken = beginRegistration(for: racePlan.id)
+        defer { finishRegistration(for: racePlan.id, token: registrationToken) }
+
         let settings = await notificationCenter.notificationSettings()
+        try validateRegistration(for: racePlan.id, token: registrationToken)
+        try Task.checkCancellation()
 
         switch settings.authorizationStatus {
         case .authorized, .provisional, .ephemeral:
@@ -24,9 +31,15 @@ enum RaceReminderScheduler {
         let requests = notificationRequests(for: racePlan)
 
         for request in requests {
+            try validateRegistration(for: racePlan.id, token: registrationToken)
+            try Task.checkCancellation()
             try await notificationCenter.add(request)
+            try validateRegistration(for: racePlan.id, token: registrationToken)
+            try Task.checkCancellation()
         }
 
+        try validateRegistration(for: racePlan.id, token: registrationToken)
+        try Task.checkCancellation()
         let requestIdentifiers = Set(requests.map(\.identifier))
         let staleIdentifiers = notificationIdentifiers(for: racePlan.id)
             .filter { !requestIdentifiers.contains($0) }
@@ -36,7 +49,43 @@ enum RaceReminderScheduler {
     }
 
     static func cancelReminders(for racePlanID: RacePlan.ID) {
+        registrationLock.lock()
+        activeRegistrationTokens[racePlanID] = nil
+        registrationLock.unlock()
         notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
+    }
+
+    private static func beginRegistration(for racePlanID: RacePlan.ID) -> UUID {
+        let token = UUID()
+        registrationLock.lock()
+        activeRegistrationTokens[racePlanID] = token
+        registrationLock.unlock()
+        return token
+    }
+
+    private static func finishRegistration(for racePlanID: RacePlan.ID, token: UUID) {
+        registrationLock.lock()
+        defer { registrationLock.unlock() }
+
+        guard activeRegistrationTokens[racePlanID] == token else {
+            return
+        }
+
+        activeRegistrationTokens[racePlanID] = nil
+    }
+
+    private static func validateRegistration(for racePlanID: RacePlan.ID, token: UUID) throws {
+        registrationLock.lock()
+        let activeToken = activeRegistrationTokens[racePlanID]
+        registrationLock.unlock()
+
+        guard activeToken == token else {
+            if activeToken == nil {
+                notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
+            }
+
+            throw CancellationError()
+        }
     }
 
     private static func notificationRequests(for racePlan: RacePlan, now: Date = .now) -> [UNNotificationRequest] {

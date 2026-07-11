@@ -5,6 +5,7 @@ struct RaceDetailView: View {
     @State private var isShowingNotificationConfirmation = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
+    @State private var notificationRegistrationTask: Task<Void, Never>?
 
     let racePlan: RacePlan
 
@@ -90,7 +91,7 @@ struct RaceDetailView: View {
                 registerNotifications()
             }
             Button(String(localized: "notification.action.cancel_reminders"), role: .destructive) {
-                RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
+                cancelNotificationRegistration()
                 notificationMessage = String(localized: "notification.message.cancelled")
                 isShowingNotificationAlert = true
             }
@@ -160,18 +161,39 @@ struct RaceDetailView: View {
     }
 
     private func registerNotifications() {
-        Task { @MainActor in
+        notificationRegistrationTask?.cancel()
+        let racePlan = currentRacePlan
+
+        notificationRegistrationTask = Task { @MainActor in
             do {
-                let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(for: currentRacePlan)
+                let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(for: racePlan)
+                guard !Task.isCancelled else {
+                    RaceReminderScheduler.cancelReminders(for: racePlan.id)
+                    return
+                }
+
                 notificationMessage = count == 0
                     ? String(localized: "notification.message.no_future_reminders")
                     : String(format: String(localized: "notification.message.registered"), count)
+                isShowingNotificationAlert = true
+            } catch is CancellationError {
+                RaceReminderScheduler.cancelReminders(for: racePlan.id)
             } catch {
-                notificationMessage = error.localizedDescription
-            }
+                guard !Task.isCancelled else {
+                    RaceReminderScheduler.cancelReminders(for: racePlan.id)
+                    return
+                }
 
-            isShowingNotificationAlert = true
+                notificationMessage = error.localizedDescription
+                isShowingNotificationAlert = true
+            }
         }
+    }
+
+    private func cancelNotificationRegistration() {
+        notificationRegistrationTask?.cancel()
+        notificationRegistrationTask = nil
+        RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
     }
 }
 
