@@ -51,6 +51,9 @@ enum RaceReminderScheduler {
                 throw CancellationError()
             }
             return requests.count
+        } catch RaceReminderSchedulerError.permissionDenied {
+            finishRegistration(for: racePlan.id, token: registrationToken)
+            throw RaceReminderSchedulerError.permissionDenied
         } catch {
             await rollbackRegistration(
                 for: racePlan.id,
