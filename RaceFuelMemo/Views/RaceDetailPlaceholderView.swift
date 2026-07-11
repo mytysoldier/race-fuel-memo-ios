@@ -8,6 +8,7 @@ struct RaceDetailView: View {
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
     @State private var selectedReminderTimings = Set(RaceReminderTiming.allCases)
+    @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderDates: [Date] = []
     @State private var shouldOfferSettings = false
     @State private var reminderStateRevision = 0
@@ -79,6 +80,7 @@ struct RaceDetailView: View {
 
             Section {
                 Button {
+                    selectedReminderTimings = registeredReminderTimings
                     isShowingNotificationConfirmation = true
                 } label: {
                     Label(String(localized: "race_detail.action.notification_settings"), systemImage: "bell.badge")
@@ -240,6 +242,8 @@ struct RaceDetailView: View {
         reminderStateRevision += 1
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
         registeredReminderDates = []
+        registeredReminderTimings = []
+        selectedReminderTimings = []
     }
 
     @MainActor
@@ -254,9 +258,8 @@ struct RaceDetailView: View {
         }
 
         registeredReminderDates = dates
-        if !pendingTimings.isEmpty {
-            selectedReminderTimings = pendingTimings
-        }
+        registeredReminderTimings = pendingTimings
+        selectedReminderTimings = pendingTimings
     }
 }
 
