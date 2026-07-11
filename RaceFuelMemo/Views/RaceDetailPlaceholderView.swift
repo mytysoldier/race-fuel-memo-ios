@@ -168,7 +168,6 @@ struct RaceDetailView: View {
             do {
                 let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(for: racePlan)
                 guard !Task.isCancelled else {
-                    RaceReminderScheduler.cancelReminders(for: racePlan.id)
                     return
                 }
 
@@ -177,10 +176,9 @@ struct RaceDetailView: View {
                     : String(format: String(localized: "notification.message.registered"), count)
                 isShowingNotificationAlert = true
             } catch is CancellationError {
-                RaceReminderScheduler.cancelReminders(for: racePlan.id)
+                return
             } catch {
                 guard !Task.isCancelled else {
-                    RaceReminderScheduler.cancelReminders(for: racePlan.id)
                     return
                 }
 
