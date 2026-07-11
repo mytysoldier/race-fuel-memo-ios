@@ -5,6 +5,7 @@ enum RaceReminderScheduler {
     private static let notificationCenter = UNUserNotificationCenter.current()
     private static let registrationLock = NSLock()
     private static var activeRegistrationTokens: [RacePlan.ID: UUID] = [:]
+    private static var cancelledRegistrationTokens: Set<UUID> = []
 
     static func requestAuthorizationAndSchedule(for racePlan: RacePlan) async throws -> Int {
         let registrationToken = beginRegistration(for: racePlan.id)
@@ -68,6 +69,9 @@ enum RaceReminderScheduler {
 
     static func cancelReminders(for racePlanID: RacePlan.ID) {
         registrationLock.lock()
+        if let activeRegistrationToken = activeRegistrationTokens[racePlanID] {
+            cancelledRegistrationTokens.insert(activeRegistrationToken)
+        }
         activeRegistrationTokens[racePlanID] = nil
         registrationLock.unlock()
         notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
@@ -118,9 +122,14 @@ enum RaceReminderScheduler {
     private static func validateRegistration(for racePlanID: RacePlan.ID, token: UUID) throws {
         registrationLock.lock()
         let activeToken = activeRegistrationTokens[racePlanID]
+        let wasExplicitlyCancelled = activeToken != token && cancelledRegistrationTokens.remove(token) != nil
         registrationLock.unlock()
 
         guard activeToken == token else {
+            if wasExplicitlyCancelled {
+                notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
+            }
+
             throw CancellationError()
         }
     }
