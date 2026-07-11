@@ -90,13 +90,21 @@ struct RaceDetailView: View {
             }
 
             Section("通知設定") {
-                ReminderStatusCards(selectedTimings: registeredReminderTimings)
-
-                if !registeredReminderDates.isEmpty {
-                    ForEach(registeredReminderDates, id: \.self) { date in
-                        Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "bell.fill")
-                            .font(.footnote)
+                if isLoadingReminderState {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("通知設定を確認中")
                             .foregroundStyle(.secondary)
+                    }
+                } else {
+                    ReminderStatusCards(selectedTimings: registeredReminderTimings)
+
+                    if !registeredReminderDates.isEmpty {
+                        ForEach(registeredReminderDates, id: \.self) { date in
+                            Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "bell.fill")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
