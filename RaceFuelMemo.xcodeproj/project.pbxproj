@@ -21,6 +21,9 @@
 		8A1A002B2DFF000200000001 /* RacePlanCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */; };
 		8A1A002C2DFF000200000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A1A002D2DFF000200000001 /* Localizable.strings */; };
 		8A1A00302DFF000200000001 /* RaceReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */; };
+		8A1A00402DFF000200000001 /* RacePlanCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */; };
+		8A1A00412DFF000200000001 /* RacePlanStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */; };
+		8A1A00422DFF000200000001 /* RacePlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -39,6 +42,10 @@
 		8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculator.swift; sourceTree = "<group>"; };
 		8A1A002E2DFF000200000001 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceReminderScheduler.swift; sourceTree = "<group>"; };
+		8A1A00432DFF000200000001 /* RaceFuelMemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RaceFuelMemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculatorTests.swift; sourceTree = "<group>"; };
+		8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStorageTests.swift; sourceTree = "<group>"; };
+		8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStoreTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -46,6 +53,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00112DFF000200000001 /* RaceFuelMemo */,
+				8A1A00472DFF000200000001 /* RaceFuelMemoTests */,
 				8A1A00032DFF000200000001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,6 +62,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00012DFF000200000001 /* RaceFuelMemo.app */,
+				8A1A00432DFF000200000001 /* RaceFuelMemoTests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -127,6 +136,16 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		8A1A00472DFF000200000001 /* RaceFuelMemoTests */ = {
+			isa = PBXGroup;
+			children = (
+				8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */,
+				8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */,
+				8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */,
+			);
+			path = RaceFuelMemoTests;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -146,6 +165,23 @@
 			productName = RaceFuelMemo;
 			productReference = 8A1A00012DFF000200000001 /* RaceFuelMemo.app */;
 			productType = "com.apple.product-type.application";
+		};
+		8A1A00482DFF000200000001 /* RaceFuelMemoTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8A1A00552DFF000200000001 /* Build configuration list for PBXNativeTarget "RaceFuelMemoTests" */;
+			buildPhases = (
+				8A1A00522DFF000200000001 /* Sources */,
+				8A1A00512DFF000200000001 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8A1A00502DFF000200000001 /* PBXTargetDependency */,
+			);
+			name = RaceFuelMemoTests;
+			productName = RaceFuelMemoTests;
+			productReference = 8A1A00432DFF000200000001 /* RaceFuelMemoTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
 
@@ -177,12 +213,30 @@
 			projectRoot = "";
 			targets = (
 				8A1A00042DFF000200000001 /* RaceFuelMemo */,
+				8A1A00482DFF000200000001 /* RaceFuelMemoTests */,
 			);
 		};
 /* End PBXProject section */
 
+/* Begin PBXContainerItemProxy section */
+		8A1A00492DFF000200000001 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 8A1A00002DFF000200000001 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 8A1A00042DFF000200000001;
+			remoteInfo = RaceFuelMemo;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		8A1A00152DFF000200000001 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A1A00512DFF000200000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -202,6 +256,14 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8A1A00502DFF000200000001 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 8A1A00042DFF000200000001 /* RaceFuelMemo */;
+			targetProxy = 8A1A00492DFF000200000001 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin PBXVariantGroup section */
 		8A1A002D2DFF000200000001 /* Localizable.strings */ = {
@@ -231,6 +293,16 @@
 				8A1A000D2DFF000200000001 /* RaceCreatePlaceholderView.swift in Sources */,
 				8A1A000E2DFF000200000001 /* RaceDetailPlaceholderView.swift in Sources */,
 				8A1A000F2DFF000200000001 /* SettingsView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		8A1A00522DFF000200000001 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8A1A00402DFF000200000001 /* RacePlanCalculatorTests.swift in Sources */,
+				8A1A00412DFF000200000001 /* RacePlanStorageTests.swift in Sources */,
+				8A1A00422DFF000200000001 /* RacePlanStoreTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -408,6 +480,36 @@
 			};
 			name = Release;
 		};
+		8A1A00532DFF000200000001 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelMemoTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RaceFuelMemo.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RaceFuelMemo";
+			};
+			name = Debug;
+		};
+		8A1A00542DFF000200000001 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelMemoTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/RaceFuelMemo.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/RaceFuelMemo";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -425,6 +527,15 @@
 			buildConfigurations = (
 				8A1A001B2DFF000200000001 /* Debug */,
 				8A1A001C2DFF000200000001 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		8A1A00552DFF000200000001 /* Build configuration list for PBXNativeTarget "RaceFuelMemoTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8A1A00532DFF000200000001 /* Debug */,
+				8A1A00542DFF000200000001 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
