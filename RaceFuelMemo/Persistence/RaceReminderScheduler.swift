@@ -119,10 +119,6 @@ enum RaceReminderScheduler {
         registrationLock.unlock()
 
         guard activeToken == token else {
-            if activeToken == nil {
-                notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
-            }
-
             throw CancellationError()
         }
     }
