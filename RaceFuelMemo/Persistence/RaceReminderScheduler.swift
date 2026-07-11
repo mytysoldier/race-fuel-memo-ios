@@ -46,6 +46,8 @@ enum RaceReminderScheduler {
             let requestIdentifiers = Set(requests.map(\.identifier))
             let staleIdentifiers = reminderIdentifiers.filter { !requestIdentifiers.contains($0) }
             notificationCenter.removePendingNotificationRequests(withIdentifiers: staleIdentifiers)
+            try validateRegistration(for: racePlan.id, token: registrationToken)
+            try Task.checkCancellation()
 
             guard finishRegistration(for: racePlan.id, token: registrationToken) else {
                 throw CancellationError()
