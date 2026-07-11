@@ -47,7 +47,9 @@ enum RaceReminderScheduler {
             let staleIdentifiers = reminderIdentifiers.filter { !requestIdentifiers.contains($0) }
             notificationCenter.removePendingNotificationRequests(withIdentifiers: staleIdentifiers)
 
-            finishRegistration(for: racePlan.id, token: registrationToken)
+            guard finishRegistration(for: racePlan.id, token: registrationToken) else {
+                throw CancellationError()
+            }
             return requests.count
         } catch {
             await rollbackRegistration(
@@ -74,15 +76,16 @@ enum RaceReminderScheduler {
         return token
     }
 
-    private static func finishRegistration(for racePlanID: RacePlan.ID, token: UUID) {
+    private static func finishRegistration(for racePlanID: RacePlan.ID, token: UUID) -> Bool {
         registrationLock.lock()
         defer { registrationLock.unlock() }
 
         guard activeRegistrationTokens[racePlanID] == token else {
-            return
+            return false
         }
 
         activeRegistrationTokens[racePlanID] = nil
+        return true
     }
 
     private static func rollbackRegistration(
