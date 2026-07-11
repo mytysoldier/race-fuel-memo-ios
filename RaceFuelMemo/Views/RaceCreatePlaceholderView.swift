@@ -43,14 +43,22 @@ struct RaceCreatePlaceholderView: View {
                     )
                 }
 
-                Picker(String(localized: "race_create.field.target_minutes"), selection: $targetMinutes) {
-                    ForEach(0..<60) { minute in
-                        Text(String(format: String(localized: "race_create.value.minutes"), minute))
-                            .tag(minute)
+                HStack(spacing: 16) {
+                    Text(String(localized: "race_create.field.target_minutes"))
+                        .frame(width: 52, alignment: .leading)
+
+                    Picker("", selection: $targetMinutes) {
+                        ForEach(0..<60) { minute in
+                            Text(String(format: String(localized: "race_create.value.minutes"), minute))
+                                .tag(minute)
+                        }
                     }
+                    .labelsHidden()
+                    .pickerStyle(.wheel)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 120)
+                    .clipped()
                 }
-                .pickerStyle(.wheel)
-                .frame(height: 120)
 
                 if !hasValidTargetTime {
                     validationMessage(String(localized: "race_create.validation.target_time_required"))
@@ -86,18 +94,22 @@ struct RaceCreatePlaceholderView: View {
                 )
                 .lineLimit(4...8)
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button(action: saveRacePlan) {
-                Text("レースプランを作成")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 8)
+
+            Section {
+                HStack {
+                    Spacer()
+                    Button(action: saveRacePlan) {
+                        Text("レースプランを作成")
+                            .fontWeight(.semibold)
+                            .padding(.horizontal, 24)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.regular)
+                    .disabled(!canSave)
+                    Spacer()
+                }
+                .listRowBackground(Color.clear)
             }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-            .disabled(!canSave)
-            .padding()
-            .background(.bar)
         }
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
