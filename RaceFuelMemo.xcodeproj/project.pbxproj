@@ -20,6 +20,7 @@
 		8A1A00272DFF000200000001 /* RacePlanStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00252DFF000200000001 /* RacePlanStore.swift */; };
 		8A1A002B2DFF000200000001 /* RacePlanCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */; };
 		8A1A002C2DFF000200000001 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = 8A1A002D2DFF000200000001 /* Localizable.strings */; };
+		8A1A00302DFF000200000001 /* RaceReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -37,6 +38,7 @@
 		8A1A00252DFF000200000001 /* RacePlanStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStore.swift; sourceTree = "<group>"; };
 		8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculator.swift; sourceTree = "<group>"; };
 		8A1A002E2DFF000200000001 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
+		8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceReminderScheduler.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -104,6 +106,7 @@
 			children = (
 				8A1A00242DFF000200000001 /* RacePlanStorage.swift */,
 				8A1A00252DFF000200000001 /* RacePlanStore.swift */,
+				8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -223,6 +226,7 @@
 				8A1A002B2DFF000200000001 /* RacePlanCalculator.swift in Sources */,
 				8A1A00262DFF000200000001 /* RacePlanStorage.swift in Sources */,
 				8A1A00272DFF000200000001 /* RacePlanStore.swift in Sources */,
+				8A1A00302DFF000200000001 /* RaceReminderScheduler.swift in Sources */,
 				8A1A000C2DFF000200000001 /* RaceListView.swift in Sources */,
 				8A1A000D2DFF000200000001 /* RaceCreatePlaceholderView.swift in Sources */,
 				8A1A000E2DFF000200000001 /* RaceDetailPlaceholderView.swift in Sources */,
