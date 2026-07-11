@@ -239,6 +239,22 @@ enum RaceReminderTiming: String, CaseIterable, Identifiable {
         case .thirtyMinutesBefore: "スタート30分前"
         }
     }
+
+    var shortLabel: String {
+        switch self {
+        case .dayBefore: "前日"
+        case .twoHoursBefore: "2時間前"
+        case .thirtyMinutesBefore: "30分前"
+        }
+    }
+
+    var detailLabel: String {
+        switch self {
+        case .dayBefore: "前日 20:00"
+        case .twoHoursBefore: "スタートの2時間前"
+        case .thirtyMinutesBefore: "スタートの30分前"
+        }
+    }
 }
 
 enum RaceReminderSchedulerError: LocalizedError {
