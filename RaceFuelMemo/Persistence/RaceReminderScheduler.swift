@@ -22,7 +22,6 @@ enum RaceReminderScheduler {
         }
 
         let requests = notificationRequests(for: racePlan)
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlan.id))
 
         for request in requests {
             try await notificationCenter.add(request)
