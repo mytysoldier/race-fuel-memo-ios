@@ -1,44 +1,40 @@
-import XCTest
+import Foundation
+import Testing
 @testable import RaceFuelMemo
 
-final class RacePlanStorageTests: XCTestCase {
-    private var userDefaults: UserDefaults!
+@Test func saveAndLoadPreservesRacePlanAndChecklist() {
+    let userDefaults = makeUserDefaults()
+    defer { userDefaults.removePersistentDomain(forName: "RacePlanStorageTests") }
 
-    override func setUp() {
-        super.setUp()
-        userDefaults = UserDefaults(suiteName: "RacePlanStorageTests")!
-        userDefaults.removePersistentDomain(forName: "RacePlanStorageTests")
-    }
+    let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
+    let racePlan = RacePlan(
+        id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+        name: "テストレース",
+        raceDate: Date(timeIntervalSinceReferenceDate: 1_000),
+        startTime: Date(timeIntervalSinceReferenceDate: 2_000),
+        distanceKm: 21.0975,
+        targetHours: 2,
+        targetMinutes: 0,
+        gelCount: 2,
+        memo: "テストメモ",
+        checklistItems: [ChecklistItem(title: "ゼッケン", isChecked: true)]
+    )
 
-    override func tearDown() {
-        userDefaults.removePersistentDomain(forName: "RacePlanStorageTests")
-        userDefaults = nil
-        super.tearDown()
-    }
+    storage.saveRacePlans([racePlan])
 
-    func testSaveAndLoadPreservesRacePlanAndChecklist() {
-        let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
-        let racePlan = RacePlan(
-            id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
-            name: "テストレース",
-            raceDate: Date(timeIntervalSinceReferenceDate: 1_000),
-            startTime: Date(timeIntervalSinceReferenceDate: 2_000),
-            distanceKm: 21.0975,
-            targetHours: 2,
-            targetMinutes: 0,
-            gelCount: 2,
-            memo: "テストメモ",
-            checklistItems: [ChecklistItem(title: "ゼッケン", isChecked: true)]
-        )
+    #expect(storage.loadRacePlans() == [racePlan])
+}
 
-        storage.saveRacePlans([racePlan])
+@Test func loadReturnsEmptyArrayForInvalidData() {
+    let userDefaults = makeUserDefaults()
+    defer { userDefaults.removePersistentDomain(forName: "RacePlanStorageTests") }
+    userDefaults.set(Data("invalid".utf8), forKey: "racePlans")
 
-        XCTAssertEqual(storage.loadRacePlans(), [racePlan])
-    }
+    #expect(UserDefaultsRacePlanStorage(userDefaults: userDefaults).loadRacePlans().isEmpty)
+}
 
-    func testLoadReturnsEmptyArrayForInvalidData() {
-        userDefaults.set(Data("invalid".utf8), forKey: "racePlans")
-
-        XCTAssertTrue(UserDefaultsRacePlanStorage(userDefaults: userDefaults).loadRacePlans().isEmpty)
-    }
+private func makeUserDefaults() -> UserDefaults {
+    let userDefaults = UserDefaults(suiteName: "RacePlanStorageTests")!
+    userDefaults.removePersistentDomain(forName: "RacePlanStorageTests")
+    return userDefaults
 }

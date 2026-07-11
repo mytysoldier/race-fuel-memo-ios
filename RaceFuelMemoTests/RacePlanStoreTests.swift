@@ -1,59 +1,57 @@
-import XCTest
+import Testing
 @testable import RaceFuelMemo
 
-final class RacePlanStoreTests: XCTestCase {
-    func testAddUpdateAndDeletePersistRacePlans() {
-        let storage = InMemoryRacePlanStorage()
-        let store = RacePlanStore(storage: storage)
-        var racePlan = makeRacePlan(name: "春レース")
+@Test func addUpdateAndDeletePersistRacePlans() {
+    let storage = InMemoryRacePlanStorage()
+    let store = RacePlanStore(storage: storage)
+    var racePlan = makeStoreRacePlan(name: "春レース")
 
-        store.addRacePlan(racePlan)
-        XCTAssertEqual(store.racePlans, [racePlan])
+    store.addRacePlan(racePlan)
+    #expect(store.racePlans == [racePlan])
 
-        racePlan.memo = "更新後"
-        store.updateRacePlan(racePlan)
-        XCTAssertEqual(store.racePlans, [racePlan])
+    racePlan.memo = "更新後"
+    store.updateRacePlan(racePlan)
+    #expect(store.racePlans == [racePlan])
 
-        store.deleteRacePlan(id: racePlan.id)
-        XCTAssertTrue(store.racePlans.isEmpty)
-        XCTAssertTrue(storage.racePlans.isEmpty)
-    }
+    store.deleteRacePlan(id: racePlan.id)
+    #expect(store.racePlans.isEmpty)
+    #expect(storage.racePlans.isEmpty)
+}
 
-    func testChecklistChangeOnlyUpdatesTargetRacePlan() {
-        let firstRacePlan = makeRacePlan(name: "春レース")
-        let secondRacePlan = makeRacePlan(name: "秋レース")
-        let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [firstRacePlan, secondRacePlan]))
+@Test func checklistChangeOnlyUpdatesTargetRacePlan() {
+    let firstRacePlan = makeStoreRacePlan(name: "春レース")
+    let secondRacePlan = makeStoreRacePlan(name: "秋レース")
+    let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [firstRacePlan, secondRacePlan]))
 
-        store.setChecklistItemChecked(
-            racePlanID: firstRacePlan.id,
-            checklistItemID: firstRacePlan.checklistItems[0].id,
-            isChecked: true
-        )
+    store.setChecklistItemChecked(
+        racePlanID: firstRacePlan.id,
+        checklistItemID: firstRacePlan.checklistItems[0].id,
+        isChecked: true
+    )
 
-        XCTAssertTrue(store.racePlans[0].checklistItems[0].isChecked)
-        XCTAssertFalse(store.racePlans[1].checklistItems[0].isChecked)
-    }
+    #expect(store.racePlans[0].checklistItems[0].isChecked)
+    #expect(!store.racePlans[1].checklistItems[0].isChecked)
+}
 
-    func testUpdatingUnknownRacePlanDoesNotChangeStoredPlans() {
-        let racePlan = makeRacePlan(name: "春レース")
-        let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [racePlan]))
+@Test func updatingUnknownRacePlanDoesNotChangeStoredPlans() {
+    let racePlan = makeStoreRacePlan(name: "春レース")
+    let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [racePlan]))
 
-        store.updateRacePlan(makeRacePlan(name: "存在しないレース"))
+    store.updateRacePlan(makeStoreRacePlan(name: "存在しないレース"))
 
-        XCTAssertEqual(store.racePlans, [racePlan])
-    }
+    #expect(store.racePlans == [racePlan])
+}
 
-    private func makeRacePlan(name: String) -> RacePlan {
-        RacePlan(
-            name: name,
-            raceDate: .distantFuture,
-            startTime: .distantFuture,
-            distanceKm: DistanceOption.fullMarathon.distanceKm,
-            targetHours: 4,
-            targetMinutes: 0,
-            gelCount: 3
-        )
-    }
+private func makeStoreRacePlan(name: String) -> RacePlan {
+    RacePlan(
+        name: name,
+        raceDate: .distantFuture,
+        startTime: .distantFuture,
+        distanceKm: DistanceOption.fullMarathon.distanceKm,
+        targetHours: 4,
+        targetMinutes: 0,
+        gelCount: 3
+    )
 }
 
 private final class InMemoryRacePlanStorage: RacePlanStorage {
