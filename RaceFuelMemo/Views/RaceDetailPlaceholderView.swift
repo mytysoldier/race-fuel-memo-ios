@@ -10,6 +10,7 @@ struct RaceDetailView: View {
     @State private var selectedReminderTimings = Set(RaceReminderTiming.allCases)
     @State private var registeredReminderDates: [Date] = []
     @State private var shouldOfferSettings = false
+    @State private var reminderStateRevision = 0
 
     let racePlan: RacePlan
 
@@ -235,14 +236,22 @@ struct RaceDetailView: View {
     private func cancelNotificationRegistration() {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
+        reminderStateRevision += 1
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
         registeredReminderDates = []
     }
 
     @MainActor
     private func refreshRegisteredReminderDates() async {
-        registeredReminderDates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
+        let revision = reminderStateRevision
+        let dates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
         let pendingTimings = await RaceReminderScheduler.pendingReminderTimings(for: currentRacePlan.id)
+
+        guard revision == reminderStateRevision, !Task.isCancelled else {
+            return
+        }
+
+        registeredReminderDates = dates
         selectedReminderTimings = pendingTimings.isEmpty
             ? Set(RaceReminderTiming.allCases)
             : pendingTimings
