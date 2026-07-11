@@ -254,6 +254,11 @@ struct RaceDetailView: View {
         reminderStateRevision += 1
         let revision = reminderStateRevision
         isLoadingReminderState = true
+        defer {
+            if revision == reminderStateRevision {
+                isLoadingReminderState = false
+            }
+        }
         let dates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
         let pendingTimings = await RaceReminderScheduler.pendingReminderTimings(for: currentRacePlan.id)
 
@@ -264,7 +269,6 @@ struct RaceDetailView: View {
         registeredReminderDates = dates
         registeredReminderTimings = pendingTimings
         selectedReminderTimings = pendingTimings
-        isLoadingReminderState = false
     }
 }
 
