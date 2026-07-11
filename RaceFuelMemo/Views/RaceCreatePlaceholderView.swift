@@ -10,7 +10,7 @@ struct RaceCreatePlaceholderView: View {
     @State private var distance = DistanceOption.halfMarathon
     @State private var targetHours = 2
     @State private var targetMinutes = 0
-    @State private var gelNames = ["補給ジェル 1"]
+    @State private var gels = [GelDraft(name: "補給ジェル 1")]
     @State private var memo = ""
 
     var body: some View {
@@ -58,11 +58,11 @@ struct RaceCreatePlaceholderView: View {
             }
 
             Section(String(localized: "race_create.section.fueling")) {
-                ForEach(gelNames.indices, id: \.self) { index in
+                ForEach($gels) { $gel in
                     HStack {
-                        TextField("補給ジェル名", text: $gelNames[index])
+                        TextField("補給ジェル名", text: $gel.name)
                         Button(role: .destructive) {
-                            gelNames.remove(at: index)
+                            gels.removeAll { $0.id == gel.id }
                         } label: {
                             Image(systemName: "minus.circle.fill")
                         }
@@ -71,7 +71,7 @@ struct RaceCreatePlaceholderView: View {
                 }
 
                 Button {
-                    gelNames.append("補給ジェル \(gelNames.count + 1)")
+                    gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
                 } label: {
                     Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                 }
@@ -159,12 +159,17 @@ struct RaceCreatePlaceholderView: View {
             distance: distance,
             targetHours: targetHours,
             targetMinutes: targetMinutes,
-            gelCount: gelNames.count,
-            gelNames: gelNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) },
+            gelCount: gels.count,
+            gelNames: gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) },
             memo: trimmedMemo
         )
         dismiss()
     }
+}
+
+private struct GelDraft: Identifiable {
+    let id = UUID()
+    var name: String
 }
 
 #Preview {
