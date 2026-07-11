@@ -2,10 +2,14 @@ import SwiftUI
 
 struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
+    @Environment(\.openURL) private var openURL
     @State private var isShowingNotificationConfirmation = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
+    @State private var selectedReminderTimings = Set(RaceReminderTiming.allCases)
+    @State private var registeredReminderDates: [Date] = []
+    @State private var shouldOfferSettings = false
 
     let racePlan: RacePlan
 
@@ -79,6 +83,14 @@ struct RaceDetailView: View {
                     Label(String(localized: "race_detail.action.notification_settings"), systemImage: "bell.badge")
                 }
             }
+
+            if !registeredReminderDates.isEmpty {
+                Section("登録済みの通知") {
+                    ForEach(registeredReminderDates, id: \.self) { date in
+                        Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "bell.fill")
+                    }
+                }
+            }
         }
         .navigationTitle(currentRacePlan.name)
         .navigationBarTitleDisplayMode(.inline)
@@ -87,9 +99,22 @@ struct RaceDetailView: View {
             isPresented: $isShowingNotificationConfirmation,
             titleVisibility: .visible
         ) {
+            ForEach(RaceReminderTiming.allCases) { timing in
+                Button {
+                    if selectedReminderTimings.contains(timing) {
+                        selectedReminderTimings.remove(timing)
+                    } else {
+                        selectedReminderTimings.insert(timing)
+                    }
+                    isShowingNotificationConfirmation = true
+                } label: {
+                    Text("\(selectedReminderTimings.contains(timing) ? "✓ " : "")\(timing.label)")
+                }
+            }
             Button(String(localized: "notification.action.register")) {
                 registerNotifications()
             }
+            .disabled(selectedReminderTimings.isEmpty)
             Button(String(localized: "notification.action.cancel_reminders"), role: .destructive) {
                 cancelNotificationRegistration()
                 notificationMessage = String(localized: "notification.message.cancelled")
@@ -99,12 +124,20 @@ struct RaceDetailView: View {
             Text(String(localized: "notification.dialog.message"))
         }
         .alert(String(localized: "notification.alert.title"), isPresented: $isShowingNotificationAlert) {
+            if shouldOfferSettings {
+                Button("設定を開く") {
+                    openURL(URL(string: UIApplication.openSettingsURLString)!)
+                }
+            }
             Button(String(localized: "notification.action.ok"), role: .cancel) {}
         } message: {
             Text(notificationMessage)
         }
         .onDisappear {
             notificationRegistrationTask?.cancel()
+        }
+        .task(id: currentRacePlan.id) {
+            await refreshRegisteredReminderDates()
         }
     }
 
@@ -169,7 +202,10 @@ struct RaceDetailView: View {
 
         notificationRegistrationTask = Task { @MainActor in
             do {
-                let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(for: racePlan)
+                let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
+                    for: racePlan,
+                    timings: selectedReminderTimings
+                )
                 guard !Task.isCancelled else {
                     return
                 }
@@ -178,6 +214,8 @@ struct RaceDetailView: View {
                     ? String(localized: "notification.message.no_future_reminders")
                     : String(format: String(localized: "notification.message.registered"), count)
                 isShowingNotificationAlert = true
+                shouldOfferSettings = false
+                await refreshRegisteredReminderDates()
             } catch is CancellationError {
                 return
             } catch {
@@ -186,6 +224,7 @@ struct RaceDetailView: View {
                 }
 
                 notificationMessage = error.localizedDescription
+                shouldOfferSettings = error is RaceReminderSchedulerError
                 isShowingNotificationAlert = true
             }
         }
@@ -195,6 +234,12 @@ struct RaceDetailView: View {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
+        registeredReminderDates = []
+    }
+
+    @MainActor
+    private func refreshRegisteredReminderDates() async {
+        registeredReminderDates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
     }
 }
 
