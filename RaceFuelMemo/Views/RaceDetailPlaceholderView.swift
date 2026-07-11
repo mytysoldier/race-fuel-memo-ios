@@ -121,7 +121,9 @@ struct RaceDetailView: View {
         }
         .sheet(isPresented: $isShowingRacePlanEditor) {
             NavigationStack {
-                RacePlanEditView(racePlan: currentRacePlan)
+                RacePlanEditView(racePlan: currentRacePlan) { updatedRacePlan in
+                    rescheduleRemindersIfNeeded(for: updatedRacePlan)
+                }
             }
         }
         .sheet(isPresented: $isShowingReminderSettings) {
@@ -262,6 +264,38 @@ struct RaceDetailView: View {
         }
     }
 
+    private func rescheduleRemindersIfNeeded(for racePlan: RacePlan) {
+        guard !registeredReminderTimings.isEmpty else {
+            return
+        }
+
+        notificationRegistrationTask?.cancel()
+        let reminderTimings = registeredReminderTimings
+        notificationRegistrationTask = Task { @MainActor in
+            do {
+                _ = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
+                    for: racePlan,
+                    timings: reminderTimings
+                )
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                await refreshRegisteredReminderDates()
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                notificationMessage = error.localizedDescription
+                shouldOfferSettings = error is RaceReminderSchedulerError
+                isShowingNotificationAlert = true
+            }
+        }
+    }
+
     private func cancelNotificationRegistration() {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
@@ -301,6 +335,7 @@ private struct RacePlanEditView: View {
     @Environment(\.dismiss) private var dismiss
 
     let racePlan: RacePlan
+    let onSaved: (RacePlan) -> Void
 
     @State private var raceName: String
     @State private var raceDate: Date
@@ -311,8 +346,9 @@ private struct RacePlanEditView: View {
     @State private var gels: [EditableGelDraft]
     @State private var memo: String
 
-    init(racePlan: RacePlan) {
+    init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
         self.racePlan = racePlan
+        self.onSaved = onSaved
         _raceName = State(initialValue: racePlan.name)
         _raceDate = State(initialValue: racePlan.raceDate)
         _startTime = State(initialValue: racePlan.startTime)
@@ -432,6 +468,7 @@ private struct RacePlanEditView: View {
         updatedRacePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         updatedRacePlan.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
         racePlanStore.updateRacePlan(updatedRacePlan)
+        onSaved(updatedRacePlan)
         dismiss()
     }
 
