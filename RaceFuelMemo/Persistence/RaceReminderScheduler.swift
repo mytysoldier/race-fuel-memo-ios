@@ -7,7 +7,10 @@ enum RaceReminderScheduler {
     private static var activeRegistrationTokens: [RacePlan.ID: UUID] = [:]
     private static var cancelledRegistrationTokens: Set<UUID> = []
 
-    static func requestAuthorizationAndSchedule(for racePlan: RacePlan) async throws -> Int {
+    static func requestAuthorizationAndSchedule(
+        for racePlan: RacePlan,
+        timings: Set<RaceReminderTiming> = Set(RaceReminderTiming.allCases)
+    ) async throws -> Int {
         let registrationToken = beginRegistration(for: racePlan.id)
         let reminderIdentifiers = notificationIdentifiers(for: racePlan.id)
         let existingRequests = await notificationCenter.pendingNotificationRequests()
@@ -32,7 +35,7 @@ enum RaceReminderScheduler {
                 throw RaceReminderSchedulerError.permissionDenied
             }
 
-            let requests = notificationRequests(for: racePlan)
+            let requests = notificationRequests(for: racePlan, timings: timings)
 
             for request in requests {
                 try validateRegistration(for: racePlan.id, token: registrationToken)
@@ -65,6 +68,25 @@ enum RaceReminderScheduler {
             )
             throw error
         }
+    }
+
+    static func pendingReminderDates(for racePlanID: RacePlan.ID) async -> [Date] {
+        await notificationCenter.pendingNotificationRequests()
+            .filter { notificationIdentifiers(for: racePlanID).contains($0.identifier) }
+            .compactMap { ($0.trigger as? UNCalendarNotificationTrigger)?.nextTriggerDate() }
+            .sorted()
+    }
+
+    static func pendingReminderTimings(for racePlanID: RacePlan.ID) async -> Set<RaceReminderTiming> {
+        let pendingIdentifiers = Set(
+            await notificationCenter.pendingNotificationRequests().map(\.identifier)
+        )
+
+        return Set(RaceReminderTiming.allCases.filter { timing in
+            pendingIdentifiers.contains(
+                notificationIdentifier(for: racePlanID, suffix: timing.notificationIdentifierSuffix)
+            )
+        })
     }
 
     static func cancelReminders(for racePlanID: RacePlan.ID) {
@@ -134,8 +156,12 @@ enum RaceReminderScheduler {
         }
     }
 
-    private static func notificationRequests(for racePlan: RacePlan, now: Date = .now) -> [UNNotificationRequest] {
-        reminderDates(for: racePlan)
+    private static func notificationRequests(
+        for racePlan: RacePlan,
+        timings: Set<RaceReminderTiming>,
+        now: Date = .now
+    ) -> [UNNotificationRequest] {
+        reminderDates(for: racePlan, timings: timings)
             .filter { $0.date > now }
             .map { reminder in
                 let content = UNMutableNotificationContent()
@@ -159,18 +185,24 @@ enum RaceReminderScheduler {
             }
     }
 
-    private static func reminderDates(for racePlan: RacePlan) -> [(identifier: String, date: Date, body: String)] {
+    private static func reminderDates(
+        for racePlan: RacePlan,
+        timings: Set<RaceReminderTiming>
+    ) -> [(identifier: String, date: Date, body: String)] {
         let calendar = Calendar.current
         let startDate = racePlan.startTime
         let dayBefore = calendar.date(byAdding: .day, value: -1, to: startDate)
             .flatMap { calendar.date(bySettingHour: 20, minute: 0, second: 0, of: $0) }
 
-        return [
-            (identifier: notificationIdentifier(for: racePlan.id, suffix: "day-before"), date: dayBefore, body: String(localized: "notification.body.day_before")),
-            (identifier: notificationIdentifier(for: racePlan.id, suffix: "two-hours-before"), date: calendar.date(byAdding: .hour, value: -2, to: startDate), body: String(localized: "notification.body.two_hours_before")),
-            (identifier: notificationIdentifier(for: racePlan.id, suffix: "thirty-minutes-before"), date: calendar.date(byAdding: .minute, value: -30, to: startDate), body: String(localized: "notification.body.thirty_minutes_before"))
-        ].compactMap { identifier, date, body in
-            date.map { (identifier, $0, body) }
+        let reminders: [(RaceReminderTiming, String, Date?, String)] = [
+            (.dayBefore, "day-before", dayBefore, String(localized: "notification.body.day_before")),
+            (.twoHoursBefore, "two-hours-before", calendar.date(byAdding: .hour, value: -2, to: startDate), String(localized: "notification.body.two_hours_before")),
+            (.thirtyMinutesBefore, "thirty-minutes-before", calendar.date(byAdding: .minute, value: -30, to: startDate), String(localized: "notification.body.thirty_minutes_before"))
+        ]
+
+        return reminders.filter { timings.contains($0.0) }.compactMap { _, suffix, date, body in
+            let identifier = notificationIdentifier(for: racePlan.id, suffix: suffix)
+            return date.map { (identifier, $0, body) }
         }
     }
 
@@ -182,6 +214,30 @@ enum RaceReminderScheduler {
 
     private static func notificationIdentifier(for racePlanID: RacePlan.ID, suffix: String) -> String {
         "race-reminder.\(racePlanID.uuidString).\(suffix)"
+    }
+}
+
+enum RaceReminderTiming: String, CaseIterable, Identifiable {
+    case dayBefore
+    case twoHoursBefore
+    case thirtyMinutesBefore
+
+    var id: String { rawValue }
+
+    fileprivate var notificationIdentifierSuffix: String {
+        switch self {
+        case .dayBefore: "day-before"
+        case .twoHoursBefore: "two-hours-before"
+        case .thirtyMinutesBefore: "thirty-minutes-before"
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .dayBefore: "前日 20:00"
+        case .twoHoursBefore: "スタート2時間前"
+        case .thirtyMinutesBefore: "スタート30分前"
+        }
     }
 }
 
