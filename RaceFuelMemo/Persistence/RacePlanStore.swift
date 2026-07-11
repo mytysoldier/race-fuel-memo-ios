@@ -52,10 +52,16 @@ final class RacePlanStore {
 
     func deleteRacePlan(id: RacePlan.ID) {
         racePlans.removeAll { $0.id == id }
+        RaceReminderScheduler.cancelReminders(for: id)
         persist()
     }
 
     func deleteRacePlans(at offsets: IndexSet) {
+        let racePlanIDs = offsets.map { racePlans[$0].id }
+        for racePlanID in racePlanIDs {
+            RaceReminderScheduler.cancelReminders(for: racePlanID)
+        }
+
         for offset in offsets.sorted(by: >) {
             racePlans.remove(at: offset)
         }

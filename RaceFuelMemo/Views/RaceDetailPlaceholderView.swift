@@ -2,6 +2,10 @@ import SwiftUI
 
 struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
+    @State private var isShowingNotificationConfirmation = false
+    @State private var notificationMessage = ""
+    @State private var isShowingNotificationAlert = false
+    @State private var notificationRegistrationTask: Task<Void, Never>?
 
     let racePlan: RacePlan
 
@@ -70,6 +74,7 @@ struct RaceDetailView: View {
 
             Section {
                 Button {
+                    isShowingNotificationConfirmation = true
                 } label: {
                     Label(String(localized: "race_detail.action.notification_settings"), systemImage: "bell.badge")
                 }
@@ -77,6 +82,30 @@ struct RaceDetailView: View {
         }
         .navigationTitle(currentRacePlan.name)
         .navigationBarTitleDisplayMode(.inline)
+        .confirmationDialog(
+            String(localized: "notification.dialog.title"),
+            isPresented: $isShowingNotificationConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "notification.action.register")) {
+                registerNotifications()
+            }
+            Button(String(localized: "notification.action.cancel_reminders"), role: .destructive) {
+                cancelNotificationRegistration()
+                notificationMessage = String(localized: "notification.message.cancelled")
+                isShowingNotificationAlert = true
+            }
+        } message: {
+            Text(String(localized: "notification.dialog.message"))
+        }
+        .alert(String(localized: "notification.alert.title"), isPresented: $isShowingNotificationAlert) {
+            Button(String(localized: "notification.action.ok"), role: .cancel) {}
+        } message: {
+            Text(notificationMessage)
+        }
+        .onDisappear {
+            notificationRegistrationTask?.cancel()
+        }
     }
 
     private var currentRacePlan: RacePlan {
@@ -132,6 +161,40 @@ struct RaceDetailView: View {
                 isChecked: isChecked
             )
         }
+    }
+
+    private func registerNotifications() {
+        notificationRegistrationTask?.cancel()
+        let racePlan = currentRacePlan
+
+        notificationRegistrationTask = Task { @MainActor in
+            do {
+                let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(for: racePlan)
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                notificationMessage = count == 0
+                    ? String(localized: "notification.message.no_future_reminders")
+                    : String(format: String(localized: "notification.message.registered"), count)
+                isShowingNotificationAlert = true
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                notificationMessage = error.localizedDescription
+                isShowingNotificationAlert = true
+            }
+        }
+    }
+
+    private func cancelNotificationRegistration() {
+        notificationRegistrationTask?.cancel()
+        notificationRegistrationTask = nil
+        RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
     }
 }
 
