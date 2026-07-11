@@ -31,3 +31,38 @@
 "race_detail.empty.fuel_timings" = "補給予定なし";
 "race_detail.empty.memo" = "メモはありません。";
 "race_detail.action.notification_settings" = "通知設定";
+
+"settings.title" = "設定";
+"settings.action.done" = "完了";
+"settings.section.app" = "アプリ";
+"settings.section.policy" = "方針と規約";
+"settings.row.app_information" = "アプリ情報";
+"settings.row.version" = "バージョン";
+"settings.row.disclaimer" = "免責事項";
+"settings.row.privacy_policy" = "プライバシーポリシー";
+"settings.policy.summary" = "外部通信、ログイン、広告、課金、解析SDKは使用しません。";
+
+"settings.info.section.about" = "レース補給メモについて";
+"settings.info.about" = "レース補給メモは、レース前の目標タイム、補給、持ち物、メモをレースごとにまとめて確認するためのアプリです。";
+"settings.info.section.features" = "主な機能";
+"settings.info.feature.race_plan" = "レースプランの作成と保存";
+"settings.info.feature.pace" = "目標ペースと通過タイムの確認";
+"settings.info.feature.fueling" = "補給タイミングの確認";
+"settings.info.feature.checklist" = "持ち物チェックリスト";
+"settings.info.feature.memo" = "レース前メモの保存";
+"settings.info.section.storage" = "データの保存";
+"settings.info.storage" = "入力したレースプランとチェック状態は、この端末内に保存されます。";
+
+"settings.disclaimer.section.purpose" = "本アプリの目的";
+"settings.disclaimer.purpose" = "本アプリはレース準備を支援するメモアプリです。医療、栄養、トレーニングに関する専門的な助言を提供するものではありません。";
+"settings.disclaimer.section.health" = "健康に関する注意";
+"settings.disclaimer.health" = "体調に不安がある場合や、補給・運動について判断が必要な場合は、医師や専門家に相談してください。";
+"settings.disclaimer.section.responsibility" = "利用上の注意";
+"settings.disclaimer.responsibility" = "レースへの参加、補給、体調管理に関する最終的な判断は利用者ご自身で行ってください。";
+
+"settings.privacy.section.collection" = "収集する情報";
+"settings.privacy.collection" = "本アプリは個人情報を収集しません。外部サーバーへの送信、ログイン、広告、課金、解析SDKも使用しません。";
+"settings.privacy.section.storage" = "端末内のデータ";
+"settings.privacy.storage" = "レースプラン、チェック状態、メモは端末内にのみ保存されます。アプリを削除すると、端末内のデータが削除される場合があります。";
+"settings.privacy.section.third_party" = "第三者提供";
+"settings.privacy.third_party" = "本アプリはデータを第三者へ提供しません。";
