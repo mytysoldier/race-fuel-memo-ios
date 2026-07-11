@@ -1,3 +1,10 @@
+"race_list.title" = "レース一覧";
+"race_list.action.settings" = "設定";
+"race_list.action.add" = "レースを追加";
+"race_list.empty.title" = "レースプランがありません";
+"race_list.empty.description" = "最初のレースプランを作成して、目標ペースや補給タイミングを確認しましょう。";
+"race_list.empty.action" = "レースプランを作成";
+
 "race_create.title" = "レース作成";
 "race_create.section.basic_info" = "基本情報";
 "race_create.section.target_time" = "目標タイム";
@@ -10,10 +17,13 @@
 "race_create.field.target_hours" = "時間";
 "race_create.field.target_minutes" = "分";
 "race_create.field.gel_count" = "補給ジェル";
+"race_create.field.memo_placeholder" = "当日の持ち物や注意点などを入力（任意）";
 "race_create.value.hours" = "%d時間";
 "race_create.value.minutes" = "%d分";
 "race_create.value.items" = "%d個";
+"race_create.validation.name_required" = "レース名を入力してください。";
 "race_create.validation.target_time_required" = "目標タイムは1分以上にしてください。";
+"race_create.validation.accessibility_format" = "入力エラー：%@";
 "race_create.action.save" = "保存";
 
 "race_detail.section.basic_info" = "基本情報";

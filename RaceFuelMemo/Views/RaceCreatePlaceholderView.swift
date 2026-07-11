@@ -19,6 +19,10 @@ struct RaceCreatePlaceholderView: View {
                 TextField(String(localized: "race_create.field.name"), text: $raceName)
                     .textInputAutocapitalization(.never)
 
+                if trimmedRaceName.isEmpty {
+                    validationMessage(String(localized: "race_create.validation.name_required"))
+                }
+
                 DatePicker(String(localized: "race_create.field.race_date"), selection: $raceDate, displayedComponents: .date)
 
                 DatePicker(String(localized: "race_create.field.start_time"), selection: $startTime, displayedComponents: .hourAndMinute)
@@ -47,9 +51,7 @@ struct RaceCreatePlaceholderView: View {
                 }
 
                 if !hasValidTargetTime {
-                    Text(String(localized: "race_create.validation.target_time_required"))
-                        .font(.footnote)
-                        .foregroundStyle(.red)
+                    validationMessage(String(localized: "race_create.validation.target_time_required"))
                 }
             }
 
@@ -63,8 +65,13 @@ struct RaceCreatePlaceholderView: View {
             }
 
             Section(String(localized: "race_create.section.memo")) {
-                TextEditor(text: $memo)
-                    .frame(minHeight: 120)
+                TextField(
+                    String(localized: "race_create.section.memo"),
+                    text: $memo,
+                    prompt: Text(String(localized: "race_create.field.memo_placeholder")),
+                    axis: .vertical
+                )
+                .lineLimit(4...8)
             }
         }
         .navigationTitle(String(localized: "race_create.title"))
@@ -91,6 +98,18 @@ struct RaceCreatePlaceholderView: View {
 
     private var canSave: Bool {
         !trimmedRaceName.isEmpty && hasValidTargetTime
+    }
+
+    private func validationMessage(_ message: String) -> some View {
+        Label(message, systemImage: "exclamationmark.circle")
+            .font(.footnote)
+            .foregroundStyle(.red)
+            .accessibilityLabel(
+                String(
+                    format: String(localized: "race_create.validation.accessibility_format"),
+                    message
+                )
+            )
     }
 
     private var raceStartDateTime: Date {
