@@ -66,8 +66,9 @@ struct RaceCreatePlaceholderView: View {
 
             Section(String(localized: "race_create.section.memo")) {
                 TextField(
-                    String(localized: "race_create.field.memo_placeholder"),
+                    String(localized: "race_create.section.memo"),
                     text: $memo,
+                    prompt: Text(String(localized: "race_create.field.memo_placeholder")),
                     axis: .vertical
                 )
                 .lineLimit(4...8)

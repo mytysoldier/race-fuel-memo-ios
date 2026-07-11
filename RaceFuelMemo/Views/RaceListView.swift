@@ -82,6 +82,7 @@ private struct RacePlanRow: View {
                     raceDateLabel
                     distanceLabel
                 }
+                .fixedSize(horizontal: true, vertical: false)
 
                 VStack(alignment: .leading, spacing: 4) {
                     raceDateLabel
