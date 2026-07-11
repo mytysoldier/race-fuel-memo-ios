@@ -22,7 +22,7 @@ struct RaceListView: View {
                     }
                 }
             }
-            .navigationTitle("レース一覧")
+            .navigationTitle(String(localized: "race_list.title"))
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
@@ -30,7 +30,7 @@ struct RaceListView: View {
                     } label: {
                         Image(systemName: "gearshape")
                     }
-                    .accessibilityLabel("設定")
+                    .accessibilityLabel(String(localized: "race_list.action.settings"))
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -39,7 +39,7 @@ struct RaceListView: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .accessibilityLabel("レースを追加")
+                    .accessibilityLabel(String(localized: "race_list.action.add"))
                 }
             }
             .sheet(isPresented: $isShowingSettings) {
@@ -52,9 +52,14 @@ struct RaceListView: View {
 
     private var emptyState: some View {
         ContentUnavailableView {
-            Label("レースプランがありません", systemImage: "flag.checkered")
+            Label(String(localized: "race_list.empty.title"), systemImage: "flag.checkered")
         } description: {
-            Text("右上の追加ボタンからレースプランを作成できます。")
+            Text(String(localized: "race_list.empty.description"))
+        } actions: {
+            NavigationLink(String(localized: "race_list.empty.action")) {
+                RaceCreatePlaceholderView()
+            }
+            .buttonStyle(.borderedProminent)
         }
     }
 }
@@ -72,14 +77,29 @@ private struct RacePlanRow: View {
             Text(racePlan.name)
                 .font(.headline)
 
-            HStack(spacing: 12) {
-                Label(racePlan.raceDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
-                Label(formattedDistance, systemImage: "figure.run")
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 12) {
+                    raceDateLabel
+                    distanceLabel
+                }
+
+                VStack(alignment: .leading, spacing: 4) {
+                    raceDateLabel
+                    distanceLabel
+                }
             }
             .font(.subheadline)
             .foregroundStyle(.secondary)
         }
         .padding(.vertical, 4)
+    }
+
+    private var raceDateLabel: some View {
+        Label(racePlan.raceDate.formatted(date: .abbreviated, time: .omitted), systemImage: "calendar")
+    }
+
+    private var distanceLabel: some View {
+        Label(formattedDistance, systemImage: "figure.run")
     }
 
     private var formattedDistance: String {
