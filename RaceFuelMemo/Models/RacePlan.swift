@@ -9,6 +9,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     var targetHours: Int
     var targetMinutes: Int
     var gelCount: Int
+    var gelNames: [String]?
     var memo: String
     var checklistItems: [ChecklistItem]
 
@@ -21,6 +22,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         targetHours: Int,
         targetMinutes: Int,
         gelCount: Int,
+        gelNames: [String] = [],
         memo: String = "",
         checklistItems: [ChecklistItem] = RacePlan.defaultChecklistItems
     ) {
@@ -32,6 +34,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.targetHours = targetHours
         self.targetMinutes = targetMinutes
         self.gelCount = gelCount
+        self.gelNames = gelNames
         self.memo = memo
         self.checklistItems = checklistItems
     }

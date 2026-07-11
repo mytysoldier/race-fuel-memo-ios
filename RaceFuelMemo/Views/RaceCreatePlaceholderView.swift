@@ -6,11 +6,11 @@ struct RaceCreatePlaceholderView: View {
 
     @State private var raceName = ""
     @State private var raceDate = Date()
-    @State private var startTime = Date()
-    @State private var distance = DistanceOption.fullMarathon
-    @State private var targetHours = 4
+    @State private var startTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now) ?? .now
+    @State private var distance = DistanceOption.halfMarathon
+    @State private var targetHours = 2
     @State private var targetMinutes = 0
-    @State private var gelCount = 4
+    @State private var gelNames = ["補給ジェル 1"]
     @State private var memo = ""
 
     var body: some View {
@@ -43,12 +43,14 @@ struct RaceCreatePlaceholderView: View {
                     )
                 }
 
-                Stepper(value: $targetMinutes, in: 0...59) {
-                    LabeledContent(
-                        String(localized: "race_create.field.target_minutes"),
-                        value: String(format: String(localized: "race_create.value.minutes"), targetMinutes)
-                    )
+                Picker(String(localized: "race_create.field.target_minutes"), selection: $targetMinutes) {
+                    ForEach(0..<60) { minute in
+                        Text(String(format: String(localized: "race_create.value.minutes"), minute))
+                            .tag(minute)
+                    }
                 }
+                .pickerStyle(.wheel)
+                .frame(height: 120)
 
                 if !hasValidTargetTime {
                     validationMessage(String(localized: "race_create.validation.target_time_required"))
@@ -56,11 +58,22 @@ struct RaceCreatePlaceholderView: View {
             }
 
             Section(String(localized: "race_create.section.fueling")) {
-                Stepper(value: $gelCount, in: 0...20) {
-                    LabeledContent(
-                        String(localized: "race_create.field.gel_count"),
-                        value: String(format: String(localized: "race_create.value.items"), gelCount)
-                    )
+                ForEach(gelNames.indices, id: \.self) { index in
+                    HStack {
+                        TextField("補給ジェル名", text: $gelNames[index])
+                        Button(role: .destructive) {
+                            gelNames.remove(at: index)
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Button {
+                    gelNames.append("補給ジェル \(gelNames.count + 1)")
+                } label: {
+                    Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                 }
             }
 
@@ -74,13 +87,21 @@ struct RaceCreatePlaceholderView: View {
                 .lineLimit(4...8)
             }
         }
+        .safeAreaInset(edge: .bottom) {
+            Button(action: saveRacePlan) {
+                Text("レースプランを作成")
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
+            }
+            .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+            .disabled(!canSave)
+            .padding()
+            .background(.bar)
+        }
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button(String(localized: "race_create.action.save"), action: saveRacePlan)
-                    .disabled(!canSave)
-            }
         }
     }
 
@@ -138,7 +159,8 @@ struct RaceCreatePlaceholderView: View {
             distance: distance,
             targetHours: targetHours,
             targetMinutes: targetMinutes,
-            gelCount: gelCount,
+            gelCount: gelNames.count,
+            gelNames: gelNames.map { $0.trimmingCharacters(in: .whitespacesAndNewlines) },
             memo: trimmedMemo
         )
         dismiss()

@@ -20,6 +20,7 @@ final class RacePlanStore {
         targetHours: Int,
         targetMinutes: Int,
         gelCount: Int,
+        gelNames: [String] = [],
         memo: String = ""
     ) {
         let racePlan = RacePlan(
@@ -30,6 +31,7 @@ final class RacePlanStore {
             targetHours: targetHours,
             targetMinutes: targetMinutes,
             gelCount: gelCount,
+            gelNames: gelNames,
             memo: memo
         )
         racePlans.append(racePlan)

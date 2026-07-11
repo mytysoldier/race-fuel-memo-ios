@@ -12,10 +12,22 @@ struct RaceListView: View {
                 } else {
                     List {
                         ForEach(racePlanStore.racePlans) { racePlan in
-                            NavigationLink {
-                                RaceDetailView(racePlan: racePlan)
-                            } label: {
-                                RacePlanRow(racePlan: racePlan)
+                            HStack(spacing: 8) {
+                                NavigationLink {
+                                    RaceDetailView(racePlan: racePlan)
+                                } label: {
+                                    RacePlanRow(racePlan: racePlan)
+                                }
+
+                                Button(role: .destructive) {
+                                    racePlanStore.deleteRacePlan(id: racePlan.id)
+                                } label: {
+                                    Image(systemName: "trash")
+                                        .font(.body.weight(.semibold))
+                                        .padding(10)
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("\(racePlan.name)を削除")
                             }
                         }
                         .onDelete(perform: racePlanStore.deleteRacePlans)
@@ -73,11 +85,21 @@ private struct RacePlanRow: View {
     let racePlan: RacePlan
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(racePlan.name)
-                .font(.headline)
+        HStack(spacing: 14) {
+            ZStack {
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(.tint.opacity(0.14))
+                Image(systemName: "figure.run")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(.tint)
+            }
+            .frame(width: 52, height: 52)
 
-            ViewThatFits(in: .horizontal) {
+            VStack(alignment: .leading, spacing: 7) {
+                Text(racePlan.name)
+                    .font(.headline)
+
+                ViewThatFits(in: .horizontal) {
                 HStack(spacing: 12) {
                     raceDateLabel
                     distanceLabel
@@ -89,10 +111,11 @@ private struct RacePlanRow: View {
                     distanceLabel
                 }
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+            }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 8)
     }
 
     private var raceDateLabel: some View {
