@@ -39,12 +39,15 @@ struct RacePlan: Identifiable, Codable, Equatable {
 
 extension RacePlan {
     static let defaultChecklistItems: [ChecklistItem] = [
-        ChecklistItem(title: "レースシューズ"),
+        ChecklistItem(title: "ランニングシューズ"),
+        ChecklistItem(title: "ウェア"),
         ChecklistItem(title: "ゼッケン"),
         ChecklistItem(title: "計測チップ"),
+        ChecklistItem(title: "ランニングウォッチ"),
         ChecklistItem(title: "補給ジェル"),
-        ChecklistItem(title: "給水ボトル"),
+        ChecklistItem(title: "塩タブレット"),
         ChecklistItem(title: "着替え"),
-        ChecklistItem(title: "タオル")
+        ChecklistItem(title: "タオル"),
+        ChecklistItem(title: "モバイルバッテリー")
     ]
 }
