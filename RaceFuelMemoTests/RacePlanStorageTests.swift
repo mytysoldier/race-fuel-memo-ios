@@ -3,8 +3,9 @@ import Testing
 @testable import RaceFuelMemo
 
 @Test func saveAndLoadPreservesRacePlanAndChecklist() {
-    let userDefaults = makeUserDefaults()
-    defer { userDefaults.removePersistentDomain(forName: "RacePlanStorageTests") }
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
 
     let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
     let racePlan = RacePlan(
@@ -26,15 +27,14 @@ import Testing
 }
 
 @Test func loadReturnsEmptyArrayForInvalidData() {
-    let userDefaults = makeUserDefaults()
-    defer { userDefaults.removePersistentDomain(forName: "RacePlanStorageTests") }
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
     userDefaults.set(Data("invalid".utf8), forKey: "racePlans")
 
     #expect(UserDefaultsRacePlanStorage(userDefaults: userDefaults).loadRacePlans().isEmpty)
 }
 
-private func makeUserDefaults() -> UserDefaults {
-    let userDefaults = UserDefaults(suiteName: "RacePlanStorageTests")!
-    userDefaults.removePersistentDomain(forName: "RacePlanStorageTests")
-    return userDefaults
+private func makeUserDefaults(suiteName: String) -> UserDefaults {
+    UserDefaults(suiteName: suiteName)!
 }
