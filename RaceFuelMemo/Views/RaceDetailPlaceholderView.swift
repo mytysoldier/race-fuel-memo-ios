@@ -202,12 +202,13 @@ struct RaceDetailView: View {
         notificationRegistrationTask?.cancel()
         shouldOfferSettings = false
         let racePlan = currentRacePlan
+        let reminderTimings = selectedReminderTimings
 
         notificationRegistrationTask = Task { @MainActor in
             do {
                 let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
                     for: racePlan,
-                    timings: selectedReminderTimings
+                    timings: reminderTimings
                 )
                 guard !Task.isCancelled else {
                     return
@@ -243,6 +244,7 @@ struct RaceDetailView: View {
 
     @MainActor
     private func refreshRegisteredReminderDates() async {
+        reminderStateRevision += 1
         let revision = reminderStateRevision
         let dates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
         let pendingTimings = await RaceReminderScheduler.pendingReminderTimings(for: currentRacePlan.id)
@@ -252,9 +254,9 @@ struct RaceDetailView: View {
         }
 
         registeredReminderDates = dates
-        selectedReminderTimings = pendingTimings.isEmpty
-            ? Set(RaceReminderTiming.allCases)
-            : pendingTimings
+        if !pendingTimings.isEmpty {
+            selectedReminderTimings = pendingTimings
+        }
     }
 }
 
