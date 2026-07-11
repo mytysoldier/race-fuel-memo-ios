@@ -20,21 +20,18 @@ struct RaceListView: View {
                                 }
                                 .buttonStyle(.plain)
 
-                                Menu {
-                                    Button(role: .destructive) {
-                                        racePlanStore.deleteRacePlan(id: racePlan.id)
-                                    } label: {
-                                        Label("レースを削除", systemImage: "trash")
-                                    }
+                                Button(role: .destructive) {
+                                    racePlanStore.deleteRacePlan(id: racePlan.id)
                                 } label: {
-                                    Image(systemName: "ellipsis")
-                                        .font(.body.weight(.bold))
-                                        .foregroundStyle(.secondary)
+                                    Image(systemName: "trash")
+                                        .font(.subheadline.weight(.semibold))
                                         .frame(width: 36, height: 36)
                                         .background(.ultraThinMaterial, in: Circle())
                                 }
+                                .buttonStyle(.plain)
+                                .foregroundStyle(.red)
                                 .padding(12)
-                                .accessibilityLabel("\(racePlan.name)のメニュー")
+                                .accessibilityLabel("\(racePlan.name)を削除")
                             }
                             .listRowInsets(EdgeInsets(top: 7, leading: 16, bottom: 7, trailing: 16))
                             .listRowSeparator(.hidden)
