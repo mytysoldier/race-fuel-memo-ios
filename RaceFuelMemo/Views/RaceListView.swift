@@ -3,6 +3,8 @@ import SwiftUI
 struct RaceListView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
     @State private var isShowingSettings = false
+    @State private var racePlanPendingDeletion: RacePlan?
+    @State private var isShowingDeleteConfirmation = false
 
     var body: some View {
         NavigationStack {
@@ -21,7 +23,7 @@ struct RaceListView: View {
                                 .buttonStyle(.plain)
 
                                 Button(role: .destructive) {
-                                    racePlanStore.deleteRacePlan(id: racePlan.id)
+                                    requestDeletion(of: racePlan)
                                 } label: {
                                     Image(systemName: "trash")
                                         .font(.subheadline.weight(.semibold))
@@ -38,13 +40,13 @@ struct RaceListView: View {
                             .listRowBackground(Color.clear)
                             .swipeActions(edge: .trailing) {
                                 Button(role: .destructive) {
-                                    racePlanStore.deleteRacePlan(id: racePlan.id)
+                                    requestDeletion(of: racePlan)
                                 } label: {
                                     Label("削除", systemImage: "trash")
                                 }
                             }
                         }
-                        .onDelete(perform: racePlanStore.deleteRacePlans)
+                        .onDelete(perform: requestDeletion)
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -76,7 +78,35 @@ struct RaceListView: View {
                     SettingsView()
                 }
             }
+            .alert(
+                "レースを削除しますか？",
+                isPresented: $isShowingDeleteConfirmation,
+                presenting: racePlanPendingDeletion
+            ) { racePlan in
+                Button("削除", role: .destructive) {
+                    racePlanStore.deleteRacePlan(id: racePlan.id)
+                    racePlanPendingDeletion = nil
+                }
+                Button("キャンセル", role: .cancel) {
+                    racePlanPendingDeletion = nil
+                }
+            } message: { racePlan in
+                Text("「\(racePlan.name)」と関連する通知を削除します。この操作は取り消せません。")
+            }
         }
+    }
+
+    private func requestDeletion(of racePlan: RacePlan) {
+        racePlanPendingDeletion = racePlan
+        isShowingDeleteConfirmation = true
+    }
+
+    private func requestDeletion(at offsets: IndexSet) {
+        guard let index = offsets.first else {
+            return
+        }
+
+        requestDeletion(of: racePlanStore.racePlans[index])
     }
 
     private var emptyState: some View {

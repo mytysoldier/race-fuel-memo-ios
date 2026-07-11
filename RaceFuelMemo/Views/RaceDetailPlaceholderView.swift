@@ -3,11 +3,11 @@ import SwiftUI
 struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(\.openURL) private var openURL
-    @State private var isShowingNotificationConfirmation = false
+    @State private var isShowingReminderSettings = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
-    @State private var selectedReminderTimings = Set(RaceReminderTiming.allCases)
+    @State private var selectedReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderDates: [Date] = []
     @State private var shouldOfferSettings = false
@@ -82,52 +82,52 @@ struct RaceDetailView: View {
             Section {
                 Button {
                     selectedReminderTimings = registeredReminderTimings
-                    isShowingNotificationConfirmation = true
+                    isShowingReminderSettings = true
                 } label: {
                     Label(String(localized: "race_detail.action.notification_settings"), systemImage: "bell.badge")
                 }
                 .disabled(isLoadingReminderState)
             }
 
-            if !registeredReminderDates.isEmpty {
-                Section("登録済みの通知") {
-                    ForEach(registeredReminderDates, id: \.self) { date in
-                        Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "bell.fill")
+            Section("通知設定") {
+                if isLoadingReminderState {
+                    HStack(spacing: 8) {
+                        ProgressView()
+                        Text("通知設定を確認中")
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    ReminderStatusCards(selectedTimings: registeredReminderTimings)
+
+                    if !registeredReminderDates.isEmpty {
+                        ForEach(registeredReminderDates, id: \.self) { date in
+                            Label(date.formatted(date: .abbreviated, time: .shortened), systemImage: "bell.fill")
+                                .font(.footnote)
+                                .foregroundStyle(.secondary)
+                        }
                     }
                 }
             }
         }
         .navigationTitle(currentRacePlan.name)
         .navigationBarTitleDisplayMode(.inline)
-        .confirmationDialog(
-            String(localized: "notification.dialog.title"),
-            isPresented: $isShowingNotificationConfirmation,
-            titleVisibility: .visible
-        ) {
-            ForEach(RaceReminderTiming.allCases) { timing in
-                Button {
-                    if selectedReminderTimings.contains(timing) {
-                        selectedReminderTimings.remove(timing)
-                    } else {
-                        selectedReminderTimings.insert(timing)
-                    }
-                    isShowingNotificationConfirmation = true
-                } label: {
-                    Text("\(selectedReminderTimings.contains(timing) ? "✓ " : "")\(timing.label)")
+        .sheet(isPresented: $isShowingReminderSettings) {
+            ReminderSettingsSheet(
+                selectedTimings: $selectedReminderTimings,
+                hasRegisteredReminders: !registeredReminderTimings.isEmpty,
+                onSave: {
+                    isShowingReminderSettings = false
+                    registerNotifications()
+                },
+                onCancelReminders: {
+                    isShowingReminderSettings = false
+                    cancelNotificationRegistration()
+                    shouldOfferSettings = false
+                    notificationMessage = String(localized: "notification.message.cancelled")
+                    isShowingNotificationAlert = true
                 }
-            }
-            Button(String(localized: "notification.action.register")) {
-                registerNotifications()
-            }
-            .disabled(selectedReminderTimings.isEmpty)
-            Button(String(localized: "notification.action.cancel_reminders"), role: .destructive) {
-                cancelNotificationRegistration()
-                shouldOfferSettings = false
-                notificationMessage = String(localized: "notification.message.cancelled")
-                isShowingNotificationAlert = true
-            }
-        } message: {
-            Text(String(localized: "notification.dialog.message"))
+            )
+            .presentationDetents([.medium])
         }
         .alert(String(localized: "notification.alert.title"), isPresented: $isShowingNotificationAlert) {
             if shouldOfferSettings {
@@ -208,6 +208,17 @@ struct RaceDetailView: View {
         let racePlan = currentRacePlan
         let reminderTimings = selectedReminderTimings
 
+        guard !reminderTimings.isEmpty else {
+            guard !registeredReminderTimings.isEmpty else {
+                return
+            }
+
+            cancelNotificationRegistration()
+            notificationMessage = String(localized: "notification.message.cancelled")
+            isShowingNotificationAlert = true
+            return
+        }
+
         notificationRegistrationTask = Task { @MainActor in
             do {
                 let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
@@ -269,6 +280,140 @@ struct RaceDetailView: View {
         registeredReminderDates = dates
         registeredReminderTimings = pendingTimings
         selectedReminderTimings = pendingTimings
+    }
+}
+
+private struct ReminderStatusCards: View {
+    let selectedTimings: Set<RaceReminderTiming>
+
+    var body: some View {
+        HStack(spacing: 8) {
+            ReminderStatusCard(
+                title: "通知なし",
+                systemImage: "bell.slash.fill",
+                isEnabled: selectedTimings.isEmpty
+            )
+
+            ForEach(RaceReminderTiming.allCases) { timing in
+                ReminderStatusCard(
+                    title: timing.shortLabel,
+                    systemImage: "bell.fill",
+                    isEnabled: selectedTimings.contains(timing)
+                )
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+private struct ReminderStatusCard: View {
+    let title: String
+    let systemImage: String
+    let isEnabled: Bool
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Image(systemName: systemImage)
+                .font(.footnote.weight(.bold))
+            Text(title)
+                .font(.caption2.weight(.semibold))
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .foregroundStyle(isEnabled ? Color.accentColor : Color.secondary)
+        .background(
+            isEnabled ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.08),
+            in: RoundedRectangle(cornerRadius: 10, style: .continuous)
+        )
+    }
+}
+
+private struct ReminderSettingsSheet: View {
+    @Binding var selectedTimings: Set<RaceReminderTiming>
+    let hasRegisteredReminders: Bool
+    let onSave: () -> Void
+    let onCancelReminders: () -> Void
+
+    var body: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 20) {
+                Text("通知するタイミングを選択")
+                    .font(.headline)
+
+                LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
+                    reminderOption(
+                        title: "通知なし",
+                        subtitle: "通知を登録しない",
+                        systemImage: "bell.slash.fill",
+                        isSelected: selectedTimings.isEmpty
+                    ) {
+                        selectedTimings = []
+                    }
+
+                    ForEach(RaceReminderTiming.allCases) { timing in
+                        reminderOption(
+                            title: timing.label,
+                            subtitle: timing.detailLabel,
+                            systemImage: "bell.fill",
+                            isSelected: selectedTimings.contains(timing)
+                        ) {
+                            if selectedTimings.contains(timing) {
+                                selectedTimings.remove(timing)
+                            } else {
+                                selectedTimings.insert(timing)
+                            }
+                        }
+                    }
+                }
+
+                Spacer()
+
+                Button("保存", action: onSave)
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: .infinity)
+
+                Button("登録済み通知を取り消す", role: .destructive, action: onCancelReminders)
+                    .disabled(!hasRegisteredReminders)
+                    .frame(maxWidth: .infinity)
+            }
+            .padding()
+            .navigationTitle("通知設定")
+            .navigationBarTitleDisplayMode(.inline)
+        }
+    }
+
+    private func reminderOption(
+        title: String,
+        subtitle: String,
+        systemImage: String,
+        isSelected: Bool,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            VStack(alignment: .leading, spacing: 8) {
+                HStack {
+                    Image(systemName: systemImage)
+                    Spacer()
+                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                }
+                Text(title)
+                    .font(.subheadline.weight(.bold))
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, minHeight: 94, alignment: .leading)
+            .padding(12)
+            .foregroundStyle(isSelected ? Color.accentColor : Color.primary)
+            .background(
+                isSelected ? Color.accentColor.opacity(0.14) : Color.secondary.opacity(0.08),
+                in: RoundedRectangle(cornerRadius: 16, style: .continuous)
+            )
+        }
+        .buttonStyle(.plain)
     }
 }
 
