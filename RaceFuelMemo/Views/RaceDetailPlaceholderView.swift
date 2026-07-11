@@ -12,6 +12,7 @@ struct RaceDetailView: View {
     @State private var registeredReminderDates: [Date] = []
     @State private var shouldOfferSettings = false
     @State private var reminderStateRevision = 0
+    @State private var isLoadingReminderState = true
 
     let racePlan: RacePlan
 
@@ -85,6 +86,7 @@ struct RaceDetailView: View {
                 } label: {
                     Label(String(localized: "race_detail.action.notification_settings"), systemImage: "bell.badge")
                 }
+                .disabled(isLoadingReminderState)
             }
 
             if !registeredReminderDates.isEmpty {
@@ -240,6 +242,7 @@ struct RaceDetailView: View {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
         reminderStateRevision += 1
+        isLoadingReminderState = false
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
         registeredReminderDates = []
         registeredReminderTimings = []
@@ -250,6 +253,7 @@ struct RaceDetailView: View {
     private func refreshRegisteredReminderDates() async {
         reminderStateRevision += 1
         let revision = reminderStateRevision
+        isLoadingReminderState = true
         let dates = await RaceReminderScheduler.pendingReminderDates(for: currentRacePlan.id)
         let pendingTimings = await RaceReminderScheduler.pendingReminderTimings(for: currentRacePlan.id)
 
@@ -260,6 +264,7 @@ struct RaceDetailView: View {
         registeredReminderDates = dates
         registeredReminderTimings = pendingTimings
         selectedReminderTimings = pendingTimings
+        isLoadingReminderState = false
     }
 }
 
