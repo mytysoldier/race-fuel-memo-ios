@@ -382,19 +382,21 @@ private struct RacePlanEditView: View {
     }
 
     var body: some View {
-        Form {
-            Section("基本情報") {
-                TextField("レース名", text: $raceName)
-                DatePicker("開催日", selection: $raceDate, displayedComponents: .date)
-                DatePicker("スタート時刻", selection: $startTime, displayedComponents: .hourAndMinute)
-                Picker("距離", selection: $distance) {
-                    ForEach(DistanceOption.allCases) { option in
-                        Text(option.label).tag(option)
+        ScrollView {
+            VStack(spacing: 20) {
+                formSection("基本情報") {
+                    TextField("レース名", text: $raceName)
+                        .textFieldStyle(.roundedBorder)
+                    DatePicker("開催日", selection: $raceDate, displayedComponents: .date)
+                    DatePicker("スタート時刻", selection: $startTime, displayedComponents: .hourAndMinute)
+                    Picker("距離", selection: $distance) {
+                        ForEach(DistanceOption.allCases) { option in
+                            Text(option.label).tag(option)
+                        }
                     }
                 }
-            }
 
-            Section("目標タイム") {
+            formSection("目標タイム") {
                 Stepper(value: $targetHours, in: 0...24) {
                     LabeledContent("時間", value: "\(targetHours)時間")
                 }
@@ -415,10 +417,11 @@ private struct RacePlanEditView: View {
                 }
             }
 
-            Section("補給") {
+            formSection("補給") {
                 ForEach($gels) { $gel in
                     HStack {
                         TextField("補給ジェル名", text: $gel.name)
+                            .textFieldStyle(.roundedBorder)
                         Button(role: .destructive) {
                             gels.removeAll { $0.id == gel.id }
                         } label: {
@@ -435,11 +438,15 @@ private struct RacePlanEditView: View {
                 }
             }
 
-            Section("メモ") {
+            formSection("メモ") {
                 TextField("当日の持ち物や注意点などを入力（任意）", text: $memo, axis: .vertical)
                     .lineLimit(4...8)
+                    .textFieldStyle(.roundedBorder)
+                }
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle("レースプランを編集")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -451,6 +458,18 @@ private struct RacePlanEditView: View {
                     .disabled(trimmedRaceName.isEmpty || !hasValidTargetTime)
             }
         }
+    }
+
+    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12, content: content)
+                .padding(16)
+                .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .padding(.horizontal)
     }
 
     private var trimmedRaceName: String {

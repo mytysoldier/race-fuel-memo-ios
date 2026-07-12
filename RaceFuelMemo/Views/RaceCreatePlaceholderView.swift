@@ -14,10 +14,12 @@ struct RaceCreatePlaceholderView: View {
     @State private var memo = ""
 
     var body: some View {
-        Form {
-            Section(String(localized: "race_create.section.basic_info")) {
-                TextField(String(localized: "race_create.field.name"), text: $raceName)
-                    .textInputAutocapitalization(.never)
+        ScrollView {
+            VStack(spacing: 20) {
+                formSection(String(localized: "race_create.section.basic_info")) {
+                    TextField(String(localized: "race_create.field.name"), text: $raceName)
+                        .textInputAutocapitalization(.never)
+                        .textFieldStyle(.roundedBorder)
 
                 if trimmedRaceName.isEmpty {
                     validationMessage(String(localized: "race_create.validation.name_required"))
@@ -35,8 +37,8 @@ struct RaceCreatePlaceholderView: View {
                 }
             }
 
-            Section(String(localized: "race_create.section.target_time")) {
-                Stepper(value: $targetHours, in: 0...24) {
+                formSection(String(localized: "race_create.section.target_time")) {
+                    Stepper(value: $targetHours, in: 0...24) {
                     LabeledContent(
                         String(localized: "race_create.field.target_hours"),
                         value: String(format: String(localized: "race_create.value.hours"), targetHours)
@@ -65,37 +67,38 @@ struct RaceCreatePlaceholderView: View {
                 }
             }
 
-            Section(String(localized: "race_create.section.fueling")) {
-                ForEach($gels) { $gel in
-                    HStack {
-                        TextField("補給ジェル名", text: $gel.name)
-                        Button(role: .destructive) {
-                            gels.removeAll { $0.id == gel.id }
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
+                formSection(String(localized: "race_create.section.fueling")) {
+                    ForEach($gels) { $gel in
+                        HStack {
+                            TextField("補給ジェル名", text: $gel.name)
+                                .textFieldStyle(.roundedBorder)
+                            Button(role: .destructive) {
+                                gels.removeAll { $0.id == gel.id }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    }
+
+                    Button {
+                        gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
+                    } label: {
+                        Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                     }
                 }
 
-                Button {
-                    gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
-                } label: {
-                    Label("補給ジェルを追加", systemImage: "plus.circle.fill")
+                formSection(String(localized: "race_create.section.memo")) {
+                    TextField(
+                        String(localized: "race_create.section.memo"),
+                        text: $memo,
+                        prompt: Text(String(localized: "race_create.field.memo_placeholder")),
+                        axis: .vertical
+                    )
+                    .lineLimit(4...8)
+                    .textFieldStyle(.roundedBorder)
                 }
-            }
 
-            Section(String(localized: "race_create.section.memo")) {
-                TextField(
-                    String(localized: "race_create.section.memo"),
-                    text: $memo,
-                    prompt: Text(String(localized: "race_create.field.memo_placeholder")),
-                    axis: .vertical
-                )
-                .lineLimit(4...8)
-            }
-
-            Section {
                 HStack {
                     Spacer()
                     Button(action: saveRacePlan) {
@@ -108,13 +111,24 @@ struct RaceCreatePlaceholderView: View {
                     .disabled(!canSave)
                     Spacer()
                 }
-                .listRowBackground(Color.clear)
             }
         }
+        .scrollDismissesKeyboard(.interactively)
+        .background(Color(.systemGroupedBackground))
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
+    }
+
+    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12, content: content)
+                .padding(16)
+                .background(.background, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
         }
+        .padding(.horizontal)
     }
 
     private var trimmedRaceName: String {
