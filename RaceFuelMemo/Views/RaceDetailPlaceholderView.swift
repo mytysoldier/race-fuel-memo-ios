@@ -8,6 +8,7 @@ struct RaceDetailView: View {
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
+    @State private var testNotificationTask: Task<Void, Never>?
     @State private var reminderReschedulingTask: Task<Void, Never>?
     @State private var selectedReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
@@ -144,6 +145,10 @@ struct RaceDetailView: View {
                     shouldOfferSettings = false
                     notificationMessage = String(localized: "notification.message.cancelled")
                     isShowingNotificationAlert = true
+                },
+                onSendTestNotification: {
+                    isShowingReminderSettings = false
+                    sendTestNotification()
                 }
             )
             .presentationDetents([.medium])
@@ -161,6 +166,7 @@ struct RaceDetailView: View {
         .onDisappear {
             isDetailVisible = false
             notificationRegistrationTask?.cancel()
+            testNotificationTask?.cancel()
         }
         .onAppear {
             isDetailVisible = true
@@ -327,6 +333,35 @@ struct RaceDetailView: View {
         registeredReminderDates = []
         registeredReminderTimings = []
         selectedReminderTimings = []
+    }
+
+    private func sendTestNotification() {
+        #if DEBUG
+        testNotificationTask?.cancel()
+        shouldOfferSettings = false
+
+        testNotificationTask = Task { @MainActor in
+            do {
+                try await RaceReminderScheduler.requestAuthorizationAndScheduleTestNotification()
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                notificationMessage = String(localized: "notification.message.test_scheduled")
+                isShowingNotificationAlert = true
+            } catch is CancellationError {
+                return
+            } catch {
+                guard !Task.isCancelled else {
+                    return
+                }
+
+                notificationMessage = error.localizedDescription
+                shouldOfferSettings = error is RaceReminderSchedulerError
+                isShowingNotificationAlert = true
+            }
+        }
+        #endif
     }
 
     @MainActor
@@ -582,6 +617,7 @@ private struct ReminderSettingsSheet: View {
     let hasRegisteredReminders: Bool
     let onSave: () -> Void
     let onCancelReminders: () -> Void
+    let onSendTestNotification: () -> Void
 
     var body: some View {
         NavigationStack {
@@ -625,6 +661,11 @@ private struct ReminderSettingsSheet: View {
                 Button("登録済み通知を取り消す", role: .destructive, action: onCancelReminders)
                     .disabled(!hasRegisteredReminders)
                     .frame(maxWidth: .infinity)
+
+                #if DEBUG
+                Button("テスト通知を送信（1秒後）", action: onSendTestNotification)
+                    .frame(maxWidth: .infinity)
+                #endif
             }
             .padding()
             .navigationTitle("通知設定")
