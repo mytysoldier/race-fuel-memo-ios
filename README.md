@@ -27,3 +27,4 @@ Running Race Mateは、ランナーがマラソンや10kmレース前に、レ�
 
 - [MVPスコープ](MVP.md)
 - [開発手順](docs/DEVELOPMENT.md)
+- [プライバシーポリシー](docs/PRIVACY_POLICY.md)
