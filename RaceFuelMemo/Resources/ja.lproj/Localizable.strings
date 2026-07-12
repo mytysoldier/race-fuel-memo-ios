@@ -42,7 +42,7 @@
 "race_detail.empty.memo" = "メモはありません。";
 "race_detail.action.notification_settings" = "通知設定";
 
-"notification.title" = "レース補給メモ";
+"notification.title" = "Running Race Mate";
 "notification.body.day_before" = "明日のレースに向けて、持ち物と補給の準備を確認しましょう。";
 "notification.body.two_hours_before" = "レース開始まであと2時間です。準備を確認しましょう。";
 "notification.body.thirty_minutes_before" = "レース開始まであと30分です。";
@@ -68,8 +68,8 @@
 "settings.row.privacy_policy" = "プライバシーポリシー";
 "settings.policy.summary" = "外部通信、ログイン、広告、課金、解析SDKは使用しません。";
 
-"settings.info.section.about" = "レース補給メモについて";
-"settings.info.about" = "レース補給メモは、レース前の目標タイム、補給、持ち物、メモをレースごとにまとめて確認するためのアプリです。";
+"settings.info.section.about" = "Running Race Mateについて";
+"settings.info.about" = "Running Race Mateは、レース前の目標タイム、補給、持ち物、メモをレースごとにまとめて確認するためのアプリです。";
 "settings.info.section.features" = "主な機能";
 "settings.info.feature.race_plan" = "レースプランの作成と保存";
 "settings.info.feature.pace" = "目標ペースと通過タイムの確認";
