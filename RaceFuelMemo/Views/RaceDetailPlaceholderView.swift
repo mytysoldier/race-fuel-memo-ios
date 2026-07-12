@@ -4,15 +4,19 @@ struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
+    @State private var isShowingRacePlanEditor = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
+    @State private var reminderReschedulingTask: Task<Void, Never>?
     @State private var selectedReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderDates: [Date] = []
     @State private var shouldOfferSettings = false
     @State private var reminderStateRevision = 0
+    @State private var reminderSchedulingGeneration = 0
     @State private var isLoadingReminderState = true
+    @State private var isDetailVisible = false
 
     let racePlan: RacePlan
 
@@ -111,6 +115,21 @@ struct RaceDetailView: View {
         }
         .navigationTitle(currentRacePlan.name)
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("編集") {
+                    isShowingRacePlanEditor = true
+                }
+                .disabled(isLoadingReminderState)
+            }
+        }
+        .sheet(isPresented: $isShowingRacePlanEditor) {
+            NavigationStack {
+                RacePlanEditView(racePlan: currentRacePlan) { updatedRacePlan in
+                    rescheduleRemindersIfNeeded(for: updatedRacePlan)
+                }
+            }
+        }
         .sheet(isPresented: $isShowingReminderSettings) {
             ReminderSettingsSheet(
                 selectedTimings: $selectedReminderTimings,
@@ -140,7 +159,11 @@ struct RaceDetailView: View {
             Text(notificationMessage)
         }
         .onDisappear {
+            isDetailVisible = false
             notificationRegistrationTask?.cancel()
+        }
+        .onAppear {
+            isDetailVisible = true
         }
         .task(id: currentRacePlan.id) {
             await refreshRegisteredReminderDates()
@@ -204,6 +227,9 @@ struct RaceDetailView: View {
 
     private func registerNotifications() {
         notificationRegistrationTask?.cancel()
+        reminderReschedulingTask?.cancel()
+        reminderReschedulingTask = nil
+        reminderSchedulingGeneration += 1
         shouldOfferSettings = false
         let racePlan = currentRacePlan
         let reminderTimings = selectedReminderTimings
@@ -249,10 +275,53 @@ struct RaceDetailView: View {
         }
     }
 
+    private func rescheduleRemindersIfNeeded(for racePlan: RacePlan) {
+        guard !registeredReminderTimings.isEmpty else {
+            return
+        }
+
+        notificationRegistrationTask?.cancel()
+        notificationRegistrationTask = nil
+        reminderReschedulingTask?.cancel()
+        reminderSchedulingGeneration += 1
+        let generation = reminderSchedulingGeneration
+        let reminderTimings = registeredReminderTimings
+        reminderReschedulingTask = Task { @MainActor in
+            guard generation == reminderSchedulingGeneration else {
+                return
+            }
+
+            do {
+                _ = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
+                    for: racePlan,
+                    timings: reminderTimings
+                )
+                guard generation == reminderSchedulingGeneration, isDetailVisible else {
+                    return
+                }
+
+                await refreshRegisteredReminderDates()
+            } catch is CancellationError {
+                return
+            } catch {
+                guard generation == reminderSchedulingGeneration, isDetailVisible else {
+                    return
+                }
+
+                notificationMessage = error.localizedDescription
+                shouldOfferSettings = error is RaceReminderSchedulerError
+                isShowingNotificationAlert = true
+            }
+        }
+    }
+
     private func cancelNotificationRegistration() {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
+        reminderReschedulingTask?.cancel()
+        reminderReschedulingTask = nil
         reminderStateRevision += 1
+        reminderSchedulingGeneration += 1
         isLoadingReminderState = false
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
         registeredReminderDates = []
@@ -281,6 +350,165 @@ struct RaceDetailView: View {
         registeredReminderTimings = pendingTimings
         selectedReminderTimings = pendingTimings
     }
+}
+
+private struct RacePlanEditView: View {
+    @Environment(RacePlanStore.self) private var racePlanStore
+    @Environment(\.dismiss) private var dismiss
+
+    let racePlan: RacePlan
+    let onSaved: (RacePlan) -> Void
+
+    @State private var raceName: String
+    @State private var raceDate: Date
+    @State private var startTime: Date
+    @State private var distance: DistanceOption
+    @State private var targetHours: Int
+    @State private var targetMinutes: Int
+    @State private var gels: [EditableGelDraft]
+    @State private var memo: String
+
+    init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
+        self.racePlan = racePlan
+        self.onSaved = onSaved
+        _raceName = State(initialValue: racePlan.name)
+        _raceDate = State(initialValue: racePlan.raceDate)
+        _startTime = State(initialValue: racePlan.startTime)
+        _distance = State(initialValue: DistanceOption.allCases.first(where: { $0.distanceKm == racePlan.distanceKm }) ?? .halfMarathon)
+        _targetHours = State(initialValue: racePlan.targetHours)
+        _targetMinutes = State(initialValue: racePlan.targetMinutes)
+        _gels = State(initialValue: Self.gelDrafts(for: racePlan))
+        _memo = State(initialValue: racePlan.memo)
+    }
+
+    var body: some View {
+        Form {
+            Section("基本情報") {
+                TextField("レース名", text: $raceName)
+                DatePicker("開催日", selection: $raceDate, displayedComponents: .date)
+                DatePicker("スタート時刻", selection: $startTime, displayedComponents: .hourAndMinute)
+                Picker("距離", selection: $distance) {
+                    ForEach(DistanceOption.allCases) { option in
+                        Text(option.label).tag(option)
+                    }
+                }
+            }
+
+            Section("目標タイム") {
+                Stepper(value: $targetHours, in: 0...24) {
+                    LabeledContent("時間", value: "\(targetHours)時間")
+                }
+
+                HStack(spacing: 16) {
+                    Text("分")
+                        .frame(width: 52, alignment: .leading)
+                    Picker("", selection: $targetMinutes) {
+                        ForEach(0..<60) { minute in
+                            Text("\(minute)分").tag(minute)
+                        }
+                    }
+                    .labelsHidden()
+                    .pickerStyle(.wheel)
+                    .frame(maxWidth: .infinity)
+                    .frame(height: 120)
+                    .clipped()
+                }
+            }
+
+            Section("補給") {
+                ForEach($gels) { $gel in
+                    HStack {
+                        TextField("補給ジェル名", text: $gel.name)
+                        Button(role: .destructive) {
+                            gels.removeAll { $0.id == gel.id }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Button {
+                    gels.append(EditableGelDraft(name: "補給ジェル \(gels.count + 1)"))
+                } label: {
+                    Label("補給ジェルを追加", systemImage: "plus.circle.fill")
+                }
+            }
+
+            Section("メモ") {
+                TextField("当日の持ち物や注意点などを入力（任意）", text: $memo, axis: .vertical)
+                    .lineLimit(4...8)
+            }
+        }
+        .navigationTitle("レースプランを編集")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .cancellationAction) {
+                Button("キャンセル", action: dismiss.callAsFunction)
+            }
+            ToolbarItem(placement: .confirmationAction) {
+                Button("保存", action: save)
+                    .disabled(trimmedRaceName.isEmpty || !hasValidTargetTime)
+            }
+        }
+    }
+
+    private var trimmedRaceName: String {
+        raceName.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var hasValidTargetTime: Bool {
+        targetHours > 0 || targetMinutes > 0
+    }
+
+    private var raceStartDateTime: Date {
+        let calendar = Calendar.current
+        let dateComponents = calendar.dateComponents([.year, .month, .day], from: raceDate)
+        let timeComponents = calendar.dateComponents([.hour, .minute], from: startTime)
+        return calendar.date(from: DateComponents(
+            year: dateComponents.year,
+            month: dateComponents.month,
+            day: dateComponents.day,
+            hour: timeComponents.hour,
+            minute: timeComponents.minute
+        )) ?? startTime
+    }
+
+    private func save() {
+        guard !trimmedRaceName.isEmpty, hasValidTargetTime else {
+            return
+        }
+
+        guard var updatedRacePlan = racePlanStore.racePlans.first(where: { $0.id == racePlan.id }) else {
+            return
+        }
+        updatedRacePlan.name = trimmedRaceName
+        updatedRacePlan.raceDate = raceDate
+        updatedRacePlan.startTime = raceStartDateTime
+        updatedRacePlan.distanceKm = distance.distanceKm
+        updatedRacePlan.targetHours = targetHours
+        updatedRacePlan.targetMinutes = targetMinutes
+        updatedRacePlan.gelCount = gels.count
+        updatedRacePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+        updatedRacePlan.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
+        racePlanStore.updateRacePlan(updatedRacePlan)
+        onSaved(updatedRacePlan)
+        dismiss()
+    }
+
+    private static func gelDrafts(for racePlan: RacePlan) -> [EditableGelDraft] {
+        let names = racePlan.gelNames ?? []
+        if !names.isEmpty {
+            return names.map(EditableGelDraft.init)
+        }
+
+        return (0..<racePlan.gelCount).map { EditableGelDraft(name: "補給ジェル \($0 + 1)") }
+    }
+}
+
+private struct EditableGelDraft: Identifiable {
+    let id = UUID()
+    var name: String
 }
 
 private struct ReminderStatusCards: View {
