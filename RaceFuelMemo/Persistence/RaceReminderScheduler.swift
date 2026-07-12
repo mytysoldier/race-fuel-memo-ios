@@ -4,7 +4,7 @@ import UserNotifications
 enum RaceReminderScheduler {
     private static let notificationCenter = UNUserNotificationCenter.current()
     #if DEBUG
-    private static let testNotificationIdentifier = "race-reminder.debug-test"
+    private static let testNotificationIdentifierPrefix = "race-reminder.debug-test"
     #endif
     private static let registrationLock = NSLock()
     private static var activeRegistrationTokens: [RacePlan.ID: UUID] = [:]
@@ -89,21 +89,24 @@ enum RaceReminderScheduler {
     }
 
     #if DEBUG
-    static func requestAuthorizationAndScheduleTestNotification() async throws {
+    static func requestAuthorizationAndScheduleTestNotifications() async throws {
         try await requestAuthorizationIfNeeded()
 
-        let content = UNMutableNotificationContent()
-        content.title = String(localized: "notification.test.title")
-        content.body = String(localized: "notification.test.body")
-        content.sound = .default
+        let requests = RaceReminderTiming.allCases.enumerated().map { index, timing in
+            UNNotificationRequest(
+                identifier: "\(testNotificationIdentifierPrefix).\(timing.notificationIdentifierSuffix)",
+                content: notificationContent(body: notificationBody(for: timing)),
+                trigger: UNTimeIntervalNotificationTrigger(
+                    timeInterval: TimeInterval(index * 2 + 1),
+                    repeats: false
+                )
+            )
+        }
 
-        notificationCenter.removePendingNotificationRequests(withIdentifiers: [testNotificationIdentifier])
-        let request = UNNotificationRequest(
-            identifier: testNotificationIdentifier,
-            content: content,
-            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
-        )
-        try await notificationCenter.add(request)
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: requests.map(\.identifier))
+        for request in requests {
+            try await notificationCenter.add(request)
+        }
     }
     #endif
 
@@ -190,11 +193,6 @@ enum RaceReminderScheduler {
         reminderDates(for: racePlan, timings: timings)
             .filter { $0.date > now }
             .map { reminder in
-                let content = UNMutableNotificationContent()
-                content.title = String(localized: "notification.title")
-                content.body = reminder.body
-                content.sound = .default
-
                 let trigger = UNCalendarNotificationTrigger(
                     dateMatching: Calendar.current.dateComponents(
                         [.year, .month, .day, .hour, .minute],
@@ -205,7 +203,7 @@ enum RaceReminderScheduler {
 
                 return UNNotificationRequest(
                     identifier: reminder.identifier,
-                    content: content,
+                    content: notificationContent(body: reminder.body),
                     trigger: trigger
                 )
             }
@@ -220,15 +218,34 @@ enum RaceReminderScheduler {
         let dayBefore = calendar.date(byAdding: .day, value: -1, to: startDate)
             .flatMap { calendar.date(bySettingHour: 20, minute: 0, second: 0, of: $0) }
 
-        let reminders: [(RaceReminderTiming, String, Date?, String)] = [
-            (.dayBefore, "day-before", dayBefore, String(localized: "notification.body.day_before")),
-            (.twoHoursBefore, "two-hours-before", calendar.date(byAdding: .hour, value: -2, to: startDate), String(localized: "notification.body.two_hours_before")),
-            (.thirtyMinutesBefore, "thirty-minutes-before", calendar.date(byAdding: .minute, value: -30, to: startDate), String(localized: "notification.body.thirty_minutes_before"))
+        let reminders: [(RaceReminderTiming, String, Date?)] = [
+            (.dayBefore, "day-before", dayBefore),
+            (.twoHoursBefore, "two-hours-before", calendar.date(byAdding: .hour, value: -2, to: startDate)),
+            (.thirtyMinutesBefore, "thirty-minutes-before", calendar.date(byAdding: .minute, value: -30, to: startDate))
         ]
 
-        return reminders.filter { timings.contains($0.0) }.compactMap { _, suffix, date, body in
+        return reminders.filter { timings.contains($0.0) }.compactMap { timing, suffix, date in
             let identifier = notificationIdentifier(for: racePlan.id, suffix: suffix)
-            return date.map { (identifier, $0, body) }
+            return date.map { (identifier, $0, notificationBody(for: timing)) }
+        }
+    }
+
+    private static func notificationContent(body: String) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "notification.title")
+        content.body = body
+        content.sound = .default
+        return content
+    }
+
+    private static func notificationBody(for timing: RaceReminderTiming) -> String {
+        switch timing {
+        case .dayBefore:
+            String(localized: "notification.body.day_before")
+        case .twoHoursBefore:
+            String(localized: "notification.body.two_hours_before")
+        case .thirtyMinutesBefore:
+            String(localized: "notification.body.thirty_minutes_before")
         }
     }
 
