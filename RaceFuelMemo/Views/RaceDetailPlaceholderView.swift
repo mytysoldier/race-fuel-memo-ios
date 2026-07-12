@@ -8,13 +8,14 @@ struct RaceDetailView: View {
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
-    @State private var reminderReschedulingTask: Task<Void, Never>?
     @State private var selectedReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderDates: [Date] = []
     @State private var shouldOfferSettings = false
     @State private var reminderStateRevision = 0
+    @State private var reminderSchedulingGeneration = 0
     @State private var isLoadingReminderState = true
+    @State private var isDetailVisible = false
 
     let racePlan: RacePlan
 
@@ -157,7 +158,11 @@ struct RaceDetailView: View {
             Text(notificationMessage)
         }
         .onDisappear {
+            isDetailVisible = false
             notificationRegistrationTask?.cancel()
+        }
+        .onAppear {
+            isDetailVisible = true
         }
         .task(id: currentRacePlan.id) {
             await refreshRegisteredReminderDates()
@@ -221,6 +226,7 @@ struct RaceDetailView: View {
 
     private func registerNotifications() {
         notificationRegistrationTask?.cancel()
+        reminderSchedulingGeneration += 1
         shouldOfferSettings = false
         let racePlan = currentRacePlan
         let reminderTimings = selectedReminderTimings
@@ -271,15 +277,22 @@ struct RaceDetailView: View {
             return
         }
 
-        reminderReschedulingTask?.cancel()
+        notificationRegistrationTask?.cancel()
+        notificationRegistrationTask = nil
+        reminderSchedulingGeneration += 1
+        let generation = reminderSchedulingGeneration
         let reminderTimings = registeredReminderTimings
-        reminderReschedulingTask = Task { @MainActor in
+        Task { @MainActor in
+            guard generation == reminderSchedulingGeneration else {
+                return
+            }
+
             do {
                 _ = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
                     for: racePlan,
                     timings: reminderTimings
                 )
-                guard !Task.isCancelled else {
+                guard generation == reminderSchedulingGeneration, isDetailVisible else {
                     return
                 }
 
@@ -287,7 +300,7 @@ struct RaceDetailView: View {
             } catch is CancellationError {
                 return
             } catch {
-                guard !Task.isCancelled else {
+                guard generation == reminderSchedulingGeneration, isDetailVisible else {
                     return
                 }
 
@@ -302,6 +315,7 @@ struct RaceDetailView: View {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
         reminderStateRevision += 1
+        reminderSchedulingGeneration += 1
         isLoadingReminderState = false
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
         registeredReminderDates = []
