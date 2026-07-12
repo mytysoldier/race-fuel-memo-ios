@@ -8,6 +8,7 @@ struct RaceDetailView: View {
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
+    @State private var reminderReschedulingTask: Task<Void, Never>?
     @State private var selectedReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderDates: [Date] = []
@@ -226,6 +227,8 @@ struct RaceDetailView: View {
 
     private func registerNotifications() {
         notificationRegistrationTask?.cancel()
+        reminderReschedulingTask?.cancel()
+        reminderReschedulingTask = nil
         reminderSchedulingGeneration += 1
         shouldOfferSettings = false
         let racePlan = currentRacePlan
@@ -279,10 +282,11 @@ struct RaceDetailView: View {
 
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
+        reminderReschedulingTask?.cancel()
         reminderSchedulingGeneration += 1
         let generation = reminderSchedulingGeneration
         let reminderTimings = registeredReminderTimings
-        Task { @MainActor in
+        reminderReschedulingTask = Task { @MainActor in
             guard generation == reminderSchedulingGeneration else {
                 return
             }
@@ -314,6 +318,8 @@ struct RaceDetailView: View {
     private func cancelNotificationRegistration() {
         notificationRegistrationTask?.cancel()
         notificationRegistrationTask = nil
+        reminderReschedulingTask?.cancel()
+        reminderReschedulingTask = nil
         reminderStateRevision += 1
         reminderSchedulingGeneration += 1
         isLoadingReminderState = false
@@ -473,7 +479,9 @@ private struct RacePlanEditView: View {
             return
         }
 
-        var updatedRacePlan = racePlan
+        guard var updatedRacePlan = racePlanStore.racePlans.first(where: { $0.id == racePlan.id }) else {
+            return
+        }
         updatedRacePlan.name = trimmedRaceName
         updatedRacePlan.raceDate = raceDate
         updatedRacePlan.startTime = raceStartDateTime
