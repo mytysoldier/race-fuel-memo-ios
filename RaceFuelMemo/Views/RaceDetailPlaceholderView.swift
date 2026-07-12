@@ -8,6 +8,7 @@ struct RaceDetailView: View {
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
+    @State private var reminderReschedulingTask: Task<Void, Never>?
     @State private var selectedReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderTimings: Set<RaceReminderTiming> = []
     @State private var registeredReminderDates: [Date] = []
@@ -117,6 +118,7 @@ struct RaceDetailView: View {
                 Button("編集") {
                     isShowingRacePlanEditor = true
                 }
+                .disabled(isLoadingReminderState)
             }
         }
         .sheet(isPresented: $isShowingRacePlanEditor) {
@@ -269,9 +271,9 @@ struct RaceDetailView: View {
             return
         }
 
-        notificationRegistrationTask?.cancel()
+        reminderReschedulingTask?.cancel()
         let reminderTimings = registeredReminderTimings
-        notificationRegistrationTask = Task { @MainActor in
+        reminderReschedulingTask = Task { @MainActor in
             do {
                 _ = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
                     for: racePlan,
