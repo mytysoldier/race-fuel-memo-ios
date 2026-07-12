@@ -151,7 +151,7 @@ struct RaceDetailView: View {
                     sendTestNotification()
                 }
             )
-            .presentationDetents([.medium])
+            .presentationDetents([.large])
         }
         .alert(String(localized: "notification.alert.title"), isPresented: $isShowingNotificationAlert) {
             if shouldOfferSettings {
@@ -622,9 +622,6 @@ private struct ReminderSettingsSheet: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: 20) {
-                Text("通知するタイミングを選択")
-                    .font(.headline)
-
                 LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                     reminderOption(
                         title: "通知なし",
