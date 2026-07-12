@@ -77,7 +77,7 @@
 "settings.info.feature.checklist" = "持ち物チェックリスト";
 "settings.info.feature.memo" = "レース前メモの保存";
 "settings.info.section.storage" = "データの保存";
-"settings.info.storage" = "入力したレースプランとチェック状態は端末に保存され、本アプリの外部サーバーへ送信されません。端末のバックアップ設定を利用している場合、機種変更時などに入力した内容を復元できることがあります。";
+"settings.info.storage" = "入力したレースプランとチェック状態は端末に保存され、本アプリの外部サーバーへ送信されません。";
 
 "settings.disclaimer.section.purpose" = "本アプリの目的";
 "settings.disclaimer.purpose" = "本アプリはレース準備を支援するメモアプリです。医療、栄養、トレーニングに関する専門的な助言を提供するものではありません。";
@@ -89,6 +89,6 @@
 "settings.privacy.section.collection" = "収集する情報";
 "settings.privacy.collection" = "本アプリは個人情報を収集しません。外部サーバーへの送信、ログイン、広告、課金、解析SDKも使用しません。";
 "settings.privacy.section.storage" = "端末内のデータ";
-"settings.privacy.storage" = "レースプラン、チェック状態、メモは端末に保存され、本アプリの外部サーバーへ送信されません。端末のバックアップ設定を利用している場合、機種変更時などに入力した内容を復元できることがあります。アプリを削除すると、端末上のデータが削除される場合があります。";
+"settings.privacy.storage" = "レースプラン、チェック状態、メモは端末に保存され、本アプリの外部サーバーへ送信されません。アプリを削除すると、端末上のデータが削除される場合があります。";
 "settings.privacy.section.third_party" = "第三者提供";
 "settings.privacy.third_party" = "本アプリはデータを第三者へ提供しません。";
