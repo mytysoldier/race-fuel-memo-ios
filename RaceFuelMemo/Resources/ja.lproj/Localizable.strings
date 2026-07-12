@@ -56,9 +56,7 @@
 "notification.message.registered" = "%d件の通知を登録しました。";
 "notification.message.no_future_reminders" = "登録できる未来の通知はありません。";
 "notification.message.cancelled" = "このレースの通知を取り消しました。";
-"notification.test.title" = "テスト通知";
-"notification.test.body" = "ローカル通知の表示を確認できました。";
-"notification.message.test_scheduled" = "1秒後にテスト通知を送信します。";
+"notification.message.test_scheduled" = "1秒・3秒・5秒後に、本番と同じ3種類の通知を送信します。";
 
 "settings.title" = "設定";
 "settings.action.done" = "完了";
