@@ -342,7 +342,7 @@ struct RaceDetailView: View {
 
         testNotificationTask = Task { @MainActor in
             do {
-                try await RaceReminderScheduler.requestAuthorizationAndScheduleTestNotification()
+                try await RaceReminderScheduler.requestAuthorizationAndScheduleTestNotifications()
                 guard !Task.isCancelled else {
                     return
                 }
@@ -660,7 +660,7 @@ private struct ReminderSettingsSheet: View {
                     .frame(maxWidth: .infinity)
 
                 #if DEBUG
-                Button("テスト通知を送信（1秒後）", action: onSendTestNotification)
+                Button("実際の通知をテスト送信", action: onSendTestNotification)
                     .frame(maxWidth: .infinity)
                 #endif
             }
