@@ -3,6 +3,9 @@ import UserNotifications
 
 enum RaceReminderScheduler {
     private static let notificationCenter = UNUserNotificationCenter.current()
+    #if DEBUG
+    private static let testNotificationIdentifier = "race-reminder.debug-test"
+    #endif
     private static let registrationLock = NSLock()
     private static var activeRegistrationTokens: [RacePlan.ID: UUID] = [:]
     private static var cancelledRegistrationTokens: Set<UUID> = []
@@ -17,23 +20,9 @@ enum RaceReminderScheduler {
             .filter { reminderIdentifiers.contains($0.identifier) }
 
         do {
-            let settings = await notificationCenter.notificationSettings()
             try validateRegistration(for: racePlan.id, token: registrationToken)
             try Task.checkCancellation()
-
-            switch settings.authorizationStatus {
-            case .authorized, .provisional, .ephemeral:
-                break
-            case .notDetermined:
-                let granted = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
-                guard granted else {
-                    throw RaceReminderSchedulerError.permissionDenied
-                }
-            case .denied:
-                throw RaceReminderSchedulerError.permissionDenied
-            @unknown default:
-                throw RaceReminderSchedulerError.permissionDenied
-            }
+            try await requestAuthorizationIfNeeded()
 
             let requests = notificationRequests(for: racePlan, timings: timings)
 
@@ -97,6 +86,43 @@ enum RaceReminderScheduler {
         activeRegistrationTokens[racePlanID] = nil
         registrationLock.unlock()
         notificationCenter.removePendingNotificationRequests(withIdentifiers: notificationIdentifiers(for: racePlanID))
+    }
+
+    #if DEBUG
+    static func requestAuthorizationAndScheduleTestNotification() async throws {
+        try await requestAuthorizationIfNeeded()
+
+        let content = UNMutableNotificationContent()
+        content.title = String(localized: "notification.test.title")
+        content.body = String(localized: "notification.test.body")
+        content.sound = .default
+
+        notificationCenter.removePendingNotificationRequests(withIdentifiers: [testNotificationIdentifier])
+        let request = UNNotificationRequest(
+            identifier: testNotificationIdentifier,
+            content: content,
+            trigger: UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
+        )
+        try await notificationCenter.add(request)
+    }
+    #endif
+
+    private static func requestAuthorizationIfNeeded() async throws {
+        let settings = await notificationCenter.notificationSettings()
+
+        switch settings.authorizationStatus {
+        case .authorized, .provisional, .ephemeral:
+            return
+        case .notDetermined:
+            let granted = try await notificationCenter.requestAuthorization(options: [.alert, .badge, .sound])
+            guard granted else {
+                throw RaceReminderSchedulerError.permissionDenied
+            }
+        case .denied:
+            throw RaceReminderSchedulerError.permissionDenied
+        @unknown default:
+            throw RaceReminderSchedulerError.permissionDenied
+        }
     }
 
     private static func beginRegistration(for racePlanID: RacePlan.ID) -> UUID {
