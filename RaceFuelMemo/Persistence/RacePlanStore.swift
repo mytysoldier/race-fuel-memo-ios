@@ -43,12 +43,10 @@ final class RacePlanStore {
         return addRacePlan(racePlan)
     }
 
-    @discardableResult
     func addRacePlan(_ racePlan: RacePlan) -> Bool {
         commit(racePlans + [racePlan])
     }
 
-    @discardableResult
     func updateRacePlan(_ racePlan: RacePlan) -> Bool {
         guard let index = racePlans.firstIndex(where: { $0.id == racePlan.id }) else {
             return false

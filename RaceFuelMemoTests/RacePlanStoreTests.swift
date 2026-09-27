@@ -6,11 +6,11 @@ import Testing
     let store = RacePlanStore(storage: storage)
     var racePlan = makeStoreRacePlan(name: "春レース")
 
-    store.addRacePlan(racePlan)
+    #expect(store.addRacePlan(racePlan))
     #expect(store.racePlans == [racePlan])
 
     racePlan.memo = "更新後"
-    store.updateRacePlan(racePlan)
+    #expect(store.updateRacePlan(racePlan))
     #expect(store.racePlans == [racePlan])
 
     store.deleteRacePlan(id: racePlan.id)
@@ -37,7 +37,7 @@ import Testing
     let racePlan = makeStoreRacePlan(name: "春レース")
     let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [racePlan]))
 
-    store.updateRacePlan(makeStoreRacePlan(name: "存在しないレース"))
+    #expect(!store.updateRacePlan(makeStoreRacePlan(name: "存在しないレース")))
 
     #expect(store.racePlans == [racePlan])
 }
