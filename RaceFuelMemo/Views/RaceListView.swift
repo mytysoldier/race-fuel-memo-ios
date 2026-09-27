@@ -9,7 +9,13 @@ struct RaceListView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if racePlanStore.racePlans.isEmpty {
+                if let storageError = racePlanStore.storageError {
+                    ContentUnavailableView(
+                        "レースデータを読み込めません",
+                        systemImage: "externaldrive.badge.exclamationmark",
+                        description: Text(storageError)
+                    )
+                } else if racePlanStore.racePlans.isEmpty {
                     emptyState
                 } else {
                     List {
@@ -71,6 +77,7 @@ struct RaceListView: View {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel(String(localized: "race_list.action.add"))
+                    .disabled(racePlanStore.storageError != nil)
                 }
             }
             .sheet(isPresented: $isShowingSettings) {

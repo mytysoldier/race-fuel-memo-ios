@@ -4,12 +4,18 @@ import Observation
 @Observable
 final class RacePlanStore {
     private(set) var racePlans: [RacePlan]
+    private(set) var storageError: String?
 
     private let storage: RacePlanStorage
 
     init(storage: RacePlanStorage = UserDefaultsRacePlanStorage()) {
         self.storage = storage
-        racePlans = storage.loadRacePlans()
+        do {
+            racePlans = try storage.loadRacePlans()
+        } catch {
+            racePlans = []
+            storageError = error.localizedDescription
+        }
     }
 
     func addRacePlan(
@@ -22,7 +28,7 @@ final class RacePlanStore {
         gelCount: Int,
         gelNames: [String] = [],
         memo: String = ""
-    ) {
+    ) -> Bool {
         let racePlan = RacePlan(
             name: name,
             raceDate: raceDate,
@@ -34,40 +40,40 @@ final class RacePlanStore {
             gelNames: gelNames,
             memo: memo
         )
-        racePlans.append(racePlan)
-        persist()
+        return addRacePlan(racePlan)
     }
 
-    func addRacePlan(_ racePlan: RacePlan) {
-        racePlans.append(racePlan)
-        persist()
+    func addRacePlan(_ racePlan: RacePlan) -> Bool {
+        commit(racePlans + [racePlan])
     }
 
-    func updateRacePlan(_ racePlan: RacePlan) {
+    func updateRacePlan(_ racePlan: RacePlan) -> Bool {
         guard let index = racePlans.firstIndex(where: { $0.id == racePlan.id }) else {
-            return
+            return false
         }
 
-        racePlans[index] = racePlan
-        persist()
+        var updated = racePlans
+        updated[index] = racePlan
+        return commit(updated)
     }
 
     func deleteRacePlan(id: RacePlan.ID) {
-        racePlans.removeAll { $0.id == id }
-        RaceReminderScheduler.cancelReminders(for: id)
-        persist()
+        let updated = racePlans.filter { $0.id != id }
+        if updated.count != racePlans.count && commit(updated) {
+            RaceReminderScheduler.cancelReminders(for: id)
+        }
     }
 
     func deleteRacePlans(at offsets: IndexSet) {
         let racePlanIDs = offsets.map { racePlans[$0].id }
-        for racePlanID in racePlanIDs {
-            RaceReminderScheduler.cancelReminders(for: racePlanID)
+        let updated = racePlans.enumerated().compactMap { index, plan in
+            offsets.contains(index) ? nil : plan
         }
-
-        for offset in offsets.sorted(by: >) {
-            racePlans.remove(at: offset)
+        if commit(updated) {
+            for racePlanID in racePlanIDs {
+                RaceReminderScheduler.cancelReminders(for: racePlanID)
+            }
         }
-        persist()
     }
 
     func setChecklistItemChecked(
@@ -82,11 +88,21 @@ final class RacePlanStore {
             return
         }
 
-        racePlans[racePlanIndex].checklistItems[checklistItemIndex].isChecked = isChecked
-        persist()
+        var updated = racePlans
+        updated[racePlanIndex].checklistItems[checklistItemIndex].isChecked = isChecked
+        _ = commit(updated)
     }
 
-    private func persist() {
-        storage.saveRacePlans(racePlans)
+    @discardableResult
+    private func commit(_ updated: [RacePlan]) -> Bool {
+        guard storageError == nil else { return false }
+        do {
+            try storage.saveRacePlans(updated)
+            racePlans = updated
+            return true
+        } catch {
+            storageError = error.localizedDescription
+            return false
+        }
     }
 }
