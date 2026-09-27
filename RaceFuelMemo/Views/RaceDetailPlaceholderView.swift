@@ -402,6 +402,7 @@ private struct RacePlanEditView: View {
     @State private var targetMinutes: Int
     @State private var gels: [EditableGelDraft]
     @State private var memo: String
+    @State private var isShowingSaveError = false
 
     init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
         self.racePlan = racePlan
@@ -484,6 +485,11 @@ private struct RacePlanEditView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("レースプランを編集")
         .navigationBarTitleDisplayMode(.inline)
+        .alert("保存できません", isPresented: $isShowingSaveError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(racePlanStore.storageError ?? "保存処理に失敗しました。")
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("キャンセル", action: dismiss.callAsFunction)
@@ -545,9 +551,12 @@ private struct RacePlanEditView: View {
         updatedRacePlan.gelCount = gels.count
         updatedRacePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         updatedRacePlan.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
-        racePlanStore.updateRacePlan(updatedRacePlan)
-        onSaved(updatedRacePlan)
-        dismiss()
+        if racePlanStore.updateRacePlan(updatedRacePlan) {
+            onSaved(updatedRacePlan)
+            dismiss()
+        } else {
+            isShowingSaveError = true
+        }
     }
 
     private static func gelDrafts(for racePlan: RacePlan) -> [EditableGelDraft] {

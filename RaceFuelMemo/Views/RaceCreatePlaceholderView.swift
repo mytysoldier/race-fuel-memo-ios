@@ -111,6 +111,10 @@ struct RaceCreatePlaceholderView: View {
                     .disabled(!canSave)
                     Spacer()
                 }
+                if let storageError = racePlanStore.storageError {
+                    validationMessage(storageError)
+                        .padding(.horizontal)
+                }
             }
         }
         .scrollDismissesKeyboard(.interactively)
@@ -178,7 +182,7 @@ struct RaceCreatePlaceholderView: View {
             return
         }
 
-        racePlanStore.addRacePlan(
+        let saved = racePlanStore.addRacePlan(
             name: trimmedRaceName,
             raceDate: raceDate,
             startTime: raceStartDateTime,
@@ -189,7 +193,7 @@ struct RaceCreatePlaceholderView: View {
             gelNames: gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) },
             memo: trimmedMemo
         )
-        dismiss()
+        if saved { dismiss() }
     }
 }
 

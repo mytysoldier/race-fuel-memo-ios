@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import RaceFuelMemo
 
-@Test func saveAndLoadPreservesRacePlanAndChecklist() {
+@Test func saveAndLoadPreservesRacePlanAndChecklist() throws {
     let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
     let userDefaults = makeUserDefaults(suiteName: suiteName)
     defer { userDefaults.removePersistentDomain(forName: suiteName) }
@@ -21,20 +21,141 @@ import Testing
         checklistItems: [ChecklistItem(title: "ゼッケン", isChecked: true)]
     )
 
-    storage.saveRacePlans([racePlan])
+    try storage.saveRacePlans([racePlan])
 
-    #expect(storage.loadRacePlans() == [racePlan])
+    #expect((try? storage.loadRacePlans()) == [racePlan])
+    let savedData = try #require(userDefaults.data(forKey: "racePlansV2"))
+    let header = try JSONDecoder().decode(SavedHeader.self, from: savedData)
+    #expect(header.schemaVersion == 2)
 }
 
-@Test func loadReturnsEmptyArrayForInvalidData() {
+@Test func newInstallStartsEmptyWithoutWritingMigrationData() {
     let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
     let userDefaults = makeUserDefaults(suiteName: suiteName)
     defer { userDefaults.removePersistentDomain(forName: suiteName) }
-    userDefaults.set(Data("invalid".utf8), forKey: "racePlans")
 
-    #expect(UserDefaultsRacePlanStorage(userDefaults: userDefaults).loadRacePlans().isEmpty)
+    #expect((try? UserDefaultsRacePlanStorage(userDefaults: userDefaults).loadRacePlans()) == [])
+    #expect(userDefaults.data(forKey: "racePlansV2") == nil)
+}
+
+@Test func legacyPlansMigrateOnceAndKeepOriginalData() throws {
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
+    let oldData = try JSONEncoder().encode([LegacyFixture(
+        id: UUID(uuidString: "00000000-0000-0000-0000-000000000001")!,
+        name: "旧レース", raceDate: .distantPast, startTime: .distantFuture,
+        distanceKm: 42.195, targetHours: 4, targetMinutes: 15,
+        gelCount: 2, gelNames: ["A", "B"], memo: "元のメモ",
+        checklistItems: [LegacyChecklistFixture(
+            id: UUID(uuidString: "00000000-0000-0000-0000-000000000002")!,
+            title: "ゼッケン", isChecked: true
+        )]
+    )])
+    userDefaults.set(oldData, forKey: "racePlans")
+    let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
+
+    let migrated = try storage.loadRacePlans()
+    #expect(migrated.count == 1)
+    #expect(migrated[0].name == "旧レース")
+    #expect(migrated[0].gelNames == ["A", "B"])
+    #expect(migrated[0].checklistItems[0].isChecked)
+    #expect(migrated[0].checklistItems[0].order == 0)
+    #expect(migrated[0].checkpoints.isEmpty)
+    #expect(userDefaults.data(forKey: "racePlans") == oldData)
+    let firstV2Data = try #require(userDefaults.data(forKey: "racePlansV2"))
+
+    #expect(try storage.loadRacePlans() == migrated)
+    #expect(userDefaults.data(forKey: "racePlansV2") == firstV2Data)
+}
+
+@Test func partialLegacyRecordUsesSafeDefaults() throws {
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
+    let data = Data("""
+        [{"id":"00000000-0000-0000-0000-000000000001","name":"一部欠損",
+          "raceDate":1000,"startTime":2000,"distanceKm":10,
+          "targetHours":1,"targetMinutes":0}]
+        """.utf8)
+    userDefaults.set(data, forKey: "racePlans")
+
+    let plans = try UserDefaultsRacePlanStorage(userDefaults: userDefaults).loadRacePlans()
+    #expect(plans.count == 1)
+    #expect(plans[0].gelCount == 0)
+    #expect(plans[0].memo.isEmpty)
+    #expect(plans[0].checklistItems.isEmpty)
+}
+
+@Test func unreadableLegacyDataCannotBeOverwritten() throws {
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
+    let invalid = Data("invalid".utf8)
+    userDefaults.set(invalid, forKey: "racePlans")
+    let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
+
+    #expect(throws: RacePlanStorageError.self) { try storage.loadRacePlans() }
+    #expect(throws: RacePlanStorageError.self) { try storage.saveRacePlans([]) }
+    #expect(userDefaults.data(forKey: "racePlans") == invalid)
+    #expect(userDefaults.data(forKey: "racePlansV2") == nil)
+}
+
+@Test func unreadableOrFutureV2DataCannotBeOverwritten() throws {
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
+    let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
+
+    for data in [Data("invalid".utf8), Data("{\"schemaVersion\":3,\"racePlans\":[]}".utf8)] {
+        userDefaults.set(data, forKey: "racePlansV2")
+        #expect(throws: RacePlanStorageError.self) { try storage.loadRacePlans() }
+        #expect(throws: RacePlanStorageError.self) { try storage.saveRacePlans([]) }
+        #expect(userDefaults.data(forKey: "racePlansV2") == data)
+    }
+}
+
+@Test func v2ModelsRoundTripWithStableIDsAndOrdering() throws {
+    let suiteName = "RacePlanStorageTests.\(UUID().uuidString)"
+    let userDefaults = makeUserDefaults(suiteName: suiteName)
+    defer { userDefaults.removePersistentDomain(forName: suiteName) }
+    let storage = UserDefaultsRacePlanStorage(userDefaults: userDefaults)
+    let checkpoint = RaceCheckpoint(order: 1, name: "20km給水", distanceKm: 20,
+                                    plannedElapsedSeconds: 7200, hasAidStation: true)
+    let segment = RacePaceSegment(order: 0, startDistanceKm: 0, endDistanceKm: 20, targetSeconds: 7200)
+    let pacePlan = RacePacePlan(order: 0, name: "A", targetSeconds: 14400, segments: [segment])
+    let event = RaceFuelingEvent(order: 0, name: "ジェル", quantity: 1, checkpointID: checkpoint.id)
+    let plan = RacePlan(name: "v2", raceDate: .now, startTime: .now, distanceKm: 42.195,
+                        targetHours: 4, targetMinutes: 0, gelCount: 1,
+                        checkpoints: [checkpoint], pacePlans: [pacePlan],
+                        selectedPacePlanID: pacePlan.id, fuelingEvents: [event])
+
+    try storage.saveRacePlans([plan])
+    #expect(try storage.loadRacePlans() == [plan])
 }
 
 private func makeUserDefaults(suiteName: String) -> UserDefaults {
     UserDefaults(suiteName: suiteName)!
+}
+
+private struct SavedHeader: Decodable { let schemaVersion: Int }
+
+private struct LegacyFixture: Encodable {
+    let id: UUID
+    let name: String
+    let raceDate: Date
+    let startTime: Date
+    let distanceKm: Double
+    let targetHours: Int
+    let targetMinutes: Int
+    let gelCount: Int
+    let gelNames: [String]
+    let memo: String
+    let checklistItems: [LegacyChecklistFixture]
+}
+
+private struct LegacyChecklistFixture: Encodable {
+    let id: UUID
+    let title: String
+    let isChecked: Bool
 }
