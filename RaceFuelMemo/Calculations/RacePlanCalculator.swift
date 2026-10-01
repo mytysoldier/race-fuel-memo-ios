@@ -60,6 +60,84 @@ struct FuelTiming: Identifiable, Equatable {
     }
 }
 
+struct RaceCheckpointSchedule: Identifiable, Equatable {
+    let checkpoint: RaceCheckpoint
+    let elapsedSeconds: Int
+    let passingTime: Date
+    let cutoffMarginSeconds: Int?
+
+    var id: UUID { checkpoint.id }
+}
+
+enum RaceCheckpointValidator {
+    static func error(for racePlan: RacePlan) -> String? {
+        guard racePlan.distanceKm.isFinite, (1...200).contains(racePlan.distanceKm) else {
+            return "レース距離は1〜200kmで入力してください。"
+        }
+        let targetSeconds = RacePlanCalculator.targetDurationSeconds(
+            hours: racePlan.targetHours, minutes: racePlan.targetMinutes
+        )
+        guard targetSeconds > 0 else { return "目標タイムを入力してください。" }
+
+        let checkpoints = racePlan.checkpoints.sorted { $0.order < $1.order }
+        guard Set(checkpoints.map(\.id)).count == checkpoints.count,
+              Set(checkpoints.map(\.order)).count == checkpoints.count else {
+            return "地点の並び順に重複があります。"
+        }
+        var previousDistance = 0.0
+        var previousElapsed = 0
+        var finishCount = 0
+        for checkpoint in checkpoints {
+            guard !checkpoint.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                return "地点名を入力してください。"
+            }
+            guard checkpoint.distanceKm.isFinite,
+                  checkpoint.distanceKm > previousDistance + 0.000_001,
+                  checkpoint.distanceKm <= racePlan.distanceKm + 0.000_001 else {
+                return "地点の距離は重複せず、ゴールまで昇順に入力してください。"
+            }
+            if checkpoint.kind == .finish {
+                finishCount += 1
+                guard abs(checkpoint.distanceKm - racePlan.distanceKm) < 0.000_001 else {
+                    return "ゴール地点の距離をレース距離と一致させてください。"
+                }
+            } else if abs(checkpoint.distanceKm - racePlan.distanceKm) < 0.000_001 {
+                return "レース距離の地点はゴールに設定してください。"
+            }
+            if let elapsed = checkpoint.plannedElapsedSeconds {
+                guard elapsed > previousElapsed,
+                      elapsed <= targetSeconds,
+                      (checkpoint.kind == .finish) == (elapsed == targetSeconds) else {
+                    return "地点の予定経過時間は距離順に増え、ゴール時に目標タイムと一致させてください。"
+                }
+                previousElapsed = elapsed
+            }
+            if let cutoffTime = checkpoint.cutoffTime,
+               cutoffTime <= racePlan.startTime {
+                return "関門時刻はスタートより後に設定してください。"
+            }
+            if checkpoint.kind == .cutoff && checkpoint.cutoffTime == nil {
+                return "関門地点には関門時刻を設定してください。"
+            }
+            previousDistance = checkpoint.distanceKm
+        }
+        guard finishCount <= 1 else { return "ゴール地点は1つだけ設定してください。" }
+
+        // Explicit times are anchors. Every intervening point must fit between them.
+        let anchors = checkpoints.compactMap { checkpoint -> (Double, Int)? in
+            checkpoint.plannedElapsedSeconds.map { (checkpoint.distanceKm, $0) }
+        }
+        var previousAnchor = (distance: 0.0, elapsed: 0)
+        for anchor in anchors + [(racePlan.distanceKm, targetSeconds)] {
+            if anchor.0 > previousAnchor.distance + 0.000_001 && anchor.1 <= previousAnchor.elapsed {
+                return "距離が進む地点の予定経過時間は前の地点より後にしてください。"
+            }
+            previousAnchor = (anchor.0, anchor.1)
+        }
+        return nil
+    }
+}
+
 enum RacePlanCalculator {
     static func calculate(for racePlan: RacePlan) -> RacePlanCalculation {
         let targetSeconds = targetDurationSeconds(
@@ -108,8 +186,8 @@ enum RacePlanCalculator {
         case DistanceOption.fiveKilometers.distanceKm:
             return [DistanceOption.fiveKilometers.distanceKm]
         default:
-            return stride(from: 5.0, through: distanceKm, by: 5.0)
-                .map { min($0, distanceKm) }
+            let splits = stride(from: 5.0, through: distanceKm, by: 5.0).map { $0 }
+            return splits.last == distanceKm ? splits : splits + [distanceKm]
         }
     }
 
@@ -163,6 +241,40 @@ enum RacePlanCalculator {
         return distances.map { FuelTiming(distanceKm: $0) }
     }
 
+    static func checkpointSchedules(for racePlan: RacePlan) -> [RaceCheckpointSchedule] {
+        guard RaceCheckpointValidator.error(for: racePlan) == nil else { return [] }
+        let checkpoints = racePlan.checkpoints.sorted { $0.order < $1.order }
+        let targetSeconds = targetDurationSeconds(hours: racePlan.targetHours, minutes: racePlan.targetMinutes)
+        let anchors = [(0.0, 0)]
+            + checkpoints.compactMap { checkpoint -> (Double, Int)? in
+                checkpoint.plannedElapsedSeconds.map { (checkpoint.distanceKm, $0) }
+            }
+            + [(racePlan.distanceKm, targetSeconds)]
+
+        return checkpoints.map { checkpoint in
+            let elapsed: Int
+            if let explicit = checkpoint.plannedElapsedSeconds {
+                elapsed = explicit
+            } else if let upperIndex = anchors.firstIndex(where: { $0.0 >= checkpoint.distanceKm }) {
+                let lower = anchors[max(0, upperIndex - 1)]
+                let upper = anchors[upperIndex]
+                let fraction = (checkpoint.distanceKm - lower.0) / (upper.0 - lower.0)
+                elapsed = lower.1 + Int((Double(upper.1 - lower.1) * fraction).rounded())
+            } else {
+                elapsed = targetSeconds
+            }
+            let passingTime = racePlan.startTime.addingTimeInterval(TimeInterval(elapsed))
+            return RaceCheckpointSchedule(
+                checkpoint: checkpoint,
+                elapsedSeconds: elapsed,
+                passingTime: passingTime,
+                cutoffMarginSeconds: checkpoint.cutoffTime.map {
+                    Int($0.timeIntervalSince(passingTime).rounded())
+                }
+            )
+        }
+    }
+
     static func formatDistance(_ distanceKm: Double) -> String {
         let rounded = distanceKm.rounded()
 
@@ -170,7 +282,10 @@ enum RacePlanCalculator {
             return "\(Int(rounded))km"
         }
 
-        return String(format: "%.3fkm", distanceKm)
+        var text = String(format: "%.4f", distanceKm)
+        while text.last == "0" { text.removeLast() }
+        if text.last == "." { text.removeLast() }
+        return "\(text)km"
     }
 
     static func formatDuration(_ totalSeconds: Int) -> String {

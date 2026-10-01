@@ -5,6 +5,7 @@ import Observation
 final class RacePlanStore {
     private(set) var racePlans: [RacePlan]
     private(set) var storageError: String?
+    private(set) var validationError: String?
 
     private let storage: RacePlanStorage
 
@@ -44,10 +45,20 @@ final class RacePlanStore {
     }
 
     func addRacePlan(_ racePlan: RacePlan) -> Bool {
-        commit(racePlans + [racePlan])
+        if let error = RaceCheckpointValidator.error(for: racePlan) {
+            validationError = error
+            return false
+        }
+        validationError = nil
+        return commit(racePlans + [racePlan])
     }
 
     func updateRacePlan(_ racePlan: RacePlan) -> Bool {
+        if let error = RaceCheckpointValidator.error(for: racePlan) {
+            validationError = error
+            return false
+        }
+        validationError = nil
         guard let index = racePlans.firstIndex(where: { $0.id == racePlan.id }) else {
             return false
         }

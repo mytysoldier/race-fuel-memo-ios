@@ -5,6 +5,7 @@ struct RaceDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
     @State private var isShowingRacePlanEditor = false
+    @State private var showsClockTimes = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
     @State private var notificationRegistrationTask: Task<Void, Never>?
@@ -53,9 +54,75 @@ struct RaceDetailView: View {
                 )
             }
 
-            Section(String(localized: "race_detail.section.split_times")) {
-                ForEach(calculation.splitTimes) { splitTime in
-                    LabeledContent(splitTime.distanceText, value: splitTime.elapsedTimeText)
+            if currentRacePlan.checkpoints.isEmpty {
+                Section(String(localized: "race_detail.section.split_times")) {
+                    ForEach(calculation.splitTimes) { splitTime in
+                        LabeledContent(splitTime.distanceText, value: splitTime.elapsedTimeText)
+                    }
+                }
+            } else {
+                Section("チェックポイント") {
+                    Picker("表示時刻", selection: $showsClockTimes) {
+                        Text("経過時間").tag(false)
+                        Text("時計時刻").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+
+                    ForEach(RacePlanCalculator.checkpointSchedules(for: currentRacePlan)) { schedule in
+                        VStack(alignment: .leading, spacing: 5) {
+                            HStack {
+                                Label(schedule.checkpoint.name,
+                                      systemImage: checkpointSymbol(schedule.checkpoint.kind))
+                                Spacer()
+                                Text(RacePlanCalculator.formatDistance(schedule.checkpoint.distanceKm))
+                                    .foregroundStyle(.secondary)
+                            }
+                            Text(showsClockTimes
+                                 ? schedule.passingTime.formatted(date: .abbreviated, time: .shortened)
+                                 : RacePlanCalculator.formatDuration(schedule.elapsedSeconds))
+                                .font(.headline)
+                            if schedule.checkpoint.hasAidStation && schedule.checkpoint.kind != .aidStation {
+                                Label("給水あり", systemImage: "drop.fill")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if let cutoff = schedule.checkpoint.cutoffTime {
+                                Text("関門 \(cutoff.formatted(date: .abbreviated, time: .shortened))")
+                                    .font(.subheadline)
+                            }
+                            if let margin = schedule.cutoffMarginSeconds {
+                                Text(margin >= 0
+                                     ? "関門余裕 \(RacePlanCalculator.formatDuration(margin))"
+                                     : "関門超過 \(RacePlanCalculator.formatDuration(-margin))")
+                                    .foregroundStyle(margin >= 0 ? Color.secondary : Color.red)
+                            }
+                            if !schedule.checkpoint.segmentNote.isEmpty {
+                                Text(schedule.checkpoint.segmentNote)
+                                    .font(.subheadline)
+                            }
+                            if !schedule.checkpoint.cautionNote.isEmpty {
+                                Label(schedule.checkpoint.cautionNote, systemImage: "exclamationmark.triangle")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                        .accessibilityElement(children: .combine)
+                    }
+                    if !currentRacePlan.checkpoints.contains(where: { $0.kind == .finish }) {
+                        LabeledContent("ゴール \(formattedDistance)", value: showsClockTimes
+                            ? currentRacePlan.startTime.addingTimeInterval(
+                                TimeInterval(RacePlanCalculator.targetDurationSeconds(
+                                    hours: currentRacePlan.targetHours,
+                                    minutes: currentRacePlan.targetMinutes
+                                ))
+                            ).formatted(date: .abbreviated, time: .shortened)
+                            : formattedTargetTime)
+                    }
+                    if let error = RaceCheckpointValidator.error(for: currentRacePlan) {
+                        Label(error, systemImage: "exclamationmark.circle")
+                            .foregroundStyle(.red)
+                    }
                 }
             }
 
@@ -182,6 +249,16 @@ struct RaceDetailView: View {
 
     private var calculation: RacePlanCalculation {
         currentRacePlan.calculation
+    }
+
+    private func checkpointSymbol(_ kind: RaceCheckpointKind) -> String {
+        switch kind {
+        case .regular: "mappin"
+        case .aidStation: "drop.fill"
+        case .cutoff: "clock.badge.exclamationmark"
+        case .turnaround: "arrow.uturn.backward"
+        case .finish: "flag.checkered"
+        }
     }
 
     private var formattedRaceDate: String {
@@ -398,10 +475,14 @@ private struct RacePlanEditView: View {
     @State private var raceDate: Date
     @State private var startTime: Date
     @State private var distance: DistanceOption
+    @State private var usesCustomDistance: Bool
+    @State private var customDistanceKm: Double
     @State private var targetHours: Int
     @State private var targetMinutes: Int
     @State private var gels: [EditableGelDraft]
     @State private var memo: String
+    @State private var checkpoints: [RaceCheckpoint]
+    @State private var isShowingCheckpointEditor = false
     @State private var isShowingSaveError = false
 
     init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
@@ -411,10 +492,13 @@ private struct RacePlanEditView: View {
         _raceDate = State(initialValue: racePlan.raceDate)
         _startTime = State(initialValue: racePlan.startTime)
         _distance = State(initialValue: DistanceOption.allCases.first(where: { $0.distanceKm == racePlan.distanceKm }) ?? .halfMarathon)
+        _usesCustomDistance = State(initialValue: !DistanceOption.allCases.contains { $0.distanceKm == racePlan.distanceKm })
+        _customDistanceKm = State(initialValue: racePlan.distanceKm)
         _targetHours = State(initialValue: racePlan.targetHours)
         _targetMinutes = State(initialValue: racePlan.targetMinutes)
         _gels = State(initialValue: Self.gelDrafts(for: racePlan))
         _memo = State(initialValue: racePlan.memo)
+        _checkpoints = State(initialValue: racePlan.checkpoints)
     }
 
     var body: some View {
@@ -430,10 +514,16 @@ private struct RacePlanEditView: View {
                             Text(option.label).tag(option)
                         }
                     }
+                    Toggle("任意の距離を指定", isOn: $usesCustomDistance)
+                    if usesCustomDistance {
+                        TextField("距離 (1〜200km)", value: $customDistanceKm,
+                                  format: .number.precision(.fractionLength(0...4)))
+                            .keyboardType(.decimalPad)
+                    }
                 }
 
             formSection("目標タイム") {
-                Stepper(value: $targetHours, in: 0...24) {
+                Stepper(value: $targetHours, in: 0...240) {
                     LabeledContent("時間", value: "\(targetHours)時間")
                 }
 
@@ -474,6 +564,21 @@ private struct RacePlanEditView: View {
                 }
             }
 
+            formSection("チェックポイント") {
+                Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
+                    .foregroundStyle(.secondary)
+                Button {
+                    isShowingCheckpointEditor = true
+                } label: {
+                    Label("地点を編集", systemImage: "mappin.and.ellipse")
+                }
+                if let error = RaceCheckpointValidator.error(for: workingRacePlan) {
+                    Label(error, systemImage: "exclamationmark.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
+                }
+            }
+
             formSection("メモ") {
                 TextField("当日の持ち物や注意点などを入力（任意）", text: $memo, axis: .vertical)
                     .lineLimit(4...8)
@@ -485,10 +590,13 @@ private struct RacePlanEditView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle("レースプランを編集")
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $isShowingCheckpointEditor) {
+            RaceCheckpointEditorView(racePlan: workingRacePlan) { checkpoints = $0 }
+        }
         .alert("保存できません", isPresented: $isShowingSaveError) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(racePlanStore.storageError ?? "保存処理に失敗しました。")
+            Text(racePlanStore.storageError ?? racePlanStore.validationError ?? "保存処理に失敗しました。")
         }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -496,7 +604,8 @@ private struct RacePlanEditView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存", action: save)
-                    .disabled(trimmedRaceName.isEmpty || !hasValidTargetTime)
+                    .disabled(trimmedRaceName.isEmpty || !hasValidTargetTime
+                              || RaceCheckpointValidator.error(for: workingRacePlan) != nil)
             }
         }
     }
@@ -519,6 +628,18 @@ private struct RacePlanEditView: View {
 
     private var hasValidTargetTime: Bool {
         targetHours > 0 || targetMinutes > 0
+    }
+
+    private var workingRacePlan: RacePlan {
+        var updated = racePlan
+        updated.name = trimmedRaceName
+        updated.raceDate = raceDate
+        updated.startTime = raceStartDateTime
+        updated.distanceKm = usesCustomDistance ? customDistanceKm : distance.distanceKm
+        updated.targetHours = targetHours
+        updated.targetMinutes = targetMinutes
+        updated.checkpoints = checkpoints
+        return updated
     }
 
     private var raceStartDateTime: Date {
@@ -545,12 +666,13 @@ private struct RacePlanEditView: View {
         updatedRacePlan.name = trimmedRaceName
         updatedRacePlan.raceDate = raceDate
         updatedRacePlan.startTime = raceStartDateTime
-        updatedRacePlan.distanceKm = distance.distanceKm
+        updatedRacePlan.distanceKm = usesCustomDistance ? customDistanceKm : distance.distanceKm
         updatedRacePlan.targetHours = targetHours
         updatedRacePlan.targetMinutes = targetMinutes
         updatedRacePlan.gelCount = gels.count
         updatedRacePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         updatedRacePlan.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
+        updatedRacePlan.checkpoints = checkpoints
         if racePlanStore.updateRacePlan(updatedRacePlan) {
             onSaved(updatedRacePlan)
             dismiss()

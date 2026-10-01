@@ -73,6 +73,19 @@ import Testing
     #expect(first.checklistItems[0].id != second.checklistItems[0].id)
 }
 
+@Test func invalidCheckpointPlanCannotOverwriteSavedPlan() {
+    let original = makeStoreRacePlan(name: "保存済み")
+    let storage = InMemoryRacePlanStorage(racePlans: [original])
+    let store = RacePlanStore(storage: storage)
+    var invalid = original
+    invalid.checkpoints = [RaceCheckpoint(order: 0, name: "超過", distanceKm: 300)]
+
+    #expect(!store.updateRacePlan(invalid))
+    #expect(store.validationError != nil)
+    #expect(store.racePlans == [original])
+    #expect(storage.racePlans == [original])
+}
+
 private func makeStoreRacePlan(name: String) -> RacePlan {
     RacePlan(
         name: name,

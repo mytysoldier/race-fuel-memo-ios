@@ -8,10 +8,14 @@ struct RaceCreatePlaceholderView: View {
     @State private var raceDate = Date()
     @State private var startTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now) ?? .now
     @State private var distance = DistanceOption.halfMarathon
+    @State private var usesCustomDistance = false
+    @State private var customDistanceKm = 21.0975
     @State private var targetHours = 2
     @State private var targetMinutes = 0
     @State private var gels = [GelDraft(name: "補給ジェル 1")]
     @State private var memo = ""
+    @State private var checkpoints: [RaceCheckpoint] = []
+    @State private var isShowingCheckpointEditor = false
 
     var body: some View {
         ScrollView {
@@ -35,10 +39,16 @@ struct RaceCreatePlaceholderView: View {
                             .tag(distanceOption)
                     }
                 }
+                Toggle("任意の距離を指定", isOn: $usesCustomDistance)
+                if usesCustomDistance {
+                    TextField("距離 (1〜200km)", value: $customDistanceKm,
+                              format: .number.precision(.fractionLength(0...4)))
+                        .keyboardType(.decimalPad)
+                }
             }
 
                 formSection(String(localized: "race_create.section.target_time")) {
-                    Stepper(value: $targetHours, in: 0...24) {
+                    Stepper(value: $targetHours, in: 0...240) {
                     LabeledContent(
                         String(localized: "race_create.field.target_hours"),
                         value: String(format: String(localized: "race_create.value.hours"), targetHours)
@@ -88,6 +98,19 @@ struct RaceCreatePlaceholderView: View {
                     }
                 }
 
+                formSection("チェックポイント") {
+                    Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
+                        .foregroundStyle(.secondary)
+                    Button {
+                        isShowingCheckpointEditor = true
+                    } label: {
+                        Label("地点を編集", systemImage: "mappin.and.ellipse")
+                    }
+                    if let validationError = RaceCheckpointValidator.error(for: draftRacePlan) {
+                        validationMessage(validationError)
+                    }
+                }
+
                 formSection(String(localized: "race_create.section.memo")) {
                     TextField(
                         String(localized: "race_create.section.memo"),
@@ -111,8 +134,8 @@ struct RaceCreatePlaceholderView: View {
                     .disabled(!canSave)
                     Spacer()
                 }
-                if let storageError = racePlanStore.storageError {
-                    validationMessage(storageError)
+                if let saveError = racePlanStore.storageError ?? racePlanStore.validationError {
+                    validationMessage(saveError)
                         .padding(.horizontal)
                 }
             }
@@ -121,6 +144,9 @@ struct RaceCreatePlaceholderView: View {
         .background(Color(.systemGroupedBackground))
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $isShowingCheckpointEditor) {
+            RaceCheckpointEditorView(racePlan: draftRacePlan) { checkpoints = $0 }
+        }
     }
 
     private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -149,6 +175,20 @@ struct RaceCreatePlaceholderView: View {
 
     private var canSave: Bool {
         !trimmedRaceName.isEmpty && hasValidTargetTime
+            && RaceCheckpointValidator.error(for: draftRacePlan) == nil
+    }
+
+    private var selectedDistanceKm: Double {
+        usesCustomDistance ? customDistanceKm : distance.distanceKm
+    }
+
+    private var draftRacePlan: RacePlan {
+        RacePlan(
+            name: trimmedRaceName, raceDate: raceDate, startTime: raceStartDateTime,
+            distanceKm: selectedDistanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
+            gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
+            checkpoints: checkpoints
+        )
     }
 
     private func validationMessage(_ message: String) -> some View {
@@ -182,17 +222,9 @@ struct RaceCreatePlaceholderView: View {
             return
         }
 
-        let saved = racePlanStore.addRacePlan(
-            name: trimmedRaceName,
-            raceDate: raceDate,
-            startTime: raceStartDateTime,
-            distance: distance,
-            targetHours: targetHours,
-            targetMinutes: targetMinutes,
-            gelCount: gels.count,
-            gelNames: gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) },
-            memo: trimmedMemo
-        )
+        var racePlan = draftRacePlan
+        racePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
+        let saved = racePlanStore.addRacePlan(racePlan)
         if saved { dismiss() }
     }
 }

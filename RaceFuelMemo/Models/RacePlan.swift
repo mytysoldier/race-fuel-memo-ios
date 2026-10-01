@@ -52,7 +52,25 @@ struct RacePlan: Identifiable, Codable, Equatable {
     }
 }
 
-/// A point on the course. Aid stations and cutoff times can be attached to the same point.
+enum RaceCheckpointKind: String, CaseIterable, Codable {
+    case regular
+    case aidStation
+    case cutoff
+    case turnaround
+    case finish
+
+    var title: String {
+        switch self {
+        case .regular: "通常地点"
+        case .aidStation: "給水所"
+        case .cutoff: "関門"
+        case .turnaround: "折り返し"
+        case .finish: "ゴール"
+        }
+    }
+}
+
+/// A point on the course. The legacy aid-station flag is retained for existing v2 documents.
 struct RaceCheckpoint: Identifiable, Codable, Equatable {
     let id: UUID
     var order: Int
@@ -61,16 +79,44 @@ struct RaceCheckpoint: Identifiable, Codable, Equatable {
     var plannedElapsedSeconds: Int?
     var cutoffTime: Date?
     var hasAidStation: Bool
+    var kind: RaceCheckpointKind
+    var segmentNote: String
+    var cautionNote: String
 
     init(id: UUID = UUID(), order: Int, name: String, distanceKm: Double,
-         plannedElapsedSeconds: Int? = nil, cutoffTime: Date? = nil, hasAidStation: Bool = false) {
+         plannedElapsedSeconds: Int? = nil, cutoffTime: Date? = nil, hasAidStation: Bool = false,
+         kind: RaceCheckpointKind = .regular, segmentNote: String = "", cautionNote: String = "") {
         self.id = id
         self.order = order
         self.name = name
         self.distanceKm = distanceKm
         self.plannedElapsedSeconds = plannedElapsedSeconds
         self.cutoffTime = cutoffTime
-        self.hasAidStation = hasAidStation
+        self.hasAidStation = hasAidStation || kind == .aidStation
+        self.kind = kind
+        self.segmentNote = segmentNote
+        self.cautionNote = cautionNote
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, order, name, distanceKm, plannedElapsedSeconds, cutoffTime
+        case hasAidStation, kind, segmentNote, cautionNote
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        order = try values.decode(Int.self, forKey: .order)
+        name = try values.decode(String.self, forKey: .name)
+        distanceKm = try values.decode(Double.self, forKey: .distanceKm)
+        plannedElapsedSeconds = try values.decodeIfPresent(Int.self, forKey: .plannedElapsedSeconds)
+        cutoffTime = try values.decodeIfPresent(Date.self, forKey: .cutoffTime)
+        hasAidStation = try values.decodeIfPresent(Bool.self, forKey: .hasAidStation) ?? false
+        kind = try values.decodeIfPresent(RaceCheckpointKind.self, forKey: .kind)
+            ?? (cutoffTime != nil ? .cutoff : hasAidStation ? .aidStation : .regular)
+        if kind == .aidStation { hasAidStation = true }
+        segmentNote = try values.decodeIfPresent(String.self, forKey: .segmentNote) ?? ""
+        cautionNote = try values.decodeIfPresent(String.self, forKey: .cautionNote) ?? ""
     }
 }
 
