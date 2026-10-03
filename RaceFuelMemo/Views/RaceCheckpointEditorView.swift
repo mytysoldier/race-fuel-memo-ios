@@ -182,7 +182,7 @@ struct RaceCheckpointEditorView: View {
                 ),
                 checkpointDistanceKm: checkpoint.wrappedValue.distanceKm,
                 raceDistanceKm: racePlan.distanceKm
-            )
+            ).map(RacePlanCalculator.roundedElapsedSecondsToWholeMinute)
         }
     }
 

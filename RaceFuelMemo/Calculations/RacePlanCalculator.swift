@@ -195,6 +195,10 @@ enum RacePlanCalculator {
         return Int(estimated)
     }
 
+    static func roundedElapsedSecondsToWholeMinute(_ seconds: Int) -> Int {
+        Int((Double(max(0, seconds)) / 60).rounded()) * 60
+    }
+
     static func splitDistances(for distanceKm: Double) -> [Double] {
         switch distanceKm {
         case DistanceOption.fullMarathon.distanceKm:
