@@ -199,6 +199,33 @@ enum RacePlanCalculator {
         Int((Double(max(0, seconds)) / 60).rounded()) * 60
     }
 
+    static func suggestedManualCheckpointElapsedSeconds(
+        totalSeconds: Int,
+        checkpointDistanceKm: Double,
+        raceDistanceKm: Double,
+        isFinish: Bool
+    ) -> Int? {
+        guard let estimatedSeconds = estimatedCheckpointElapsedSeconds(
+            totalSeconds: totalSeconds,
+            checkpointDistanceKm: checkpointDistanceKm,
+            raceDistanceKm: raceDistanceKm
+        ) else {
+            return nil
+        }
+
+        guard isFinish else {
+            let roundedSeconds = roundedElapsedSecondsToWholeMinute(estimatedSeconds)
+            guard roundedSeconds > 0 else { return nil }
+            guard roundedSeconds < totalSeconds else {
+                let latestWholeMinute = ((totalSeconds - 1) / 60) * 60
+                return latestWholeMinute > 0 ? latestWholeMinute : nil
+            }
+            return roundedSeconds
+        }
+
+        return totalSeconds
+    }
+
     static func splitDistances(for distanceKm: Double) -> [Double] {
         switch distanceKm {
         case DistanceOption.fullMarathon.distanceKm:

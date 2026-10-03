@@ -175,14 +175,15 @@ struct RaceCheckpointEditorView: View {
                 checkpoint.wrappedValue.plannedElapsedSeconds = nil
                 return
             }
-            checkpoint.wrappedValue.plannedElapsedSeconds = RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+            checkpoint.wrappedValue.plannedElapsedSeconds = RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
                 totalSeconds: RacePlanCalculator.targetDurationSeconds(
                     hours: racePlan.targetHours,
                     minutes: racePlan.targetMinutes
                 ),
                 checkpointDistanceKm: checkpoint.wrappedValue.distanceKm,
-                raceDistanceKm: racePlan.distanceKm
-            ).map(RacePlanCalculator.roundedElapsedSecondsToWholeMinute)
+                raceDistanceKm: racePlan.distanceKm,
+                isFinish: checkpoint.wrappedValue.kind == .finish
+            )
         }
     }
 
