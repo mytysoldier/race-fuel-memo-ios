@@ -80,6 +80,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         for index in checkpoints.indices where !checkpoints[index].wasKindExplicitlyStored
             && abs(checkpoints[index].distanceKm - distanceKm) < 0.000_001 {
             checkpoints[index].kind = .finish
+            checkpoints[index] = normalizedFinishCheckpoint(checkpoints[index])
         }
     }
 }
