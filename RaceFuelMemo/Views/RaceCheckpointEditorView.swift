@@ -47,7 +47,9 @@ struct RaceCheckpointEditorView: View {
                             }
                             .onChange(of: checkpoint.kind) { _, newKind in
                                 if newKind == .aidStation { checkpoint.hasAidStation = true }
-                                if newKind == .finish { checkpoint.distanceKm = racePlan.distanceKm }
+                                if newKind == .finish {
+                                    checkpoint.wrappedValue = racePlan.normalizedFinishCheckpoint(checkpoint.wrappedValue)
+                                }
                                 if newKind == .cutoff && checkpoint.cutoffTime == nil {
                                     checkpoint.cutoffTime = racePlan.startTime.addingTimeInterval(3_600)
                                 }

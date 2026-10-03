@@ -47,6 +47,22 @@ import Testing
     #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
 }
 
+@Test func selectingFinishNormalizesManualElapsedTime() {
+    let racePlan = makeRacePlan()
+    var checkpoint = RaceCheckpoint(
+        order: 0,
+        name: "ゴール",
+        distanceKm: 20,
+        plannedElapsedSeconds: 7_200
+    )
+    checkpoint.kind = .finish
+
+    let normalizedCheckpoint = racePlan.normalizedFinishCheckpoint(checkpoint)
+
+    #expect(normalizedCheckpoint.distanceKm == racePlan.distanceKm)
+    #expect(normalizedCheckpoint.plannedElapsedSeconds == 14_400)
+}
+
 @Test func formatsDistanceAndDuration() {
     #expect(RacePlanCalculator.formatDistance(42) == "42km")
     #expect(RacePlanCalculator.formatDistance(42.195) == "42.195km")
