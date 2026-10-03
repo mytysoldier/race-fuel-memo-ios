@@ -183,12 +183,14 @@ struct RaceCreatePlaceholderView: View {
     }
 
     private var draftRacePlan: RacePlan {
-        RacePlan(
+        var racePlan = RacePlan(
             name: trimmedRaceName, raceDate: raceDate, startTime: raceStartDateTime,
             distanceKm: selectedDistanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
             checkpoints: checkpoints
         )
+        racePlan.alignFinishCheckpointDistances()
+        return racePlan
     }
 
     private func validationMessage(_ message: String) -> some View {
