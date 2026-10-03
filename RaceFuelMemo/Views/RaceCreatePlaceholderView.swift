@@ -141,6 +141,9 @@ struct RaceCreatePlaceholderView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: raceStartDateTime) { previousStartTime, newStartTime in
+            checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
+        }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
