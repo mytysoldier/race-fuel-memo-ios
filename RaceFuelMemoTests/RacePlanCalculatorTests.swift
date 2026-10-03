@@ -36,6 +36,9 @@ import Testing
     #expect(RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
         totalSeconds: 1_200, checkpointDistanceKm: 0.1, raceDistanceKm: 5, isFinish: false
     ) == 60)
+    #expect(RacePlanCalculator.boundedManualCheckpointElapsedSeconds(
+        60, after: 60, before: 1_200
+    ) == 120)
 }
 
 @Test func finishCheckpointFollowsUpdatedRaceDetails() {

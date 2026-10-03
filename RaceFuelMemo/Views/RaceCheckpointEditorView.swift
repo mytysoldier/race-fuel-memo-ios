@@ -175,16 +175,43 @@ struct RaceCheckpointEditorView: View {
                 checkpoint.wrappedValue.plannedElapsedSeconds = nil
                 return
             }
-            checkpoint.wrappedValue.plannedElapsedSeconds = RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
-                totalSeconds: RacePlanCalculator.targetDurationSeconds(
-                    hours: racePlan.targetHours,
-                    minutes: racePlan.targetMinutes
-                ),
-                checkpointDistanceKm: checkpoint.wrappedValue.distanceKm,
-                raceDistanceKm: racePlan.distanceKm,
-                isFinish: checkpoint.wrappedValue.kind == .finish
+            checkpoint.wrappedValue.plannedElapsedSeconds = suggestedManualElapsedSeconds(
+                for: checkpoint.wrappedValue
             )
         }
+    }
+
+    private func suggestedManualElapsedSeconds(for checkpoint: RaceCheckpoint) -> Int? {
+        let targetSeconds = RacePlanCalculator.targetDurationSeconds(
+            hours: racePlan.targetHours,
+            minutes: racePlan.targetMinutes
+        )
+        guard let suggestedSeconds = RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
+            totalSeconds: targetSeconds,
+            checkpointDistanceKm: checkpoint.distanceKm,
+            raceDistanceKm: racePlan.distanceKm,
+            isFinish: checkpoint.kind == .finish
+        ) else {
+            return nil
+        }
+
+        guard checkpoint.kind != .finish,
+              let index = checkpoints.firstIndex(where: { $0.id == checkpoint.id }) else {
+            return suggestedSeconds
+        }
+
+        let previousElapsedSeconds = checkpoints[..<index]
+            .reversed()
+            .compactMap(\.plannedElapsedSeconds)
+            .first ?? 0
+        let nextElapsedSeconds = checkpoints[(index + 1)...]
+            .compactMap(\.plannedElapsedSeconds)
+            .first ?? targetSeconds
+        return RacePlanCalculator.boundedManualCheckpointElapsedSeconds(
+            suggestedSeconds,
+            after: previousElapsedSeconds,
+            before: nextElapsedSeconds
+        )
     }
 
     private func elapsedMinutes(for checkpoint: Binding<RaceCheckpoint>) -> Binding<Int> {

@@ -228,6 +228,18 @@ enum RacePlanCalculator {
         return totalSeconds
     }
 
+    static func boundedManualCheckpointElapsedSeconds(
+        _ suggestedSeconds: Int,
+        after previousElapsedSeconds: Int,
+        before nextElapsedSeconds: Int
+    ) -> Int? {
+        let earliestWholeMinute = ((max(0, previousElapsedSeconds) / 60) + 1) * 60
+        let latestWholeMinute = ((nextElapsedSeconds - 1) / 60) * 60
+        guard earliestWholeMinute <= latestWholeMinute else { return nil }
+
+        return min(max(suggestedSeconds, earliestWholeMinute), latestWholeMinute)
+    }
+
     static func splitDistances(for distanceKm: Double) -> [Double] {
         switch distanceKm {
         case DistanceOption.fullMarathon.distanceKm:
