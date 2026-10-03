@@ -215,7 +215,9 @@ enum RacePlanCalculator {
 
         guard isFinish else {
             let roundedSeconds = roundedElapsedSecondsToWholeMinute(estimatedSeconds)
-            guard roundedSeconds > 0 else { return nil }
+            guard roundedSeconds > 0 else {
+                return totalSeconds > 60 ? 60 : nil
+            }
             guard roundedSeconds < totalSeconds else {
                 let latestWholeMinute = ((totalSeconds - 1) / 60) * 60
                 return latestWholeMinute > 0 ? latestWholeMinute : nil
