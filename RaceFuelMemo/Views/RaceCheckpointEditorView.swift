@@ -10,7 +10,9 @@ struct RaceCheckpointEditorView: View {
     init(racePlan: RacePlan, onSave: @escaping ([RaceCheckpoint]) -> Void) {
         self.racePlan = racePlan
         self.onSave = onSave
-        _checkpoints = State(initialValue: racePlan.checkpoints.sorted { $0.order < $1.order })
+        var normalizedRacePlan = racePlan
+        normalizedRacePlan.alignFinishCheckpointDistances()
+        _checkpoints = State(initialValue: normalizedRacePlan.checkpoints.sorted { $0.order < $1.order })
     }
 
     var body: some View {
@@ -61,6 +63,9 @@ struct RaceCheckpointEditorView: View {
                                 .disabled(checkpoint.kind == .finish)
 
                             Toggle("通過時間を手動指定", isOn: elapsedEnabled(for: $checkpoint))
+                                .disabled(
+                                    checkpoint.plannedElapsedSeconds == nil && !canEstimateElapsedTime
+                                )
                             if checkpoint.plannedElapsedSeconds != nil {
                                 TextField("スタートからの経過分", value: elapsedMinutes(for: $checkpoint), format: .number)
                                     .keyboardType(.numberPad)
@@ -93,6 +98,7 @@ struct RaceCheckpointEditorView: View {
                     } label: {
                         Label("地点を追加", systemImage: "plus.circle.fill")
                     }
+                    .disabled(!hasValidRaceDistance)
                 }
 
                 if let validationError {
@@ -126,7 +132,23 @@ struct RaceCheckpointEditorView: View {
         return RaceCheckpointValidator.error(for: candidate)
     }
 
+    private var hasValidRaceDistance: Bool {
+        racePlan.distanceKm.isFinite && (1...200).contains(racePlan.distanceKm)
+    }
+
+    private var canEstimateElapsedTime: Bool {
+        RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+            totalSeconds: RacePlanCalculator.targetDurationSeconds(
+                hours: racePlan.targetHours,
+                minutes: racePlan.targetMinutes
+            ),
+            checkpointDistanceKm: 0,
+            raceDistanceKm: racePlan.distanceKm
+        ) != nil
+    }
+
     private func suggestedDistance(before insertionIndex: Int) -> Double {
+        guard hasValidRaceDistance else { return 0 }
         let previous = insertionIndex > 0 ? checkpoints[insertionIndex - 1].distanceKm : 0
         let next = insertionIndex < checkpoints.count
             ? checkpoints[insertionIndex].distanceKm : racePlan.distanceKm
@@ -147,10 +169,18 @@ struct RaceCheckpointEditorView: View {
         Binding {
             checkpoint.wrappedValue.plannedElapsedSeconds != nil
         } set: { enabled in
-            checkpoint.wrappedValue.plannedElapsedSeconds = enabled
-                ? Int((Double(racePlan.targetHours * 60 + racePlan.targetMinutes)
-                       * checkpoint.wrappedValue.distanceKm / racePlan.distanceKm).rounded()) * 60
-                : nil
+            guard enabled else {
+                checkpoint.wrappedValue.plannedElapsedSeconds = nil
+                return
+            }
+            checkpoint.wrappedValue.plannedElapsedSeconds = RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+                totalSeconds: RacePlanCalculator.targetDurationSeconds(
+                    hours: racePlan.targetHours,
+                    minutes: racePlan.targetMinutes
+                ),
+                checkpointDistanceKm: checkpoint.wrappedValue.distanceKm,
+                raceDistanceKm: racePlan.distanceKm
+            )
         }
     }
 

@@ -175,6 +175,26 @@ enum RacePlanCalculator {
         return RacePace(secondsPerKilometer: secondsPerKilometer)
     }
 
+    static func estimatedCheckpointElapsedSeconds(
+        totalSeconds: Int,
+        checkpointDistanceKm: Double,
+        raceDistanceKm: Double
+    ) -> Int? {
+        guard totalSeconds > 0,
+              checkpointDistanceKm.isFinite,
+              raceDistanceKm.isFinite,
+              checkpointDistanceKm >= 0,
+              raceDistanceKm > 0 else {
+            return nil
+        }
+
+        let estimated = (Double(totalSeconds) * checkpointDistanceKm / raceDistanceKm).rounded()
+        guard estimated.isFinite, estimated >= 0, estimated <= Double(Int.max) else {
+            return nil
+        }
+        return Int(estimated)
+    }
+
     static func splitDistances(for distanceKm: Double) -> [Double] {
         switch distanceKm {
         case DistanceOption.fullMarathon.distanceKm:

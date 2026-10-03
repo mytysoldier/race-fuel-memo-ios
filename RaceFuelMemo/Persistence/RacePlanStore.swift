@@ -45,26 +45,30 @@ final class RacePlanStore {
     }
 
     func addRacePlan(_ racePlan: RacePlan) -> Bool {
-        if let error = RaceCheckpointValidator.error(for: racePlan) {
+        var normalizedRacePlan = racePlan
+        normalizedRacePlan.alignFinishCheckpointDistances()
+        if let error = RaceCheckpointValidator.error(for: normalizedRacePlan) {
             validationError = error
             return false
         }
         validationError = nil
-        return commit(racePlans + [racePlan])
+        return commit(racePlans + [normalizedRacePlan])
     }
 
     func updateRacePlan(_ racePlan: RacePlan) -> Bool {
-        if let error = RaceCheckpointValidator.error(for: racePlan) {
+        var normalizedRacePlan = racePlan
+        normalizedRacePlan.alignFinishCheckpointDistances()
+        if let error = RaceCheckpointValidator.error(for: normalizedRacePlan) {
             validationError = error
             return false
         }
         validationError = nil
-        guard let index = racePlans.firstIndex(where: { $0.id == racePlan.id }) else {
+        guard let index = racePlans.firstIndex(where: { $0.id == normalizedRacePlan.id }) else {
             return false
         }
 
         var updated = racePlans
-        updated[index] = racePlan
+        updated[index] = normalizedRacePlan
         return commit(updated)
     }
 

@@ -20,6 +20,23 @@ import Testing
     #expect(RacePlanCalculator.targetPace(totalSeconds: 0, distanceKm: 10).secondsPerKilometer == 0)
     #expect(RacePlanCalculator.splitTimes(totalSeconds: 3_600, distanceKm: 0).isEmpty)
     #expect(RacePlanCalculator.fuelTimings(gelCount: 0, distanceKm: 10).isEmpty)
+    #expect(RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+        totalSeconds: 14_400, checkpointDistanceKm: 10, raceDistanceKm: 0
+    ) == nil)
+    #expect(RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+        totalSeconds: 14_400, checkpointDistanceKm: 10, raceDistanceKm: 20
+    ) == 7_200)
+}
+
+@Test func finishCheckpointFollowsUpdatedRaceDistance() {
+    var racePlan = makeRacePlan()
+    racePlan.checkpoints = [RaceCheckpoint(order: 0, name: "ゴール", distanceKm: 42.195, kind: .finish)]
+    racePlan.distanceKm = 50
+
+    racePlan.alignFinishCheckpointDistances()
+
+    #expect(racePlan.checkpoints[0].distanceKm == 50)
+    #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
 }
 
 @Test func formatsDistanceAndDuration() {

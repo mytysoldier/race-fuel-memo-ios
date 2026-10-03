@@ -639,6 +639,7 @@ private struct RacePlanEditView: View {
         updated.targetHours = targetHours
         updated.targetMinutes = targetMinutes
         updated.checkpoints = checkpoints
+        updated.alignFinishCheckpointDistances()
         return updated
     }
 
@@ -673,6 +674,7 @@ private struct RacePlanEditView: View {
         updatedRacePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         updatedRacePlan.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
         updatedRacePlan.checkpoints = checkpoints
+        updatedRacePlan.alignFinishCheckpointDistances()
         if racePlanStore.updateRacePlan(updatedRacePlan) {
             onSaved(updatedRacePlan)
             dismiss()

@@ -211,6 +211,12 @@ struct RaceFuelingEvent: Identifiable, Codable, Equatable {
 }
 
 extension RacePlan {
+    mutating func alignFinishCheckpointDistances() {
+        for index in checkpoints.indices where checkpoints[index].kind == .finish {
+            checkpoints[index].distanceKm = distanceKm
+        }
+    }
+
     static var defaultChecklistItems: [ChecklistItem] {
         let items = [
             ChecklistItem(title: "ランニングシューズ"),
