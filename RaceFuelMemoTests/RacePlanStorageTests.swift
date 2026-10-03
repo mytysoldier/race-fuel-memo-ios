@@ -155,11 +155,13 @@ import Testing
          "targetHours":4,"targetMinutes":0,"gelCount":0,"gelNames":[],"memo":"",
          "checklistItems":[],"pacePlans":[],"selectedPacePlanID":null,"fuelingEvents":[],
          "checkpoints":[{"id":"00000000-0000-0000-0000-000000000002","order":0,
-         "name":"ゴール","distanceKm":42.195,"hasAidStation":false}]}
+         "name":"ゴール","distanceKm":42.195,"hasAidStation":true,"cutoffTime":3000}]}
         """.utf8)
 
     let plan = try JSONDecoder().decode(RacePlan.self, from: data)
     #expect(plan.checkpoints[0].kind == .finish)
+    #expect(plan.checkpoints[0].hasAidStation)
+    #expect(plan.checkpoints[0].cutoffTime == Date(timeIntervalSinceReferenceDate: 3_000))
     #expect(RaceCheckpointValidator.error(for: plan) == nil)
     #expect(RacePlanCalculator.checkpointSchedules(for: plan).count == 1)
 }

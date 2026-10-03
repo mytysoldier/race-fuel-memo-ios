@@ -77,7 +77,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         checkpoints = try values.decodeIfPresent([RaceCheckpoint].self, forKey: .checkpoints) ?? []
         // Checkpoint kind was introduced after v2 storage. A legacy checkpoint at
         // the race distance represented the finish, so normalize it on load.
-        for index in checkpoints.indices where checkpoints[index].kind == .regular
+        for index in checkpoints.indices where !checkpoints[index].wasKindExplicitlyStored
             && abs(checkpoints[index].distanceKm - distanceKm) < 0.000_001 {
             checkpoints[index].kind = .finish
         }
@@ -114,6 +114,7 @@ struct RaceCheckpoint: Identifiable, Codable, Equatable {
     var kind: RaceCheckpointKind
     var segmentNote: String
     var cautionNote: String
+    fileprivate var wasKindExplicitlyStored: Bool
 
     init(id: UUID = UUID(), order: Int, name: String, distanceKm: Double,
          plannedElapsedSeconds: Int? = nil, cutoffTime: Date? = nil, hasAidStation: Bool = false,
@@ -128,6 +129,7 @@ struct RaceCheckpoint: Identifiable, Codable, Equatable {
         self.kind = kind
         self.segmentNote = segmentNote
         self.cautionNote = cautionNote
+        self.wasKindExplicitlyStored = true
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -144,6 +146,7 @@ struct RaceCheckpoint: Identifiable, Codable, Equatable {
         plannedElapsedSeconds = try values.decodeIfPresent(Int.self, forKey: .plannedElapsedSeconds)
         cutoffTime = try values.decodeIfPresent(Date.self, forKey: .cutoffTime)
         hasAidStation = try values.decodeIfPresent(Bool.self, forKey: .hasAidStation) ?? false
+        wasKindExplicitlyStored = values.contains(.kind)
         kind = try values.decodeIfPresent(RaceCheckpointKind.self, forKey: .kind)
             ?? (cutoffTime != nil ? .cutoff : hasAidStation ? .aidStation : .regular)
         if kind == .aidStation { hasAidStation = true }
