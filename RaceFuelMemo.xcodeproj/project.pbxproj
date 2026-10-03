@@ -24,6 +24,7 @@
 		8A1A00402DFF000200000001 /* RacePlanCalculatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */; };
 		8A1A00412DFF000200000001 /* RacePlanStorageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */; };
 		8A1A00422DFF000200000001 /* RacePlanStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */; };
+		8A1A00602DFF000200000001 /* RaceCheckpointEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -46,6 +47,7 @@
 		8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculatorTests.swift; sourceTree = "<group>"; };
 		8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStorageTests.swift; sourceTree = "<group>"; };
 		8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStoreTests.swift; sourceTree = "<group>"; };
+		8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCheckpointEditorView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -95,6 +97,7 @@
 				8A1A00062DFF000200000001 /* RaceListView.swift */,
 				8A1A00072DFF000200000001 /* RaceCreatePlaceholderView.swift */,
 				8A1A00082DFF000200000001 /* RaceDetailPlaceholderView.swift */,
+				8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */,
 				8A1A00092DFF000200000001 /* SettingsView.swift */,
 			);
 			path = Views;
@@ -292,6 +295,7 @@
 				8A1A000C2DFF000200000001 /* RaceListView.swift in Sources */,
 				8A1A000D2DFF000200000001 /* RaceCreatePlaceholderView.swift in Sources */,
 				8A1A000E2DFF000200000001 /* RaceDetailPlaceholderView.swift in Sources */,
+				8A1A00602DFF000200000001 /* RaceCheckpointEditorView.swift in Sources */,
 				8A1A000F2DFF000200000001 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

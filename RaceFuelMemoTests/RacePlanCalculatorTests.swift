@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 @testable import RaceFuelMemo
 
@@ -19,13 +20,159 @@ import Testing
     #expect(RacePlanCalculator.targetPace(totalSeconds: 0, distanceKm: 10).secondsPerKilometer == 0)
     #expect(RacePlanCalculator.splitTimes(totalSeconds: 3_600, distanceKm: 0).isEmpty)
     #expect(RacePlanCalculator.fuelTimings(gelCount: 0, distanceKm: 10).isEmpty)
+    #expect(RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+        totalSeconds: 14_400, checkpointDistanceKm: 10, raceDistanceKm: 0
+    ) == nil)
+    #expect(RacePlanCalculator.estimatedCheckpointElapsedSeconds(
+        totalSeconds: 14_400, checkpointDistanceKm: 10, raceDistanceKm: 20
+    ) == 7_200)
+    #expect(RacePlanCalculator.roundedElapsedSecondsToWholeMinute(3_413) == 3_420)
+    #expect(RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
+        totalSeconds: 14_400, checkpointDistanceKm: 42.15, raceDistanceKm: 42.195, isFinish: false
+    ) == 14_340)
+    #expect(RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
+        totalSeconds: 14_400, checkpointDistanceKm: 42.195, raceDistanceKm: 42.195, isFinish: true
+    ) == 14_400)
+    #expect(RacePlanCalculator.suggestedManualCheckpointElapsedSeconds(
+        totalSeconds: 1_200, checkpointDistanceKm: 0.1, raceDistanceKm: 5, isFinish: false
+    ) == 60)
+    #expect(RacePlanCalculator.boundedManualCheckpointElapsedSeconds(
+        60, after: 60, before: 1_200
+    ) == 120)
+}
+
+@Test func finishCheckpointFollowsUpdatedRaceDetails() {
+    var racePlan = makeRacePlan()
+    racePlan.checkpoints = [RaceCheckpoint(
+        order: 0,
+        name: "ゴール",
+        distanceKm: 42.195,
+        plannedElapsedSeconds: 14_400,
+        kind: .finish
+    )]
+    racePlan.distanceKm = 50
+    racePlan.targetHours = 5
+
+    racePlan.normalizeFinishCheckpoints()
+
+    #expect(racePlan.checkpoints[0].distanceKm == 50)
+    #expect(racePlan.checkpoints[0].plannedElapsedSeconds == 18_000)
+    #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
+}
+
+@Test func selectingFinishNormalizesManualElapsedTime() {
+    let racePlan = makeRacePlan()
+    var checkpoint = RaceCheckpoint(
+        order: 0,
+        name: "ゴール",
+        distanceKm: 20,
+        plannedElapsedSeconds: 7_200
+    )
+    checkpoint.kind = .finish
+
+    let normalizedCheckpoint = racePlan.normalizedFinishCheckpoint(checkpoint)
+
+    #expect(normalizedCheckpoint.distanceKm == racePlan.distanceKm)
+    #expect(normalizedCheckpoint.plannedElapsedSeconds == 14_400)
+}
+
+@Test func cutoffTimesMoveWithRaceStartChanges() {
+    let originalStart = Date(timeIntervalSinceReferenceDate: 86_400)
+    let updatedStart = originalStart.addingTimeInterval(7 * 86_400 + 30 * 60)
+    var racePlan = RacePlan(
+        name: "日程変更レース",
+        raceDate: originalStart,
+        startTime: originalStart,
+        distanceKm: 20,
+        targetHours: 4,
+        targetMinutes: 0,
+        gelCount: 0,
+        checkpoints: [RaceCheckpoint(
+            order: 0,
+            name: "関門",
+            distanceKm: 10,
+            cutoffTime: originalStart.addingTimeInterval(3 * 3_600),
+            kind: .cutoff
+        )]
+    )
+
+    racePlan.raceDate = updatedStart
+    racePlan.startTime = updatedStart
+    racePlan.moveCutoffTimes(from: originalStart, to: updatedStart)
+
+    #expect(racePlan.checkpoints[0].cutoffTime == updatedStart.addingTimeInterval(3 * 3_600))
+    #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
 }
 
 @Test func formatsDistanceAndDuration() {
     #expect(RacePlanCalculator.formatDistance(42) == "42km")
     #expect(RacePlanCalculator.formatDistance(42.195) == "42.195km")
+    #expect(RacePlanCalculator.formatDistance(21.0975) == "21.0975km")
     #expect(RacePlanCalculator.formatDuration(14_400) == "4時間0分0秒")
     #expect(RacePlanCalculator.formatDuration(341) == "5分41秒")
+}
+
+@Test func arbitraryDistanceIncludesFinishSplit() {
+    #expect(RacePlanCalculator.splitDistances(for: 12.5) == [5, 10, 12.5])
+    #expect(RacePlanCalculator.splitDistances(for: 1) == [1])
+}
+
+@Test func checkpointsInterpolateBetweenExplicitTimesAndCalculateOvernightCutoff() throws {
+    let start = Date(timeIntervalSinceReferenceDate: 86_400 + 23 * 3_600)
+    var racePlan = RacePlan(name: "夜間レース", raceDate: start, startTime: start,
+                            distanceKm: 20, targetHours: 4, targetMinutes: 0, gelCount: 0)
+    racePlan.checkpoints = [
+        RaceCheckpoint(order: 0, name: "給水", distanceKm: 5, kind: .aidStation),
+        RaceCheckpoint(order: 1, name: "関門", distanceKm: 10,
+                       plannedElapsedSeconds: 6_000,
+                       cutoffTime: start.addingTimeInterval(6_900), kind: .cutoff),
+        RaceCheckpoint(order: 2, name: "折り返し", distanceKm: 15, kind: .turnaround),
+        RaceCheckpoint(order: 3, name: "ゴール", distanceKm: 20, kind: .finish)
+    ]
+
+    #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
+    let schedules = RacePlanCalculator.checkpointSchedules(for: racePlan)
+    #expect(schedules.map(\.elapsedSeconds) == [3_000, 6_000, 10_200, 14_400])
+    #expect(schedules[1].passingTime == start.addingTimeInterval(6_000))
+    #expect(schedules[1].cutoffMarginSeconds == 900)
+}
+
+@Test func reorderedCheckpointsFollowSavedOrderAndShowCutoffOverrun() {
+    var racePlan = makeRacePlan()
+    racePlan.distanceKm = 20
+    racePlan.checkpoints = [
+        RaceCheckpoint(order: 1, name: "後半", distanceKm: 15,
+                       cutoffTime: racePlan.startTime.addingTimeInterval(5_000)),
+        RaceCheckpoint(order: 0, name: "前半", distanceKm: 5)
+    ]
+
+    #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
+    let schedules = RacePlanCalculator.checkpointSchedules(for: racePlan)
+    #expect(schedules.map(\.checkpoint.name) == ["前半", "後半"])
+    #expect(schedules[1].cutoffMarginSeconds == -5_800)
+}
+
+@Test func checkpointValidationRejectsInvalidDistancesAndTimes() {
+    var racePlan = makeRacePlan()
+    racePlan.distanceKm = 201
+    #expect(RaceCheckpointValidator.error(for: racePlan) != nil)
+    racePlan.distanceKm = 20
+    racePlan.checkpoints = [
+        RaceCheckpoint(order: 0, name: "A", distanceKm: 10),
+        RaceCheckpoint(order: 1, name: "B", distanceKm: 10)
+    ]
+    #expect(RaceCheckpointValidator.error(for: racePlan) != nil)
+    racePlan.checkpoints[1].distanceKm = 21
+    #expect(RaceCheckpointValidator.error(for: racePlan) != nil)
+    racePlan.checkpoints[1].distanceKm = 15
+    racePlan.checkpoints[0].plannedElapsedSeconds = 8_000
+    racePlan.checkpoints[1].plannedElapsedSeconds = 7_000
+    #expect(RaceCheckpointValidator.error(for: racePlan) != nil)
+    racePlan.checkpoints[1].plannedElapsedSeconds = 9_000
+    racePlan.checkpoints[1].kind = .cutoff
+    #expect(RaceCheckpointValidator.error(for: racePlan) != nil)
+    racePlan.checkpoints[1].cutoffTime = racePlan.startTime.addingTimeInterval(-60)
+    #expect(RaceCheckpointValidator.error(for: racePlan) != nil)
 }
 
 private func makeRacePlan() -> RacePlan {

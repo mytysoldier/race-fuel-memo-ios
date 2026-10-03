@@ -50,9 +50,60 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.selectedPacePlanID = selectedPacePlanID
         self.fuelingEvents = fuelingEvents
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
+        case gelCount, gelNames, memo, checklistItems, checkpoints, pacePlans
+        case selectedPacePlanID, fuelingEvents
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        raceDate = try values.decode(Date.self, forKey: .raceDate)
+        startTime = try values.decode(Date.self, forKey: .startTime)
+        distanceKm = try values.decode(Double.self, forKey: .distanceKm)
+        targetHours = try values.decode(Int.self, forKey: .targetHours)
+        targetMinutes = try values.decode(Int.self, forKey: .targetMinutes)
+        gelCount = try values.decodeIfPresent(Int.self, forKey: .gelCount) ?? 0
+        gelNames = try values.decodeIfPresent([String].self, forKey: .gelNames)
+        memo = try values.decodeIfPresent(String.self, forKey: .memo) ?? ""
+        checklistItems = try values.decodeIfPresent([ChecklistItem].self, forKey: .checklistItems) ?? []
+        pacePlans = try values.decodeIfPresent([RacePacePlan].self, forKey: .pacePlans) ?? []
+        selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
+        fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
+
+        checkpoints = try values.decodeIfPresent([RaceCheckpoint].self, forKey: .checkpoints) ?? []
+        // Checkpoint kind was introduced after v2 storage. A legacy checkpoint at
+        // the race distance represented the finish, so normalize it on load.
+        for index in checkpoints.indices where !checkpoints[index].wasKindExplicitlyStored
+            && abs(checkpoints[index].distanceKm - distanceKm) < 0.000_001 {
+            checkpoints[index].kind = .finish
+            checkpoints[index] = normalizedFinishCheckpoint(checkpoints[index])
+        }
+    }
 }
 
-/// A point on the course. Aid stations and cutoff times can be attached to the same point.
+enum RaceCheckpointKind: String, CaseIterable, Codable {
+    case regular
+    case aidStation
+    case cutoff
+    case turnaround
+    case finish
+
+    var title: String {
+        switch self {
+        case .regular: "通常地点"
+        case .aidStation: "給水所"
+        case .cutoff: "関門"
+        case .turnaround: "折り返し"
+        case .finish: "ゴール"
+        }
+    }
+}
+
+/// A point on the course. The legacy aid-station flag is retained for existing v2 documents.
 struct RaceCheckpoint: Identifiable, Codable, Equatable {
     let id: UUID
     var order: Int
@@ -61,16 +112,47 @@ struct RaceCheckpoint: Identifiable, Codable, Equatable {
     var plannedElapsedSeconds: Int?
     var cutoffTime: Date?
     var hasAidStation: Bool
+    var kind: RaceCheckpointKind
+    var segmentNote: String
+    var cautionNote: String
+    fileprivate var wasKindExplicitlyStored: Bool
 
     init(id: UUID = UUID(), order: Int, name: String, distanceKm: Double,
-         plannedElapsedSeconds: Int? = nil, cutoffTime: Date? = nil, hasAidStation: Bool = false) {
+         plannedElapsedSeconds: Int? = nil, cutoffTime: Date? = nil, hasAidStation: Bool = false,
+         kind: RaceCheckpointKind = .regular, segmentNote: String = "", cautionNote: String = "") {
         self.id = id
         self.order = order
         self.name = name
         self.distanceKm = distanceKm
         self.plannedElapsedSeconds = plannedElapsedSeconds
         self.cutoffTime = cutoffTime
-        self.hasAidStation = hasAidStation
+        self.hasAidStation = hasAidStation || kind == .aidStation
+        self.kind = kind
+        self.segmentNote = segmentNote
+        self.cautionNote = cautionNote
+        self.wasKindExplicitlyStored = true
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, order, name, distanceKm, plannedElapsedSeconds, cutoffTime
+        case hasAidStation, kind, segmentNote, cautionNote
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        order = try values.decode(Int.self, forKey: .order)
+        name = try values.decode(String.self, forKey: .name)
+        distanceKm = try values.decode(Double.self, forKey: .distanceKm)
+        plannedElapsedSeconds = try values.decodeIfPresent(Int.self, forKey: .plannedElapsedSeconds)
+        cutoffTime = try values.decodeIfPresent(Date.self, forKey: .cutoffTime)
+        hasAidStation = try values.decodeIfPresent(Bool.self, forKey: .hasAidStation) ?? false
+        wasKindExplicitlyStored = values.contains(.kind)
+        kind = try values.decodeIfPresent(RaceCheckpointKind.self, forKey: .kind)
+            ?? (cutoffTime != nil ? .cutoff : hasAidStation ? .aidStation : .regular)
+        if kind == .aidStation { hasAidStation = true }
+        segmentNote = try values.decodeIfPresent(String.self, forKey: .segmentNote) ?? ""
+        cautionNote = try values.decodeIfPresent(String.self, forKey: .cautionNote) ?? ""
     }
 }
 
@@ -126,6 +208,40 @@ struct RaceFuelingEvent: Identifiable, Codable, Equatable {
         self.distanceKm = distanceKm
         self.elapsedSeconds = elapsedSeconds
         self.checkpointID = checkpointID
+    }
+}
+
+extension RacePlan {
+    func normalizedFinishCheckpoint(_ checkpoint: RaceCheckpoint) -> RaceCheckpoint {
+        guard checkpoint.kind == .finish else { return checkpoint }
+
+        var normalizedCheckpoint = checkpoint
+        normalizedCheckpoint.distanceKm = distanceKm
+        if normalizedCheckpoint.plannedElapsedSeconds != nil {
+            normalizedCheckpoint.plannedElapsedSeconds = targetHours * 3_600 + targetMinutes * 60
+        }
+        return normalizedCheckpoint
+    }
+
+    mutating func normalizeFinishCheckpoints() {
+        for index in checkpoints.indices where checkpoints[index].kind == .finish {
+            checkpoints[index] = normalizedFinishCheckpoint(checkpoints[index])
+        }
+    }
+
+    mutating func moveCutoffTimes(from previousStartTime: Date, to newStartTime: Date) {
+        checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
+    }
+}
+
+extension Array where Element == RaceCheckpoint {
+    mutating func moveCutoffTimes(from previousStartTime: Date, to newStartTime: Date) {
+        let offset = newStartTime.timeIntervalSince(previousStartTime)
+        guard offset != 0 else { return }
+
+        for index in indices where self[index].cutoffTime != nil {
+            self[index].cutoffTime = self[index].cutoffTime?.addingTimeInterval(offset)
+        }
     }
 }
 
