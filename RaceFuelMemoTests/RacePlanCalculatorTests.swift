@@ -63,6 +63,34 @@ import Testing
     #expect(normalizedCheckpoint.plannedElapsedSeconds == 14_400)
 }
 
+@Test func cutoffTimesMoveWithRaceStartChanges() {
+    let originalStart = Date(timeIntervalSinceReferenceDate: 86_400)
+    let updatedStart = originalStart.addingTimeInterval(7 * 86_400 + 30 * 60)
+    var racePlan = RacePlan(
+        name: "日程変更レース",
+        raceDate: originalStart,
+        startTime: originalStart,
+        distanceKm: 20,
+        targetHours: 4,
+        targetMinutes: 0,
+        gelCount: 0,
+        checkpoints: [RaceCheckpoint(
+            order: 0,
+            name: "関門",
+            distanceKm: 10,
+            cutoffTime: originalStart.addingTimeInterval(3 * 3_600),
+            kind: .cutoff
+        )]
+    )
+
+    racePlan.raceDate = updatedStart
+    racePlan.startTime = updatedStart
+    racePlan.moveCutoffTimes(from: originalStart, to: updatedStart)
+
+    #expect(racePlan.checkpoints[0].cutoffTime == updatedStart.addingTimeInterval(3 * 3_600))
+    #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
+}
+
 @Test func formatsDistanceAndDuration() {
     #expect(RacePlanCalculator.formatDistance(42) == "42km")
     #expect(RacePlanCalculator.formatDistance(42.195) == "42.195km")

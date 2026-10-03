@@ -587,6 +587,9 @@ private struct RacePlanEditView: View {
             }
         }
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: raceStartDateTime) { previousStartTime, newStartTime in
+            checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
+        }
         .background(Color(.systemGroupedBackground))
         .navigationTitle("レースプランを編集")
         .navigationBarTitleDisplayMode(.inline)

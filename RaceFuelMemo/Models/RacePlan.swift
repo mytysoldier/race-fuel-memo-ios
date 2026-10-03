@@ -229,6 +229,23 @@ extension RacePlan {
         }
     }
 
+    mutating func moveCutoffTimes(from previousStartTime: Date, to newStartTime: Date) {
+        checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
+    }
+}
+
+extension Array where Element == RaceCheckpoint {
+    mutating func moveCutoffTimes(from previousStartTime: Date, to newStartTime: Date) {
+        let offset = newStartTime.timeIntervalSince(previousStartTime)
+        guard offset != 0 else { return }
+
+        for index in indices where self[index].cutoffTime != nil {
+            self[index].cutoffTime = self[index].cutoffTime?.addingTimeInterval(offset)
+        }
+    }
+}
+
+extension RacePlan {
     static var defaultChecklistItems: [ChecklistItem] {
         let items = [
             ChecklistItem(title: "ランニングシューズ"),
