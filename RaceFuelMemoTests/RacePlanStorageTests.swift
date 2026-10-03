@@ -148,6 +148,22 @@ import Testing
     #expect(checkpoint.cautionNote.isEmpty)
 }
 
+@Test func earlierV2FinishCheckpointMigratesUsingRaceDistance() throws {
+    let data = Data("""
+        {"id":"00000000-0000-0000-0000-000000000001","name":"旧レース",
+         "raceDate":1000,"startTime":2000,"distanceKm":42.195,
+         "targetHours":4,"targetMinutes":0,"gelCount":0,"gelNames":[],"memo":"",
+         "checklistItems":[],"pacePlans":[],"selectedPacePlanID":null,"fuelingEvents":[],
+         "checkpoints":[{"id":"00000000-0000-0000-0000-000000000002","order":0,
+         "name":"ゴール","distanceKm":42.195,"hasAidStation":false}]}
+        """.utf8)
+
+    let plan = try JSONDecoder().decode(RacePlan.self, from: data)
+    #expect(plan.checkpoints[0].kind == .finish)
+    #expect(RaceCheckpointValidator.error(for: plan) == nil)
+    #expect(RacePlanCalculator.checkpointSchedules(for: plan).count == 1)
+}
+
 private func makeUserDefaults(suiteName: String) -> UserDefaults {
     UserDefaults(suiteName: suiteName)!
 }

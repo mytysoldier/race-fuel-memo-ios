@@ -50,6 +50,38 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.selectedPacePlanID = selectedPacePlanID
         self.fuelingEvents = fuelingEvents
     }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
+        case gelCount, gelNames, memo, checklistItems, checkpoints, pacePlans
+        case selectedPacePlanID, fuelingEvents
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        name = try values.decode(String.self, forKey: .name)
+        raceDate = try values.decode(Date.self, forKey: .raceDate)
+        startTime = try values.decode(Date.self, forKey: .startTime)
+        distanceKm = try values.decode(Double.self, forKey: .distanceKm)
+        targetHours = try values.decode(Int.self, forKey: .targetHours)
+        targetMinutes = try values.decode(Int.self, forKey: .targetMinutes)
+        gelCount = try values.decodeIfPresent(Int.self, forKey: .gelCount) ?? 0
+        gelNames = try values.decodeIfPresent([String].self, forKey: .gelNames)
+        memo = try values.decodeIfPresent(String.self, forKey: .memo) ?? ""
+        checklistItems = try values.decodeIfPresent([ChecklistItem].self, forKey: .checklistItems) ?? []
+        pacePlans = try values.decodeIfPresent([RacePacePlan].self, forKey: .pacePlans) ?? []
+        selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
+        fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
+
+        checkpoints = try values.decodeIfPresent([RaceCheckpoint].self, forKey: .checkpoints) ?? []
+        // Checkpoint kind was introduced after v2 storage. A legacy checkpoint at
+        // the race distance represented the finish, so normalize it on load.
+        for index in checkpoints.indices where checkpoints[index].kind == .regular
+            && abs(checkpoints[index].distanceKm - distanceKm) < 0.000_001 {
+            checkpoints[index].kind = .finish
+        }
+    }
 }
 
 enum RaceCheckpointKind: String, CaseIterable, Codable {
