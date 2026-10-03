@@ -11,7 +11,7 @@ struct RaceCheckpointEditorView: View {
         self.racePlan = racePlan
         self.onSave = onSave
         var normalizedRacePlan = racePlan
-        normalizedRacePlan.alignFinishCheckpointDistances()
+        normalizedRacePlan.normalizeFinishCheckpoints()
         _checkpoints = State(initialValue: normalizedRacePlan.checkpoints.sorted { $0.order < $1.order })
     }
 

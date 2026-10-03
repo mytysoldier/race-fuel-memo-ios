@@ -189,7 +189,7 @@ struct RaceCreatePlaceholderView: View {
             gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
             checkpoints: checkpoints
         )
-        racePlan.alignFinishCheckpointDistances()
+        racePlan.normalizeFinishCheckpoints()
         return racePlan
     }
 

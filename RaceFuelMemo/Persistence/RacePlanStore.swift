@@ -46,7 +46,7 @@ final class RacePlanStore {
 
     func addRacePlan(_ racePlan: RacePlan) -> Bool {
         var normalizedRacePlan = racePlan
-        normalizedRacePlan.alignFinishCheckpointDistances()
+        normalizedRacePlan.normalizeFinishCheckpoints()
         if let error = RaceCheckpointValidator.error(for: normalizedRacePlan) {
             validationError = error
             return false
@@ -57,7 +57,7 @@ final class RacePlanStore {
 
     func updateRacePlan(_ racePlan: RacePlan) -> Bool {
         var normalizedRacePlan = racePlan
-        normalizedRacePlan.alignFinishCheckpointDistances()
+        normalizedRacePlan.normalizeFinishCheckpoints()
         if let error = RaceCheckpointValidator.error(for: normalizedRacePlan) {
             validationError = error
             return false

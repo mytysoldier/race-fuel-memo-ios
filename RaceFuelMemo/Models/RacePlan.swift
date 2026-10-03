@@ -211,9 +211,13 @@ struct RaceFuelingEvent: Identifiable, Codable, Equatable {
 }
 
 extension RacePlan {
-    mutating func alignFinishCheckpointDistances() {
+    mutating func normalizeFinishCheckpoints() {
+        let targetSeconds = targetHours * 3_600 + targetMinutes * 60
         for index in checkpoints.indices where checkpoints[index].kind == .finish {
             checkpoints[index].distanceKm = distanceKm
+            if checkpoints[index].plannedElapsedSeconds != nil {
+                checkpoints[index].plannedElapsedSeconds = targetSeconds
+            }
         }
     }
 

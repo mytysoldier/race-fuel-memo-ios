@@ -28,14 +28,22 @@ import Testing
     ) == 7_200)
 }
 
-@Test func finishCheckpointFollowsUpdatedRaceDistance() {
+@Test func finishCheckpointFollowsUpdatedRaceDetails() {
     var racePlan = makeRacePlan()
-    racePlan.checkpoints = [RaceCheckpoint(order: 0, name: "ゴール", distanceKm: 42.195, kind: .finish)]
+    racePlan.checkpoints = [RaceCheckpoint(
+        order: 0,
+        name: "ゴール",
+        distanceKm: 42.195,
+        plannedElapsedSeconds: 14_400,
+        kind: .finish
+    )]
     racePlan.distanceKm = 50
+    racePlan.targetHours = 5
 
-    racePlan.alignFinishCheckpointDistances()
+    racePlan.normalizeFinishCheckpoints()
 
     #expect(racePlan.checkpoints[0].distanceKm == 50)
+    #expect(racePlan.checkpoints[0].plannedElapsedSeconds == 18_000)
     #expect(RaceCheckpointValidator.error(for: racePlan) == nil)
 }
 
