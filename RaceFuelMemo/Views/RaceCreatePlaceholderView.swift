@@ -15,7 +15,10 @@ struct RaceCreatePlaceholderView: View {
     @State private var gels = [GelDraft(name: "補給ジェル 1")]
     @State private var memo = ""
     @State private var checkpoints: [RaceCheckpoint] = []
+    @State private var pacePlans: [RacePacePlan] = []
+    @State private var selectedPacePlanID: UUID?
     @State private var isShowingCheckpointEditor = false
+    @State private var isShowingPacePlanEditor = false
 
     var body: some View {
         ScrollView {
@@ -47,7 +50,7 @@ struct RaceCreatePlaceholderView: View {
                 }
             }
 
-                formSection(String(localized: "race_create.section.target_time")) {
+                formSection("基本目標タイム") {
                     Stepper(value: $targetHours, in: 0...240) {
                     LabeledContent(
                         String(localized: "race_create.field.target_hours"),
@@ -111,6 +114,19 @@ struct RaceCreatePlaceholderView: View {
                     }
                 }
 
+                formSection("ペース戦略") {
+                    Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
+                        .foregroundStyle(.secondary)
+                    Button {
+                        isShowingPacePlanEditor = true
+                    } label: {
+                        Label("A・B・Cプランを設定", systemImage: "figure.run")
+                    }
+                    if let error = RacePacePlanCalculator.validationError(for: draftRacePlan) {
+                        validationMessage(error)
+                    }
+                }
+
                 formSection(String(localized: "race_create.section.memo")) {
                     TextField(
                         String(localized: "race_create.section.memo"),
@@ -148,7 +164,18 @@ struct RaceCreatePlaceholderView: View {
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isShowingCheckpointEditor) {
-            RaceCheckpointEditorView(racePlan: draftRacePlan) { checkpoints = $0 }
+            RaceCheckpointEditorView(racePlan: draftRacePlan) {
+                checkpoints = $0
+                normalizeDraftPacePlans()
+            }
+        }
+        .sheet(isPresented: $isShowingPacePlanEditor) {
+            NavigationStack {
+                RacePacePlansEditorView(racePlan: draftRacePlan) { plans, selected in
+                    pacePlans = plans
+                    selectedPacePlanID = selected
+                }
+            }
         }
     }
 
@@ -190,10 +217,18 @@ struct RaceCreatePlaceholderView: View {
             name: trimmedRaceName, raceDate: raceDate, startTime: raceStartDateTime,
             distanceKm: selectedDistanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
-            checkpoints: checkpoints
+            checkpoints: checkpoints, pacePlans: pacePlans,
+            selectedPacePlanID: selectedPacePlanID
         )
         racePlan.normalizeFinishCheckpoints()
+        racePlan.normalizePacePlans()
         return racePlan
+    }
+
+    private func normalizeDraftPacePlans() {
+        var plan = draftRacePlan
+        plan.normalizePacePlans()
+        pacePlans = plan.pacePlans
     }
 
     private func validationMessage(_ message: String) -> some View {

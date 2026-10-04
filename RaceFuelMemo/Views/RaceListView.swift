@@ -219,12 +219,7 @@ private struct RacePlanRow: View {
     }
 
     private var formattedTargetTime: String {
-        RacePlanCalculator.formatDuration(
-            RacePlanCalculator.targetDurationSeconds(
-                hours: racePlan.targetHours,
-                minutes: racePlan.targetMinutes
-            )
-        )
+        RacePlanCalculator.formatDuration(racePlan.activeTargetSeconds)
     }
 }
 
