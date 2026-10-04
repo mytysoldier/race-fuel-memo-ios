@@ -286,6 +286,23 @@ private func makeRacePlan() -> RacePlan {
     #expect(RacePacePlanCalculator.elapsedSeconds(at: 20, in: plan, raceDistanceKm: 20) == 7_200)
 }
 
+@Test func finalKickUsesTheConfiguredPaceReduction() {
+    let plan = RacePacePlanCalculator.normalized(
+        RacePacePlan(order: 0, name: "A", targetSeconds: 3_600,
+                     kickDistanceKm: 9.5, kickGainSecondsPerKm: 120),
+        raceDistanceKm: 10, checkpoints: []
+    )
+    let paces = plan.segments.map {
+        RacePlanCalculator.targetPace(
+            totalSeconds: $0.targetSeconds,
+            distanceKm: $0.endDistanceKm - $0.startDistanceKm
+        ).secondsPerKilometer
+    }
+
+    #expect(paces == [474, 354, 354])
+    #expect(plan.segments.reduce(0) { $0 + $1.targetSeconds } == 3_600)
+}
+
 @Test func distanceChangeRebuildsCustomSegmentsWithoutLosingGoal() {
     var race = makeRacePlan()
     race.distanceKm = 10

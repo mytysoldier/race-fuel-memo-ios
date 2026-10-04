@@ -53,32 +53,43 @@ enum RacePacePlanCalculator {
                                            checkpoints: checkpoints, plan: result)
         let oldDistance = plan.segments.last?.endDistanceKm ?? raceDistanceKm
         let oldTotal = plan.segments.reduce(0) { $0 + max(0, $1.targetSeconds) }
-        var previous = 0.0
-        let weights = boundaries.map { end -> Double in
-            defer { previous = end }
-            if plan.strategy == .custom, oldTotal > 0, oldDistance > 0 {
-                let startElapsed = rawElapsedSeconds(at: previous / raceDistanceKm * oldDistance,
+        let starts = [0.0] + boundaries.dropLast()
+        let ranges = zip(starts, boundaries).map { start, end in (start, end) }
+        let weights: [Double]
+        if plan.strategy == .custom, oldTotal > 0, oldDistance > 0 {
+            weights = ranges.map { start, end in
+                let startElapsed = rawElapsedSeconds(at: start / raceDistanceKm * oldDistance,
                                                      segments: plan.segments)
                 let endElapsed = rawElapsedSeconds(at: end / raceDistanceKm * oldDistance,
                                                    segments: plan.segments)
                 return Double(max(1, endElapsed - startElapsed))
             }
-            let midpoint = (previous + end) / 2
-            let difference = Double(result.halfDifferenceSeconds)
-            let halfFactor = difference / Double(plan.targetSeconds)
-            let density: Double
-            switch result.strategy {
-            case .negative:
-                density = midpoint < raceDistanceKm / 2 ? 1 + halfFactor : 1 - halfFactor
-            case .positive:
-                density = midpoint < raceDistanceKm / 2 ? 1 - halfFactor : 1 + halfFactor
-            case .even, .custom:
-                density = 1
+        } else {
+            let segments = ranges.map { start, end -> (distance: Double, density: Double, hasKick: Bool) in
+                let midpoint = (start + end) / 2
+                let halfFactor = Double(result.halfDifferenceSeconds) / Double(plan.targetSeconds)
+                let density: Double
+                switch result.strategy {
+                case .negative:
+                    density = midpoint < raceDistanceKm / 2 ? 1 + halfFactor : 1 - halfFactor
+                case .positive:
+                    density = midpoint < raceDistanceKm / 2 ? 1 - halfFactor : 1 + halfFactor
+                case .even, .custom:
+                    density = 1
+                }
+                return (end - start, density,
+                        result.kickDistanceKm > 0 && midpoint >= raceDistanceKm - result.kickDistanceKm)
             }
-            let baseSecondsPerKm = Double(plan.targetSeconds) / raceDistanceKm
-            let kick = result.kickDistanceKm > 0 && midpoint >= raceDistanceKm - result.kickDistanceKm
-                ? Double(result.kickGainSecondsPerKm) : 0
-            return (end - previous) * max(0.1, density * baseSecondsPerKm - kick)
+            let densityDistance = segments.reduce(0.0) { $0 + $1.distance * $1.density }
+            let kickDistance = segments.reduce(0.0) { $0 + ($1.hasKick ? $1.distance : 0) }
+            let kickGain = Double(result.kickGainSecondsPerKm)
+            // Raise the base pace by the total saved kick time first. The kick can
+            // then be subtracted directly without a second proportional scaling.
+            let baseSecondsPerKm = (Double(plan.targetSeconds) + kickGain * kickDistance) / densityDistance
+            weights = segments.map { segment in
+                segment.distance * (baseSecondsPerKm * segment.density
+                                    - (segment.hasKick ? kickGain : 0))
+            }
         }
         let totalWeight = weights.reduce(0, +)
         guard totalWeight > 0, plan.targetSeconds >= boundaries.count else { return plan }
