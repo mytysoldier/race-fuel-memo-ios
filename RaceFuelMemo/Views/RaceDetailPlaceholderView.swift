@@ -5,6 +5,7 @@ struct RaceDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
     @State private var isShowingRacePlanEditor = false
+    @State private var isShowingPaceComparison = false
     @State private var showsClockTimes = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
@@ -42,7 +43,7 @@ struct RaceDetailView: View {
                     value: formattedDistance
                 )
                 LabeledContent(
-                    String(localized: "race_detail.field.target_time"),
+                    "基本目標タイム",
                     value: formattedTargetTime
                 )
             }
@@ -52,6 +53,27 @@ struct RaceDetailView: View {
                     String(localized: "race_detail.field.pace_per_kilometer"),
                     value: calculation.targetPaceText
                 )
+            }
+
+            Section("ペース戦略") {
+                if currentRacePlan.pacePlans.isEmpty {
+                    Text("基本の均等ペース")
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker("使用するプラン", selection: Binding(
+                        get: { currentRacePlan.selectedPacePlanID },
+                        set: { selectPacePlan($0) }
+                    )) {
+                        ForEach(currentRacePlan.pacePlans.sorted(by: { $0.order < $1.order })) { plan in
+                            Text(plan.name).tag(Optional(plan.id))
+                        }
+                    }
+                    LabeledContent("選択中の目標", value:
+                        RacePlanCalculator.formatDuration(currentRacePlan.activeTargetSeconds))
+                    Button("A・B・Cプランを比較") {
+                        isShowingPaceComparison = true
+                    }
+                }
             }
 
             if currentRacePlan.checkpoints.isEmpty {
@@ -112,12 +134,9 @@ struct RaceDetailView: View {
                     if !currentRacePlan.checkpoints.contains(where: { $0.kind == .finish }) {
                         LabeledContent("ゴール \(formattedDistance)", value: showsClockTimes
                             ? currentRacePlan.startTime.addingTimeInterval(
-                                TimeInterval(RacePlanCalculator.targetDurationSeconds(
-                                    hours: currentRacePlan.targetHours,
-                                    minutes: currentRacePlan.targetMinutes
-                                ))
+                                TimeInterval(currentRacePlan.activeTargetSeconds)
                             ).formatted(date: .abbreviated, time: .shortened)
-                            : formattedTargetTime)
+                            : RacePlanCalculator.formatDuration(currentRacePlan.activeTargetSeconds))
                     }
                     if let error = RaceCheckpointValidator.error(for: currentRacePlan) {
                         Label(error, systemImage: "exclamationmark.circle")
@@ -196,6 +215,16 @@ struct RaceDetailView: View {
                 RacePlanEditView(racePlan: currentRacePlan) { updatedRacePlan in
                     rescheduleRemindersIfNeeded(for: updatedRacePlan)
                 }
+            }
+        }
+        .sheet(isPresented: $isShowingPaceComparison) {
+            NavigationStack {
+                RacePaceComparisonView(racePlan: currentRacePlan)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("閉じる") { isShowingPaceComparison = false }
+                        }
+                    }
             }
         }
         .sheet(isPresented: $isShowingReminderSettings) {
@@ -284,6 +313,15 @@ struct RaceDetailView: View {
                 minutes: currentRacePlan.targetMinutes
             )
         )
+    }
+
+    private func selectPacePlan(_ id: UUID?) {
+        guard let id, currentRacePlan.pacePlans.contains(where: { $0.id == id }) else { return }
+        var updated = currentRacePlan
+        updated.selectedPacePlanID = id
+        if racePlanStore.updateRacePlan(updated) {
+            rescheduleRemindersIfNeeded(for: updated)
+        }
     }
 
     private var displayedMemo: String {
@@ -482,7 +520,10 @@ private struct RacePlanEditView: View {
     @State private var gels: [EditableGelDraft]
     @State private var memo: String
     @State private var checkpoints: [RaceCheckpoint]
+    @State private var pacePlans: [RacePacePlan]
+    @State private var selectedPacePlanID: UUID?
     @State private var isShowingCheckpointEditor = false
+    @State private var isShowingPacePlanEditor = false
     @State private var isShowingSaveError = false
 
     init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
@@ -499,6 +540,8 @@ private struct RacePlanEditView: View {
         _gels = State(initialValue: Self.gelDrafts(for: racePlan))
         _memo = State(initialValue: racePlan.memo)
         _checkpoints = State(initialValue: racePlan.checkpoints)
+        _pacePlans = State(initialValue: racePlan.pacePlans)
+        _selectedPacePlanID = State(initialValue: racePlan.selectedPacePlanID)
     }
 
     var body: some View {
@@ -522,7 +565,7 @@ private struct RacePlanEditView: View {
                     }
                 }
 
-            formSection("目標タイム") {
+            formSection("基本目標タイム") {
                 Stepper(value: $targetHours, in: 0...240) {
                     LabeledContent("時間", value: "\(targetHours)時間")
                 }
@@ -579,6 +622,20 @@ private struct RacePlanEditView: View {
                 }
             }
 
+            formSection("ペース戦略") {
+                Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
+                    .foregroundStyle(.secondary)
+                Button {
+                    isShowingPacePlanEditor = true
+                } label: {
+                    Label("A・B・Cプランを設定", systemImage: "figure.run")
+                }
+                if let error = RacePacePlanCalculator.validationError(for: workingRacePlan) {
+                    Label(error, systemImage: "exclamationmark.circle")
+                        .font(.footnote).foregroundStyle(.red)
+                }
+            }
+
             formSection("メモ") {
                 TextField("当日の持ち物や注意点などを入力（任意）", text: $memo, axis: .vertical)
                     .lineLimit(4...8)
@@ -594,7 +651,20 @@ private struct RacePlanEditView: View {
         .navigationTitle("レースプランを編集")
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isShowingCheckpointEditor) {
-            RaceCheckpointEditorView(racePlan: workingRacePlan) { checkpoints = $0 }
+            RaceCheckpointEditorView(racePlan: workingRacePlan) {
+                checkpoints = $0
+                var normalized = workingRacePlan
+                normalized.normalizePacePlans()
+                pacePlans = normalized.pacePlans
+            }
+        }
+        .sheet(isPresented: $isShowingPacePlanEditor) {
+            NavigationStack {
+                RacePacePlansEditorView(racePlan: workingRacePlan) { plans, selected in
+                    pacePlans = plans
+                    selectedPacePlanID = selected
+                }
+            }
         }
         .alert("保存できません", isPresented: $isShowingSaveError) {
             Button("OK", role: .cancel) {}
@@ -642,7 +712,10 @@ private struct RacePlanEditView: View {
         updated.targetHours = targetHours
         updated.targetMinutes = targetMinutes
         updated.checkpoints = checkpoints
+        updated.pacePlans = pacePlans
+        updated.selectedPacePlanID = selectedPacePlanID
         updated.normalizeFinishCheckpoints()
+        updated.normalizePacePlans()
         return updated
     }
 
@@ -677,7 +750,10 @@ private struct RacePlanEditView: View {
         updatedRacePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         updatedRacePlan.memo = memo.trimmingCharacters(in: .whitespacesAndNewlines)
         updatedRacePlan.checkpoints = checkpoints
+        updatedRacePlan.pacePlans = pacePlans
+        updatedRacePlan.selectedPacePlanID = selectedPacePlanID
         updatedRacePlan.normalizeFinishCheckpoints()
+        updatedRacePlan.normalizePacePlans()
         if racePlanStore.updateRacePlan(updatedRacePlan) {
             onSaved(updatedRacePlan)
             dismiss()

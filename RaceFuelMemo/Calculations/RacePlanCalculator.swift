@@ -78,6 +78,7 @@ enum RaceCheckpointValidator {
             hours: racePlan.targetHours, minutes: racePlan.targetMinutes
         )
         guard targetSeconds > 0 else { return "目標タイムを入力してください。" }
+        if let error = RacePacePlanCalculator.validationError(for: racePlan) { return error }
 
         let checkpoints = racePlan.checkpoints.sorted { $0.order < $1.order }
         guard Set(checkpoints.map(\.id)).count == checkpoints.count,
@@ -140,10 +141,7 @@ enum RaceCheckpointValidator {
 
 enum RacePlanCalculator {
     static func calculate(for racePlan: RacePlan) -> RacePlanCalculation {
-        let targetSeconds = targetDurationSeconds(
-            hours: racePlan.targetHours,
-            minutes: racePlan.targetMinutes
-        )
+        let targetSeconds = racePlan.activeTargetSeconds
         let pace = targetPace(
             totalSeconds: targetSeconds,
             distanceKm: racePlan.distanceKm
@@ -151,10 +149,11 @@ enum RacePlanCalculator {
 
         return RacePlanCalculation(
             targetPace: pace,
-            splitTimes: splitTimes(
-                totalSeconds: targetSeconds,
-                distanceKm: racePlan.distanceKm
-            ),
+            splitTimes: splitDistances(for: racePlan.distanceKm).map {
+                RaceSplitTime(distanceKm: $0, elapsedSeconds: elapsedSeconds(
+                    at: $0, for: racePlan
+                ))
+            },
             fuelTimings: fuelTimings(
                 gelCount: racePlan.gelCount,
                 distanceKm: racePlan.distanceKm
@@ -309,7 +308,7 @@ enum RacePlanCalculator {
     static func checkpointSchedules(for racePlan: RacePlan) -> [RaceCheckpointSchedule] {
         guard RaceCheckpointValidator.error(for: racePlan) == nil else { return [] }
         let checkpoints = racePlan.checkpoints.sorted { $0.order < $1.order }
-        let targetSeconds = targetDurationSeconds(hours: racePlan.targetHours, minutes: racePlan.targetMinutes)
+        let targetSeconds = racePlan.activeTargetSeconds
         let anchors = [(0.0, 0)]
             + checkpoints.compactMap { checkpoint -> (Double, Int)? in
                 checkpoint.plannedElapsedSeconds.map { (checkpoint.distanceKm, $0) }
@@ -318,7 +317,9 @@ enum RacePlanCalculator {
 
         return checkpoints.map { checkpoint in
             let elapsed: Int
-            if let explicit = checkpoint.plannedElapsedSeconds {
+            if racePlan.selectedPacePlan != nil {
+                elapsed = elapsedSeconds(at: checkpoint.distanceKm, for: racePlan)
+            } else if let explicit = checkpoint.plannedElapsedSeconds {
                 elapsed = explicit
             } else if let upperIndex = anchors.firstIndex(where: { $0.0 >= checkpoint.distanceKm }) {
                 let lower = anchors[max(0, upperIndex - 1)]
@@ -338,6 +339,19 @@ enum RacePlanCalculator {
                 }
             )
         }
+    }
+
+    static func elapsedSeconds(at distanceKm: Double, for racePlan: RacePlan) -> Int {
+        if let pacePlan = racePlan.selectedPacePlan {
+            return RacePacePlanCalculator.elapsedSeconds(
+                at: distanceKm, in: pacePlan, raceDistanceKm: racePlan.distanceKm
+            )
+        }
+        return estimatedCheckpointElapsedSeconds(
+            totalSeconds: racePlan.activeTargetSeconds,
+            checkpointDistanceKm: distanceKm,
+            raceDistanceKm: racePlan.distanceKm
+        ) ?? 0
     }
 
     static func formatDistance(_ distanceKm: Double) -> String {

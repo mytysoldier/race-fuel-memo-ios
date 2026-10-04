@@ -126,15 +126,20 @@ import Testing
     let cutoff = RaceCheckpoint(order: 0, name: "10km関門", distanceKm: 10,
                                 cutoffTime: .now.addingTimeInterval(4_000), kind: .cutoff)
     let segment = RacePaceSegment(order: 0, startDistanceKm: 0, endDistanceKm: 20, targetSeconds: 7200)
-    let pacePlan = RacePacePlan(order: 0, name: "A", targetSeconds: 14400, segments: [segment])
+    let pacePlan = RacePacePlan(order: 0, name: "A", targetSeconds: 14400,
+                                segments: [segment], strategy: .negative,
+                                halfDifferenceSeconds: 600, kickDistanceKm: 5,
+                                kickGainSecondsPerKm: 20)
     let event = RaceFuelingEvent(order: 0, name: "ジェル", quantity: 1, checkpointID: checkpoint.id)
-    let plan = RacePlan(name: "v2", raceDate: .now, startTime: .now, distanceKm: 42.195,
+    var plan = RacePlan(name: "v2", raceDate: .now, startTime: .now, distanceKm: 42.195,
                         targetHours: 4, targetMinutes: 0, gelCount: 1,
                         checkpoints: [checkpoint, cutoff], pacePlans: [pacePlan],
                         selectedPacePlanID: pacePlan.id, fuelingEvents: [event])
+    plan.normalizePacePlans()
 
     try storage.saveRacePlans([plan])
     #expect(try storage.loadRacePlans() == [plan])
+    #expect(try storage.loadRacePlans()[0].pacePlans[0].strategy == .negative)
 }
 
 @Test func earlierV2CheckpointDecodesWithDefaults() throws {
@@ -166,6 +171,21 @@ import Testing
     #expect(plan.checkpoints[0].cutoffTime == Date(timeIntervalSinceReferenceDate: 3_000))
     #expect(RaceCheckpointValidator.error(for: plan) == nil)
     #expect(RacePlanCalculator.checkpointSchedules(for: plan).count == 1)
+}
+
+@Test func legacyPacePlanWithSegmentsKeepsCustomAllocation() throws {
+    let data = Data("""
+        {"id":"00000000-0000-0000-0000-000000000001","order":0,"name":"旧A",
+         "targetSeconds":7200,"segments":[
+           {"id":"00000000-0000-0000-0000-000000000002","order":0,
+            "startDistanceKm":0,"endDistanceKm":10,"targetSeconds":4000},
+           {"id":"00000000-0000-0000-0000-000000000003","order":1,
+            "startDistanceKm":10,"endDistanceKm":20,"targetSeconds":3200}]}
+        """.utf8)
+
+    let plan = try JSONDecoder().decode(RacePacePlan.self, from: data)
+    #expect(plan.strategy == .custom)
+    #expect(RacePacePlanCalculator.elapsedSeconds(at: 10, in: plan, raceDistanceKm: 20) == 4_000)
 }
 
 private func makeUserDefaults(suiteName: String) -> UserDefaults {

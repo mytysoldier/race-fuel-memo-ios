@@ -82,6 +82,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
             checkpoints[index].kind = .finish
             checkpoints[index] = normalizedFinishCheckpoint(checkpoints[index])
         }
+        normalizePacePlans()
     }
 }
 
@@ -162,14 +163,59 @@ struct RacePacePlan: Identifiable, Codable, Equatable {
     var name: String
     var targetSeconds: Int
     var segments: [RacePaceSegment]
+    var strategy: RacePaceStrategy
+    var halfDifferenceSeconds: Int
+    var kickDistanceKm: Double
+    var kickGainSecondsPerKm: Int
 
     init(id: UUID = UUID(), order: Int, name: String, targetSeconds: Int,
-         segments: [RacePaceSegment] = []) {
+         segments: [RacePaceSegment] = [], strategy: RacePaceStrategy = .even,
+         halfDifferenceSeconds: Int = 0, kickDistanceKm: Double = 0,
+         kickGainSecondsPerKm: Int = 0) {
         self.id = id
         self.order = order
         self.name = name
         self.targetSeconds = targetSeconds
         self.segments = segments
+        self.strategy = strategy
+        self.halfDifferenceSeconds = halfDifferenceSeconds
+        self.kickDistanceKm = kickDistanceKm
+        self.kickGainSecondsPerKm = kickGainSecondsPerKm
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, order, name, targetSeconds, segments, strategy
+        case halfDifferenceSeconds, kickDistanceKm, kickGainSecondsPerKm
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        order = try values.decode(Int.self, forKey: .order)
+        name = try values.decode(String.self, forKey: .name)
+        targetSeconds = try values.decode(Int.self, forKey: .targetSeconds)
+        segments = try values.decodeIfPresent([RacePaceSegment].self, forKey: .segments) ?? []
+        strategy = if values.contains(.strategy) {
+            try values.decode(RacePaceStrategy.self, forKey: .strategy)
+        } else {
+            segments.isEmpty ? .even : .custom
+        }
+        halfDifferenceSeconds = try values.decodeIfPresent(Int.self, forKey: .halfDifferenceSeconds) ?? 0
+        kickDistanceKm = try values.decodeIfPresent(Double.self, forKey: .kickDistanceKm) ?? 0
+        kickGainSecondsPerKm = try values.decodeIfPresent(Int.self, forKey: .kickGainSecondsPerKm) ?? 0
+    }
+}
+
+enum RacePaceStrategy: String, CaseIterable, Codable {
+    case even, negative, positive, custom
+
+    var title: String {
+        switch self {
+        case .even: "イーブン"
+        case .negative: "ネガティブ"
+        case .positive: "ポジティブ"
+        case .custom: "区間別カスタム"
+        }
     }
 }
 
@@ -212,6 +258,15 @@ struct RaceFuelingEvent: Identifiable, Codable, Equatable {
 }
 
 extension RacePlan {
+    var selectedPacePlan: RacePacePlan? {
+        pacePlans.first { $0.id == selectedPacePlanID }
+    }
+
+    var activeTargetSeconds: Int {
+        selectedPacePlan?.targetSeconds
+            ?? RacePlanCalculator.targetDurationSeconds(hours: targetHours, minutes: targetMinutes)
+    }
+
     func normalizedFinishCheckpoint(_ checkpoint: RaceCheckpoint) -> RaceCheckpoint {
         guard checkpoint.kind == .finish else { return checkpoint }
 

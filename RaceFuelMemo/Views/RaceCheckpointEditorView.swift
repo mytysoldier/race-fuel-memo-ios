@@ -19,73 +19,16 @@ struct RaceCheckpointEditorView: View {
         NavigationStack {
             Form {
                 Section {
-                    Text("地点ごとの通過時間は、目標タイムから自動計算されます。必要な地点だけ手動指定できます。")
+                    Text(racePlan.pacePlans.isEmpty
+                         ? "地点ごとの通過時間は、目標タイムから自動計算されます。必要な地点だけ手動指定できます。"
+                         : "手動通過時間は基本目標の記録です。ペースプラン選択中の表示には、そのプランの区間配分を使用します。")
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
 
                 Section("コース上の地点") {
                     ForEach($checkpoints) { $checkpoint in
-                        VStack(alignment: .leading, spacing: 12) {
-                            HStack {
-                                TextField("地点名", text: $checkpoint.name)
-                                    .font(.headline)
-                                Button(role: .destructive) {
-                                    checkpoints.removeAll { $0.id == checkpoint.id }
-                                    normalizeOrders()
-                                } label: {
-                                    Image(systemName: "trash")
-                                }
-                                .buttonStyle(.borderless)
-                                .accessibilityLabel("\(checkpoint.name)を削除")
-                            }
-
-                            Picker("種別", selection: $checkpoint.kind) {
-                                ForEach(RaceCheckpointKind.allCases, id: \.self) { kind in
-                                    Text(kind.title).tag(kind)
-                                }
-                            }
-                            .onChange(of: checkpoint.kind) { _, newKind in
-                                if newKind == .aidStation { checkpoint.hasAidStation = true }
-                                if newKind == .finish {
-                                    checkpoint.wrappedValue = racePlan.normalizedFinishCheckpoint(checkpoint.wrappedValue)
-                                }
-                                if newKind == .cutoff && checkpoint.cutoffTime == nil {
-                                    checkpoint.cutoffTime = racePlan.startTime.addingTimeInterval(3_600)
-                                }
-                            }
-
-                            if checkpoint.kind != .aidStation {
-                                Toggle("給水あり", isOn: $checkpoint.hasAidStation)
-                            }
-
-                            TextField("距離 (km)", value: $checkpoint.distanceKm,
-                                      format: .number.precision(.fractionLength(0...4)))
-                                .keyboardType(.decimalPad)
-                                .disabled(checkpoint.kind == .finish)
-
-                            Toggle("通過時間を手動指定", isOn: elapsedEnabled(for: $checkpoint))
-                                .disabled(
-                                    checkpoint.plannedElapsedSeconds == nil && !canEstimateElapsedTime
-                                )
-                            if checkpoint.plannedElapsedSeconds != nil {
-                                TextField("スタートからの経過分", value: elapsedMinutes(for: $checkpoint), format: .number)
-                                    .keyboardType(.numberPad)
-                            }
-
-                            Toggle("関門時刻を設定", isOn: cutoffEnabled(for: $checkpoint))
-                            if checkpoint.cutoffTime != nil {
-                                DatePicker("関門時刻", selection: cutoffDate(for: $checkpoint),
-                                           displayedComponents: [.date, .hourAndMinute])
-                            }
-
-                            TextField("この区間のメモ（任意）", text: $checkpoint.segmentNote, axis: .vertical)
-                                .lineLimit(2...4)
-                            TextField("注意点（任意）", text: $checkpoint.cautionNote, axis: .vertical)
-                                .lineLimit(2...4)
-                        }
-                        .padding(.vertical, 8)
-                        .accessibilityElement(children: .contain)
+                        checkpointRow($checkpoint)
                     }
                     .onMove(perform: move)
 
@@ -126,6 +69,70 @@ struct RaceCheckpointEditorView: View {
                 }
             }
         }
+    }
+
+    private func checkpointRow(_ binding: Binding<RaceCheckpoint>) -> some View {
+        let checkpoint = binding.wrappedValue
+        return VStack(alignment: .leading, spacing: 12) {
+                            HStack {
+                                TextField("地点名", text: binding.name)
+                                    .font(.headline)
+                                Button(role: .destructive) {
+                                    checkpoints.removeAll { $0.id == checkpoint.id }
+                                    normalizeOrders()
+                                } label: {
+                                    Image(systemName: "trash")
+                                }
+                                .buttonStyle(.borderless)
+                                .accessibilityLabel("\(checkpoint.name)を削除")
+                            }
+
+                            Picker("種別", selection: binding.kind) {
+                                ForEach(RaceCheckpointKind.allCases, id: \.self) { kind in
+                                    Text(kind.title).tag(kind)
+                                }
+                            }
+                            .onChange(of: checkpoint.kind) { _, newKind in
+                                if newKind == .aidStation { binding.hasAidStation.wrappedValue = true }
+                                if newKind == .finish {
+                                    binding.wrappedValue = racePlan.normalizedFinishCheckpoint(binding.wrappedValue)
+                                }
+                                if newKind == .cutoff && checkpoint.cutoffTime == nil {
+                                    binding.cutoffTime.wrappedValue = racePlan.startTime.addingTimeInterval(3_600)
+                                }
+                            }
+
+                            if checkpoint.kind != .aidStation {
+                                Toggle("給水あり", isOn: binding.hasAidStation)
+                            }
+
+                            TextField("距離 (km)", value: binding.distanceKm,
+                                      format: .number.precision(.fractionLength(0...4)))
+                                .keyboardType(.decimalPad)
+                                .disabled(checkpoint.kind == .finish)
+
+                            Toggle("通過時間を手動指定", isOn: elapsedEnabled(for: binding))
+                                .disabled(
+                                    checkpoint.plannedElapsedSeconds == nil && !canEstimateElapsedTime
+                                )
+                            if checkpoint.plannedElapsedSeconds != nil {
+                                TextField("スタートからの経過分", value: elapsedMinutes(for: binding), format: .number)
+                                    .keyboardType(.numberPad)
+                            }
+
+                            Toggle("関門時刻を設定", isOn: cutoffEnabled(for: binding))
+                            if checkpoint.cutoffTime != nil {
+                                DatePicker("関門時刻", selection: cutoffDate(for: binding),
+                                           displayedComponents: [.date, .hourAndMinute])
+                            }
+
+                            TextField("この区間のメモ（任意）", text: binding.segmentNote, axis: .vertical)
+                                .lineLimit(2...4)
+                            TextField("注意点（任意）", text: binding.cautionNote, axis: .vertical)
+                                .lineLimit(2...4)
+                        }
+                        .padding(.vertical, 8)
+                        .accessibilityElement(children: .contain)
     }
 
     private var validationError: String? {
