@@ -173,6 +173,21 @@ import Testing
     #expect(RacePlanCalculator.checkpointSchedules(for: plan).count == 1)
 }
 
+@Test func legacyPacePlanWithSegmentsKeepsCustomAllocation() throws {
+    let data = Data("""
+        {"id":"00000000-0000-0000-0000-000000000001","order":0,"name":"旧A",
+         "targetSeconds":7200,"segments":[
+           {"id":"00000000-0000-0000-0000-000000000002","order":0,
+            "startDistanceKm":0,"endDistanceKm":10,"targetSeconds":4000},
+           {"id":"00000000-0000-0000-0000-000000000003","order":1,
+            "startDistanceKm":10,"endDistanceKm":20,"targetSeconds":3200}]}
+        """.utf8)
+
+    let plan = try JSONDecoder().decode(RacePacePlan.self, from: data)
+    #expect(plan.strategy == .custom)
+    #expect(RacePacePlanCalculator.elapsedSeconds(at: 10, in: plan, raceDistanceKm: 20) == 4_000)
+}
+
 private func makeUserDefaults(suiteName: String) -> UserDefaults {
     UserDefaults(suiteName: suiteName)!
 }

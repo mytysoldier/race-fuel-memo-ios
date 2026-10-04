@@ -195,7 +195,11 @@ struct RacePacePlan: Identifiable, Codable, Equatable {
         name = try values.decode(String.self, forKey: .name)
         targetSeconds = try values.decode(Int.self, forKey: .targetSeconds)
         segments = try values.decodeIfPresent([RacePaceSegment].self, forKey: .segments) ?? []
-        strategy = try values.decodeIfPresent(RacePaceStrategy.self, forKey: .strategy) ?? .even
+        strategy = if values.contains(.strategy) {
+            try values.decode(RacePaceStrategy.self, forKey: .strategy)
+        } else {
+            segments.isEmpty ? .even : .custom
+        }
         halfDifferenceSeconds = try values.decodeIfPresent(Int.self, forKey: .halfDifferenceSeconds) ?? 0
         kickDistanceKm = try values.decodeIfPresent(Double.self, forKey: .kickDistanceKm) ?? 0
         kickGainSecondsPerKm = try values.decodeIfPresent(Int.self, forKey: .kickGainSecondsPerKm) ?? 0
