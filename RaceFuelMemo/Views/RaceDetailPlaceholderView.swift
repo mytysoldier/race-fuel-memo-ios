@@ -146,7 +146,43 @@ struct RaceDetailView: View {
             }
 
             Section(String(localized: "race_detail.section.fueling")) {
-                if calculation.fuelTimings.isEmpty {
+                if let error = RaceFuelingPlanCalculator.validationError(for: currentRacePlan) {
+                    Label(error, systemImage: "exclamationmark.circle")
+                        .foregroundStyle(.red)
+                }
+                if !currentRacePlan.fuelingEvents.isEmpty {
+                    ForEach(RaceFuelingPlanCalculator.schedule(for: currentRacePlan)) { scheduled in
+                        VStack(alignment: .leading, spacing: 5) {
+                            Text("\(scheduled.event.kind.title)・\(scheduled.event.name) ×\(scheduled.event.quantity)")
+                                .font(.headline)
+                            Text("\(scheduled.checkpointName ?? RacePlanCalculator.formatDistance(scheduled.distanceKm))・\(RacePlanCalculator.formatDuration(scheduled.elapsedSeconds))・\(scheduled.passingTime.formatted(date: .omitted, time: .shortened))")
+                                .font(.subheadline)
+                            Text(scheduled.event.pickup.title)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            if let grams = scheduled.event.carbohydrateGramsPerItem {
+                                Text("炭水化物 \(grams.formatted())g/個")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if scheduled.event.containsCaffeine {
+                                Text("カフェイン入り")
+                                    .font(.subheadline)
+                                    .foregroundStyle(.secondary)
+                            }
+                            if !scheduled.event.note.isEmpty {
+                                Text(scheduled.event.note)
+                                    .font(.subheadline)
+                            }
+                        }
+                        .accessibilityElement(children: .combine)
+                    }
+                    DisclosureGroup("必要な補給品") {
+                        ForEach(RaceFuelingPlanCalculator.requirements(for: currentRacePlan.fuelingEvents)) { item in
+                            LabeledContent("\(item.kind.title)・\(item.name)", value: "\(item.quantity)個")
+                        }
+                    }
+                } else if calculation.fuelTimings.isEmpty {
                     Text(String(localized: "race_detail.empty.fuel_timings"))
                         .foregroundStyle(.secondary)
                 } else {
@@ -522,8 +558,10 @@ private struct RacePlanEditView: View {
     @State private var checkpoints: [RaceCheckpoint]
     @State private var pacePlans: [RacePacePlan]
     @State private var selectedPacePlanID: UUID?
+    @State private var fuelingEvents: [RaceFuelingEvent]
     @State private var isShowingCheckpointEditor = false
     @State private var isShowingPacePlanEditor = false
+    @State private var isShowingFuelingEditor = false
     @State private var isShowingSaveError = false
 
     init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
@@ -542,6 +580,7 @@ private struct RacePlanEditView: View {
         _checkpoints = State(initialValue: racePlan.checkpoints)
         _pacePlans = State(initialValue: racePlan.pacePlans)
         _selectedPacePlanID = State(initialValue: racePlan.selectedPacePlanID)
+        _fuelingEvents = State(initialValue: racePlan.fuelingEvents)
     }
 
     var body: some View {
@@ -587,23 +626,41 @@ private struct RacePlanEditView: View {
             }
 
             formSection("補給") {
-                ForEach($gels) { $gel in
-                    HStack {
-                        TextField("補給ジェル名", text: $gel.name)
-                            .textFieldStyle(.roundedBorder)
-                        Button(role: .destructive) {
-                            gels.removeAll { $0.id == gel.id }
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
+                if fuelingEvents.isEmpty {
+                    Text("従来の補給ジェル")
+                        .font(.subheadline)
+                        .foregroundStyle(.secondary)
+                    ForEach($gels) { $gel in
+                        HStack {
+                            TextField("補給ジェル名", text: $gel.name)
+                                .textFieldStyle(.roundedBorder)
+                            Button(role: .destructive) {
+                                gels.removeAll { $0.id == gel.id }
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
+                    }
+
+                    Button {
+                        gels.append(EditableGelDraft(name: "補給ジェル \(gels.count + 1)"))
+                    } label: {
+                        Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                     }
                 }
-
+                Divider()
+                Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
+                    .foregroundStyle(.secondary)
                 Button {
-                    gels.append(EditableGelDraft(name: "補給ジェル \(gels.count + 1)"))
+                    isShowingFuelingEditor = true
                 } label: {
-                    Label("補給ジェルを追加", systemImage: "plus.circle.fill")
+                    Label("補給・給水プランを設定", systemImage: "drop.fill")
+                }
+                if let error = RaceFuelingPlanCalculator.validationError(for: workingRacePlan) {
+                    Label(error, systemImage: "exclamationmark.circle")
+                        .font(.footnote)
+                        .foregroundStyle(.red)
                 }
             }
 
@@ -666,6 +723,12 @@ private struct RacePlanEditView: View {
                 }
             }
         }
+        .sheet(isPresented: $isShowingFuelingEditor) {
+            RaceFuelingPlanEditorView(racePlan: workingRacePlan) {
+                fuelingEvents = $0
+                gels = []
+            }
+        }
         .alert("保存できません", isPresented: $isShowingSaveError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -711,9 +774,12 @@ private struct RacePlanEditView: View {
         updated.distanceKm = usesCustomDistance ? customDistanceKm : distance.distanceKm
         updated.targetHours = targetHours
         updated.targetMinutes = targetMinutes
+        updated.gelCount = gels.count
+        updated.gelNames = gels.map(\.name)
         updated.checkpoints = checkpoints
         updated.pacePlans = pacePlans
         updated.selectedPacePlanID = selectedPacePlanID
+        updated.fuelingEvents = fuelingEvents
         updated.normalizeFinishCheckpoints()
         updated.normalizePacePlans()
         return updated
@@ -752,6 +818,7 @@ private struct RacePlanEditView: View {
         updatedRacePlan.checkpoints = checkpoints
         updatedRacePlan.pacePlans = pacePlans
         updatedRacePlan.selectedPacePlanID = selectedPacePlanID
+        updatedRacePlan.fuelingEvents = fuelingEvents
         updatedRacePlan.normalizeFinishCheckpoints()
         updatedRacePlan.normalizePacePlans()
         if racePlanStore.updateRacePlan(updatedRacePlan) {

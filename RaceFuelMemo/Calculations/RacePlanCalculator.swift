@@ -135,7 +135,7 @@ enum RaceCheckpointValidator {
             }
             previousAnchor = (anchor.0, anchor.1)
         }
-        return nil
+        return RaceFuelingPlanCalculator.validationError(for: racePlan)
     }
 }
 

@@ -83,6 +83,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
             checkpoints[index] = normalizedFinishCheckpoint(checkpoints[index])
         }
         normalizePacePlans()
+        normalizeFuelingEvents()
     }
 }
 
@@ -244,9 +245,16 @@ struct RaceFuelingEvent: Identifiable, Codable, Equatable {
     var distanceKm: Double?
     var elapsedSeconds: Int?
     var checkpointID: UUID?
+    var kind: RaceFuelingKind
+    var carbohydrateGramsPerItem: Double?
+    var containsCaffeine: Bool
+    var note: String
+    var pickup: RaceFuelingPickup
 
     init(id: UUID = UUID(), order: Int, name: String, quantity: Int,
-         distanceKm: Double? = nil, elapsedSeconds: Int? = nil, checkpointID: UUID? = nil) {
+         distanceKm: Double? = nil, elapsedSeconds: Int? = nil, checkpointID: UUID? = nil,
+         kind: RaceFuelingKind = .gel, carbohydrateGramsPerItem: Double? = nil,
+         containsCaffeine: Bool = false, note: String = "", pickup: RaceFuelingPickup = .carry) {
         self.id = id
         self.order = order
         self.name = name
@@ -254,10 +262,73 @@ struct RaceFuelingEvent: Identifiable, Codable, Equatable {
         self.distanceKm = distanceKm
         self.elapsedSeconds = elapsedSeconds
         self.checkpointID = checkpointID
+        self.kind = kind
+        self.carbohydrateGramsPerItem = carbohydrateGramsPerItem
+        self.containsCaffeine = containsCaffeine
+        self.note = note
+        self.pickup = pickup
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, order, name, quantity, distanceKm, elapsedSeconds, checkpointID
+        case kind, carbohydrateGramsPerItem, containsCaffeine, note, pickup
+    }
+
+    init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decode(UUID.self, forKey: .id)
+        order = try values.decode(Int.self, forKey: .order)
+        name = try values.decode(String.self, forKey: .name)
+        quantity = try values.decode(Int.self, forKey: .quantity)
+        distanceKm = try values.decodeIfPresent(Double.self, forKey: .distanceKm)
+        elapsedSeconds = try values.decodeIfPresent(Int.self, forKey: .elapsedSeconds)
+        checkpointID = try values.decodeIfPresent(UUID.self, forKey: .checkpointID)
+        kind = try values.decodeIfPresent(RaceFuelingKind.self, forKey: .kind) ?? .gel
+        carbohydrateGramsPerItem = try values.decodeIfPresent(Double.self, forKey: .carbohydrateGramsPerItem)
+        containsCaffeine = try values.decodeIfPresent(Bool.self, forKey: .containsCaffeine) ?? false
+        note = try values.decodeIfPresent(String.self, forKey: .note) ?? ""
+        pickup = try values.decodeIfPresent(RaceFuelingPickup.self, forKey: .pickup) ?? .carry
+    }
+}
+
+enum RaceFuelingKind: String, CaseIterable, Codable {
+    case gel, drink, salt, solid, other
+
+    var title: String {
+        switch self {
+        case .gel: "ジェル"
+        case .drink: "ドリンク"
+        case .salt: "塩分"
+        case .solid: "固形食"
+        case .other: "その他"
+        }
+    }
+}
+
+enum RaceFuelingPickup: String, CaseIterable, Codable {
+    case carry, dropBag, onsite, support
+
+    var title: String {
+        switch self {
+        case .carry: "持参"
+        case .dropBag: "ドロップバッグ"
+        case .onsite: "現地受取"
+        case .support: "サポート受取"
+        }
     }
 }
 
 extension RacePlan {
+    mutating func normalizeFuelingEvents() {
+        for index in fuelingEvents.indices where fuelingEvents[index].checkpointID != nil {
+            if let checkpoint = checkpoints.first(where: { $0.id == fuelingEvents[index].checkpointID }) {
+                fuelingEvents[index].distanceKm = checkpoint.distanceKm
+            } else {
+                fuelingEvents[index].checkpointID = nil
+            }
+        }
+    }
+
     var selectedPacePlan: RacePacePlan? {
         pacePlans.first { $0.id == selectedPacePlanID }
     }

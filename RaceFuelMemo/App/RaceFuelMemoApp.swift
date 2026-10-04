@@ -23,11 +23,13 @@ final class RaceFuelMemoAppDelegate: NSObject, UIApplicationDelegate, UNUserNoti
 struct RaceFuelMemoApp: App {
     @UIApplicationDelegateAdaptor(RaceFuelMemoAppDelegate.self) private var appDelegate
     @State private var racePlanStore = RacePlanStore()
+    @State private var fuelingPresetStore = RaceFuelingPresetStore()
 
     var body: some Scene {
         WindowGroup {
             RaceListView()
                 .environment(racePlanStore)
+                .environment(fuelingPresetStore)
         }
     }
 }

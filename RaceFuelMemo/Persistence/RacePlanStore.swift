@@ -48,6 +48,7 @@ final class RacePlanStore {
         var normalizedRacePlan = racePlan
         normalizedRacePlan.normalizeFinishCheckpoints()
         normalizedRacePlan.normalizePacePlans()
+        normalizedRacePlan.normalizeFuelingEvents()
         if let error = RaceCheckpointValidator.error(for: normalizedRacePlan) {
             validationError = error
             return false
@@ -60,6 +61,7 @@ final class RacePlanStore {
         var normalizedRacePlan = racePlan
         normalizedRacePlan.normalizeFinishCheckpoints()
         normalizedRacePlan.normalizePacePlans()
+        normalizedRacePlan.normalizeFuelingEvents()
         if let error = RaceCheckpointValidator.error(for: normalizedRacePlan) {
             validationError = error
             return false

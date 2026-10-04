@@ -17,8 +17,10 @@ struct RaceCreatePlaceholderView: View {
     @State private var checkpoints: [RaceCheckpoint] = []
     @State private var pacePlans: [RacePacePlan] = []
     @State private var selectedPacePlanID: UUID?
+    @State private var fuelingEvents: [RaceFuelingEvent] = []
     @State private var isShowingCheckpointEditor = false
     @State private var isShowingPacePlanEditor = false
+    @State private var isShowingFuelingEditor = false
 
     var body: some View {
         ScrollView {
@@ -81,23 +83,40 @@ struct RaceCreatePlaceholderView: View {
             }
 
                 formSection(String(localized: "race_create.section.fueling")) {
-                    ForEach($gels) { $gel in
-                        HStack {
-                            TextField("補給ジェル名", text: $gel.name)
-                                .textFieldStyle(.roundedBorder)
-                            Button(role: .destructive) {
-                                gels.removeAll { $0.id == gel.id }
-                            } label: {
-                                Image(systemName: "minus.circle.fill")
+                    if fuelingEvents.isEmpty {
+                        Text("従来の補給ジェル")
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                        ForEach($gels) { $gel in
+                            HStack {
+                                TextField("補給ジェル名", text: $gel.name)
+                                    .textFieldStyle(.roundedBorder)
+                                Button(role: .destructive) {
+                                    gels.removeAll { $0.id == gel.id }
+                                } label: {
+                                    Image(systemName: "minus.circle.fill")
+                                }
+                                .buttonStyle(.plain)
                             }
-                            .buttonStyle(.plain)
+                        }
+
+                        Button {
+                            gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
+                        } label: {
+                            Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                         }
                     }
 
+                    Divider()
+                    Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
+                        .foregroundStyle(.secondary)
                     Button {
-                        gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
+                        isShowingFuelingEditor = true
                     } label: {
-                        Label("補給ジェルを追加", systemImage: "plus.circle.fill")
+                        Label("補給・給水プランを設定", systemImage: "drop.fill")
+                    }
+                    if let error = RaceFuelingPlanCalculator.validationError(for: draftRacePlan) {
+                        validationMessage(error)
                     }
                 }
 
@@ -177,6 +196,12 @@ struct RaceCreatePlaceholderView: View {
                 }
             }
         }
+        .sheet(isPresented: $isShowingFuelingEditor) {
+            RaceFuelingPlanEditorView(racePlan: draftRacePlan) {
+                fuelingEvents = $0
+                gels = []
+            }
+        }
     }
 
     private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -218,7 +243,7 @@ struct RaceCreatePlaceholderView: View {
             distanceKm: selectedDistanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
             checkpoints: checkpoints, pacePlans: pacePlans,
-            selectedPacePlanID: selectedPacePlanID
+            selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents
         )
         racePlan.normalizeFinishCheckpoints()
         racePlan.normalizePacePlans()
@@ -279,6 +304,7 @@ private struct GelDraft: Identifiable {
         RaceCreatePlaceholderView()
     }
     .environment(RacePlanStore(storage: EmptyRacePlanStorage()))
+    .environment(RaceFuelingPresetStore())
 }
 
 private struct EmptyRacePlanStorage: RacePlanStorage {

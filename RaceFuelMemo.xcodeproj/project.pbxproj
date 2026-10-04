@@ -27,6 +27,9 @@
 		8A1A00602DFF000200000001 /* RaceCheckpointEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */; };
 		8A1A00702DFF000200000001 /* RacePacePlanCalculator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00712DFF000200000001 /* RacePacePlanCalculator.swift */; };
 		8A1A00722DFF000200000001 /* RacePacePlansView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00732DFF000200000001 /* RacePacePlansView.swift */; };
+		8A1A00802DFF000200000001 /* RaceFuelingPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00812DFF000200000001 /* RaceFuelingPlan.swift */; };
+		8A1A00822DFF000200000001 /* RaceFuelingPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */; };
+		8A1A00842DFF000200000001 /* RaceFuelingPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -52,6 +55,9 @@
 		8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCheckpointEditorView.swift; sourceTree = "<group>"; };
 		8A1A00712DFF000200000001 /* RacePacePlanCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePacePlanCalculator.swift; sourceTree = "<group>"; };
 		8A1A00732DFF000200000001 /* RacePacePlansView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePacePlansView.swift; sourceTree = "<group>"; };
+		8A1A00812DFF000200000001 /* RaceFuelingPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelingPlan.swift; sourceTree = "<group>"; };
+		8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelingPlanView.swift; sourceTree = "<group>"; };
+		8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelingPlanTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -103,6 +109,7 @@
 				8A1A00082DFF000200000001 /* RaceDetailPlaceholderView.swift */,
 				8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */,
 				8A1A00732DFF000200000001 /* RacePacePlansView.swift */,
+				8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */,
 				8A1A00092DFF000200000001 /* SettingsView.swift */,
 			);
 			path = Views;
@@ -133,6 +140,7 @@
 			children = (
 				8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */,
 				8A1A00712DFF000200000001 /* RacePacePlanCalculator.swift */,
+				8A1A00812DFF000200000001 /* RaceFuelingPlan.swift */,
 			);
 			path = Calculations;
 			sourceTree = "<group>";
@@ -151,6 +159,7 @@
 				8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */,
 				8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */,
 				8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */,
+				8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */,
 			);
 			path = RaceFuelMemoTests;
 			sourceTree = "<group>";
@@ -304,6 +313,8 @@
 				8A1A00602DFF000200000001 /* RaceCheckpointEditorView.swift in Sources */,
 				8A1A00702DFF000200000001 /* RacePacePlanCalculator.swift in Sources */,
 				8A1A00722DFF000200000001 /* RacePacePlansView.swift in Sources */,
+				8A1A00802DFF000200000001 /* RaceFuelingPlan.swift in Sources */,
+				8A1A00822DFF000200000001 /* RaceFuelingPlanView.swift in Sources */,
 				8A1A000F2DFF000200000001 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -315,6 +326,7 @@
 				8A1A00402DFF000200000001 /* RacePlanCalculatorTests.swift in Sources */,
 				8A1A00412DFF000200000001 /* RacePlanStorageTests.swift in Sources */,
 				8A1A00422DFF000200000001 /* RacePlanStoreTests.swift in Sources */,
+				8A1A00842DFF000200000001 /* RaceFuelingPlanTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
