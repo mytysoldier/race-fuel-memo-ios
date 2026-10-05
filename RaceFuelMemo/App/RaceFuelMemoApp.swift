@@ -24,12 +24,14 @@ struct RaceFuelMemoApp: App {
     @UIApplicationDelegateAdaptor(RaceFuelMemoAppDelegate.self) private var appDelegate
     @State private var racePlanStore = RacePlanStore()
     @State private var fuelingPresetStore = RaceFuelingPresetStore()
+    @State private var checklistTemplateStore = ChecklistTemplateStore()
 
     var body: some Scene {
         WindowGroup {
             RaceListView()
                 .environment(racePlanStore)
                 .environment(fuelingPresetStore)
+                .environment(checklistTemplateStore)
         }
     }
 }

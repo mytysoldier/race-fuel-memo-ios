@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RaceCreatePlaceholderView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
+    @Environment(ChecklistTemplateStore.self) private var checklistTemplateStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var raceName = ""
@@ -18,9 +19,13 @@ struct RaceCreatePlaceholderView: View {
     @State private var pacePlans: [RacePacePlan] = []
     @State private var selectedPacePlanID: UUID?
     @State private var fuelingEvents: [RaceFuelingEvent] = []
+    @State private var checklistItems = RacePlan.defaultChecklistItems
+    @State private var checklistNotificationsEnabled = false
+    @State private var draftRacePlanID = UUID()
     @State private var isShowingCheckpointEditor = false
     @State private var isShowingPacePlanEditor = false
     @State private var isShowingFuelingEditor = false
+    @State private var isShowingChecklistEditor = false
 
     var body: some View {
         ScrollView {
@@ -146,6 +151,23 @@ struct RaceCreatePlaceholderView: View {
                     }
                 }
 
+                formSection("チェックリスト") {
+                    Text("\(checklistItems.count)項目を設定済み")
+                        .foregroundStyle(.secondary)
+                    Menu("テンプレートを適用") {
+                        ForEach(checklistTemplateStore.templates) { template in
+                            Button(template.name) {
+                                checklistItems = template.checklistItems()
+                            }
+                        }
+                    }
+                    Button {
+                        isShowingChecklistEditor = true
+                    } label: {
+                        Label("項目と期限を編集", systemImage: "checklist")
+                    }
+                }
+
                 formSection(String(localized: "race_create.section.memo")) {
                     TextField(
                         String(localized: "race_create.section.memo"),
@@ -202,6 +224,13 @@ struct RaceCreatePlaceholderView: View {
                 gels = []
             }
         }
+        .sheet(isPresented: $isShowingChecklistEditor) {
+            RaceChecklistEditorView(racePlan: draftRacePlan) { items, notificationsEnabled in
+                checklistItems = items
+                checklistNotificationsEnabled = notificationsEnabled
+                return true
+            }
+        }
     }
 
     private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
@@ -239,9 +268,11 @@ struct RaceCreatePlaceholderView: View {
 
     private var draftRacePlan: RacePlan {
         var racePlan = RacePlan(
-            name: trimmedRaceName, raceDate: raceDate, startTime: raceStartDateTime,
+            id: draftRacePlanID, name: trimmedRaceName, raceDate: raceDate, startTime: raceStartDateTime,
             distanceKm: selectedDistanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
+            checklistItems: checklistItems,
+            checklistNotificationsEnabled: checklistNotificationsEnabled,
             checkpoints: checkpoints, pacePlans: pacePlans,
             selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents
         )
@@ -305,6 +336,7 @@ private struct GelDraft: Identifiable {
     }
     .environment(RacePlanStore(storage: EmptyRacePlanStorage()))
     .environment(RaceFuelingPresetStore())
+    .environment(ChecklistTemplateStore())
 }
 
 private struct EmptyRacePlanStorage: RacePlanStorage {

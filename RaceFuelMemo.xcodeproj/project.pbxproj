@@ -30,6 +30,10 @@
 		8A1A00802DFF000200000001 /* RaceFuelingPlan.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00812DFF000200000001 /* RaceFuelingPlan.swift */; };
 		8A1A00822DFF000200000001 /* RaceFuelingPlanView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */; };
 		8A1A00842DFF000200000001 /* RaceFuelingPlanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */; };
+		8A1A00902DFF000200000001 /* ChecklistTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00912DFF000200000001 /* ChecklistTemplateStore.swift */; };
+		8A1A00922DFF000200000001 /* ChecklistReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00932DFF000200000001 /* ChecklistReminderScheduler.swift */; };
+		8A1A00942DFF000200000001 /* RaceChecklistEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00952DFF000200000001 /* RaceChecklistEditorView.swift */; };
+		8A1A00962DFF000200000001 /* RaceChecklistTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00972DFF000200000001 /* RaceChecklistTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -58,6 +62,10 @@
 		8A1A00812DFF000200000001 /* RaceFuelingPlan.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelingPlan.swift; sourceTree = "<group>"; };
 		8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelingPlanView.swift; sourceTree = "<group>"; };
 		8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceFuelingPlanTests.swift; sourceTree = "<group>"; };
+		8A1A00912DFF000200000001 /* ChecklistTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistTemplateStore.swift; sourceTree = "<group>"; };
+		8A1A00932DFF000200000001 /* ChecklistReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChecklistReminderScheduler.swift; sourceTree = "<group>"; };
+		8A1A00952DFF000200000001 /* RaceChecklistEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceChecklistEditorView.swift; sourceTree = "<group>"; };
+		8A1A00972DFF000200000001 /* RaceChecklistTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceChecklistTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -110,6 +118,7 @@
 				8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */,
 				8A1A00732DFF000200000001 /* RacePacePlansView.swift */,
 				8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */,
+				8A1A00952DFF000200000001 /* RaceChecklistEditorView.swift */,
 				8A1A00092DFF000200000001 /* SettingsView.swift */,
 			);
 			path = Views;
@@ -131,6 +140,8 @@
 				8A1A00242DFF000200000001 /* RacePlanStorage.swift */,
 				8A1A00252DFF000200000001 /* RacePlanStore.swift */,
 				8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */,
+				8A1A00912DFF000200000001 /* ChecklistTemplateStore.swift */,
+				8A1A00932DFF000200000001 /* ChecklistReminderScheduler.swift */,
 			);
 			path = Persistence;
 			sourceTree = "<group>";
@@ -160,6 +171,7 @@
 				8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */,
 				8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */,
 				8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */,
+				8A1A00972DFF000200000001 /* RaceChecklistTests.swift */,
 			);
 			path = RaceFuelMemoTests;
 			sourceTree = "<group>";
@@ -315,6 +327,9 @@
 				8A1A00722DFF000200000001 /* RacePacePlansView.swift in Sources */,
 				8A1A00802DFF000200000001 /* RaceFuelingPlan.swift in Sources */,
 				8A1A00822DFF000200000001 /* RaceFuelingPlanView.swift in Sources */,
+				8A1A00902DFF000200000001 /* ChecklistTemplateStore.swift in Sources */,
+				8A1A00922DFF000200000001 /* ChecklistReminderScheduler.swift in Sources */,
+				8A1A00942DFF000200000001 /* RaceChecklistEditorView.swift in Sources */,
 				8A1A000F2DFF000200000001 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -327,6 +342,7 @@
 				8A1A00412DFF000200000001 /* RacePlanStorageTests.swift in Sources */,
 				8A1A00422DFF000200000001 /* RacePlanStoreTests.swift in Sources */,
 				8A1A00842DFF000200000001 /* RaceFuelingPlanTests.swift in Sources */,
+				8A1A00962DFF000200000001 /* RaceChecklistTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
