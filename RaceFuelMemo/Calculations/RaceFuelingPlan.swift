@@ -60,7 +60,11 @@ enum RaceFuelingPlanCalculator {
                     return "補給の経過時間は目標タイム以内にしてください。"
                 }
             } else if let distance = event.distanceKm {
-                guard distance.isFinite, (0...plan.distanceKm).contains(distance) else {
+                guard plan.distanceKm.isFinite,
+                      plan.distanceKm >= 0,
+                      distance.isFinite,
+                      distance >= 0,
+                      distance <= plan.distanceKm else {
                     return "補給地点の距離はコース内にしてください。"
                 }
             } else {

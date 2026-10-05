@@ -6,6 +6,8 @@ struct RaceDetailView: View {
     @State private var isShowingReminderSettings = false
     @State private var isShowingRacePlanEditor = false
     @State private var isShowingPaceComparison = false
+    @State private var isShowingPacePlanSelectionError = false
+    @State private var pacePlanSelectionError = ""
     @State private var showsClockTimes = false
     @State private var notificationMessage = ""
     @State private var isShowingNotificationAlert = false
@@ -263,6 +265,11 @@ struct RaceDetailView: View {
                     }
             }
         }
+        .alert("ペースプランを変更できません", isPresented: $isShowingPacePlanSelectionError) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(pacePlanSelectionError)
+        }
         .sheet(isPresented: $isShowingReminderSettings) {
             ReminderSettingsSheet(
                 selectedTimings: $selectedReminderTimings,
@@ -357,6 +364,9 @@ struct RaceDetailView: View {
         updated.selectedPacePlanID = id
         if racePlanStore.updateRacePlan(updated) {
             rescheduleRemindersIfNeeded(for: updated)
+        } else {
+            pacePlanSelectionError = racePlanStore.validationError ?? "ペースプランを変更できませんでした。"
+            isShowingPacePlanSelectionError = true
         }
     }
 

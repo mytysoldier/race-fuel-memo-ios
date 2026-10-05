@@ -85,6 +85,41 @@ private func fuelingRace() -> RacePlan {
     plan.fuelingEvents[0].carbohydrateGramsPerItem = 25
     plan.fuelingEvents[0].distanceKm = 21
     #expect(RaceFuelingPlanCalculator.validationError(for: plan) != nil)
+    plan.distanceKm = -1
+    #expect(RaceFuelingPlanCalculator.validationError(for: plan) != nil)
+}
+
+@Test func shorterPacePlanRejectsLateFuelingEventWithoutSavingSelection() {
+    var plan = fuelingRace()
+    let longer = RacePacePlan(order: 0, name: "長め", targetSeconds: 7_200)
+    let shorter = RacePacePlan(order: 1, name: "短め", targetSeconds: 3_600)
+    plan.pacePlans = [longer, shorter]
+    plan.selectedPacePlanID = longer.id
+    plan.normalizePacePlans()
+    plan.fuelingEvents = [RaceFuelingEvent(order: 0, name: "後半ジェル", quantity: 1,
+                                           elapsedSeconds: 5_400)]
+    let store = RacePlanStore(storage: FuelingInMemoryStorage(racePlans: [plan]))
+
+    var selectingShorter = plan
+    selectingShorter.selectedPacePlanID = shorter.id
+
+    #expect(!store.updateRacePlan(selectingShorter))
+    #expect(store.validationError == "補給の経過時間は目標タイム以内にしてください。")
+    #expect(store.racePlans[0].selectedPacePlanID == longer.id)
+}
+
+private final class FuelingInMemoryStorage: RacePlanStorage {
+    var racePlans: [RacePlan]
+
+    init(racePlans: [RacePlan]) {
+        self.racePlans = racePlans
+    }
+
+    func loadRacePlans() throws -> [RacePlan] { racePlans }
+
+    func saveRacePlans(_ racePlans: [RacePlan]) throws {
+        self.racePlans = racePlans
+    }
 }
 
 @Test func legacyGelsCanBecomeIndependentFuelingEvents() {
