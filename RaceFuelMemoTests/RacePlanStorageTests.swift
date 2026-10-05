@@ -130,7 +130,10 @@ import Testing
                                 segments: [segment], strategy: .negative,
                                 halfDifferenceSeconds: 600, kickDistanceKm: 5,
                                 kickGainSecondsPerKm: 20)
-    let event = RaceFuelingEvent(order: 0, name: "ジェル", quantity: 1, checkpointID: checkpoint.id)
+    let event = RaceFuelingEvent(order: 0, name: "ジェル", quantity: 1,
+                                 distanceKm: checkpoint.distanceKm, checkpointID: checkpoint.id,
+                                 carbohydrateGramsPerItem: 25, containsCaffeine: true,
+                                 note: "給水と一緒に", pickup: .support)
     var plan = RacePlan(name: "v2", raceDate: .now, startTime: .now, distanceKm: 42.195,
                         targetHours: 4, targetMinutes: 0, gelCount: 1,
                         checkpoints: [checkpoint, cutoff], pacePlans: [pacePlan],
