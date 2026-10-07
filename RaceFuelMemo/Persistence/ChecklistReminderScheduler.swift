@@ -23,6 +23,16 @@ enum ChecklistReminderPlanner {
         .prefix(50)
         .map { $0 }
     }
+
+    static func identifiersToRemove(
+        existing: Set<String>,
+        plans: [RacePlan],
+        now: Date = .now,
+        calendar: Calendar = .current
+    ) -> Set<String> {
+        let desired = Set(plans.flatMap { reminders(for: $0, now: now, calendar: calendar) }.map(\.identifier))
+        return existing.subtracting(desired)
+    }
 }
 
 @MainActor enum ChecklistReminderScheduler {
@@ -58,6 +68,40 @@ enum ChecklistReminderPlanner {
         }
     }
 
+    /// Remove notifications for deleted or disabled plans that may have survived an app termination.
+    static func reconcileAll(_ plans: [RacePlan]) async {
+        let existing = Set(
+            await center.pendingNotificationRequests()
+                .map(\.identifier)
+                .filter { $0.hasPrefix("checklist-reminder.") }
+        )
+        let status = await center.notificationSettings().authorizationStatus
+        guard status == .authorized || status == .provisional || status == .ephemeral else {
+            center.removePendingNotificationRequests(withIdentifiers: Array(existing))
+            return
+        }
+
+        let remindersByPlan = Dictionary(uniqueKeysWithValues: plans.map {
+            ($0.id, ChecklistReminderPlanner.reminders(for: $0))
+        })
+        var scheduledIDs: Set<String> = []
+        for plan in plans {
+            for reminder in remindersByPlan[plan.id] ?? [] {
+                let content = notificationContent(for: plan, reminder: reminder)
+                let trigger = notificationTrigger(for: reminder.date)
+                do {
+                    try await center.add(UNNotificationRequest(
+                        identifier: reminder.identifier, content: content, trigger: trigger
+                    ))
+                    scheduledIDs.insert(reminder.identifier)
+                } catch {
+                    // A failed replacement must not leave stale notification content behind.
+                }
+            }
+        }
+        center.removePendingNotificationRequests(withIdentifiers: Array(existing.subtracting(scheduledIDs)))
+    }
+
     private static func reconcile(_ plan: RacePlan?, id: RacePlan.ID) async {
         let prefix = "checklist-reminder.\(id.uuidString)."
         let existing = await center.pendingNotificationRequests()
@@ -74,16 +118,8 @@ enum ChecklistReminderPlanner {
 
         var scheduledIDs: Set<String> = []
         for reminder in reminders {
-            let content = UNMutableNotificationContent()
-            content.title = "\(plan?.name ?? "レース")の準備"
-            content.body = "必須項目「\(reminder.title)」が未完了です。"
-            content.sound = .default
-            let trigger = UNCalendarNotificationTrigger(
-                dateMatching: Calendar.current.dateComponents(
-                    [.year, .month, .day, .hour, .minute], from: reminder.date
-                ),
-                repeats: false
-            )
+            let content = notificationContent(for: plan, reminder: reminder)
+            let trigger = notificationTrigger(for: reminder.date)
             do {
                 try await center.add(UNNotificationRequest(
                     identifier: reminder.identifier, content: content, trigger: trigger
@@ -95,5 +131,22 @@ enum ChecklistReminderPlanner {
         }
 
         center.removePendingNotificationRequests(withIdentifiers: existing.filter { !scheduledIDs.contains($0) })
+    }
+
+    private static func notificationContent(for plan: RacePlan?, reminder: ChecklistReminder) -> UNMutableNotificationContent {
+        let content = UNMutableNotificationContent()
+        content.title = "\(plan?.name ?? "レース")の準備"
+        content.body = "必須項目「\(reminder.title)」が未完了です。"
+        content.sound = .default
+        return content
+    }
+
+    private static func notificationTrigger(for date: Date) -> UNCalendarNotificationTrigger {
+        UNCalendarNotificationTrigger(
+            dateMatching: Calendar.current.dateComponents(
+                [.year, .month, .day, .hour, .minute], from: date
+            ),
+            repeats: false
+        )
     }
 }

@@ -14,8 +14,9 @@ final class RacePlanStore {
         self.storage = storage
         do {
             racePlans = try storage.loadRacePlans()
-            for plan in racePlans where plan.checklistNotificationsEnabled {
-                enqueueChecklistReminders(for: plan, id: plan.id)
+            let loadedPlans = racePlans
+            Task { @MainActor in
+                await ChecklistReminderScheduler.reconcileAll(loadedPlans)
             }
         } catch {
             racePlans = []

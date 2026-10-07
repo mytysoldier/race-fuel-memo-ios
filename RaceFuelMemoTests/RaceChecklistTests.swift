@@ -60,6 +60,27 @@ import Testing
     #expect(ChecklistReminderPlanner.reminders(for: plan, now: now, calendar: calendar).isEmpty)
 }
 
+@Test func startupReconciliationRemovesDeletedAndDisabledPlanReminders() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
+    let start = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 8, hour: 8)))
+    let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 6)))
+    let active = RacePlan(name: "有効", raceDate: start, startTime: start,
+                          distanceKm: 10, targetHours: 1, targetMinutes: 0, gelCount: 0,
+                          checklistItems: [ChecklistItem(title: "ゼッケン", isRequired: true, dueTiming: .dayBefore)],
+                          checklistNotificationsEnabled: true)
+    var disabled = active
+    disabled.checklistNotificationsEnabled = false
+    let activeID = try #require(ChecklistReminderPlanner.reminders(for: active, now: now, calendar: calendar).first?.identifier)
+    let disabledID = "checklist-reminder.\(disabled.id.uuidString).\(UUID().uuidString)"
+    let deletedID = "checklist-reminder.\(UUID().uuidString).\(UUID().uuidString)"
+
+    let removals = ChecklistReminderPlanner.identifiersToRemove(
+        existing: [activeID, disabledID, deletedID], plans: [active, disabled], now: now, calendar: calendar
+    )
+    #expect(removals == [disabledID, deletedID])
+}
+
 @Test func oldChecklistItemKeepsCheckedStateAndUsesSafeDefaults() throws {
     let id = UUID()
     let data = Data("""
