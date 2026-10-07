@@ -7,6 +7,11 @@ struct ChecklistReminder: Equatable {
     let date: Date
 }
 
+struct ChecklistReminderRequest: Equatable {
+    let raceName: String
+    let reminder: ChecklistReminder
+}
+
 enum ChecklistReminderPlanner {
     static func reminders(for plan: RacePlan, now: Date = .now, calendar: Calendar = .current) -> [ChecklistReminder] {
         guard plan.checklistNotificationsEnabled else { return [] }
@@ -20,25 +25,31 @@ enum ChecklistReminderPlanner {
             )
         }
         .sorted { $0.date < $1.date }
-        .prefix(50)
-        .map { $0 }
     }
 
-    static func identifiersToRemove(
-        existing: Set<String>,
-        plans: [RacePlan],
+    static func reminderRequests(
+        for plans: [RacePlan],
+        maximumCount: Int,
         now: Date = .now,
         calendar: Calendar = .current
-    ) -> Set<String> {
-        let desired = Set(plans.flatMap { reminders(for: $0, now: now, calendar: calendar) }.map(\.identifier))
-        return existing.subtracting(desired)
+    ) -> [ChecklistReminderRequest] {
+        plans.flatMap { plan in
+            reminders(for: plan, now: now, calendar: calendar).map {
+                ChecklistReminderRequest(raceName: plan.name, reminder: $0)
+            }
+        }
+        .sorted { $0.reminder.date < $1.reminder.date }
+        .prefix(max(0, maximumCount))
+        .map { $0 }
     }
 }
 
 @MainActor enum ChecklistReminderScheduler {
+    private static let checklistIdentifierPrefix = "checklist-reminder."
+    private static let maximumPendingNotificationCount = 64
     private static let center = UNUserNotificationCenter.current()
-    private static var latestRevisions: [RacePlan.ID: Int] = [:]
-    private static var queuedTasks: [RacePlan.ID: Task<Void, Never>] = [:]
+    private static var queuedTask: Task<Void, Never>?
+    private static var queuedOperationID = 0
 
     static func requestAuthorization() async throws {
         let settings = await center.notificationSettings()
@@ -56,86 +67,56 @@ enum ChecklistReminderPlanner {
         }
     }
 
-    /// Serialize updates for a race so an older save cannot overwrite newer reminder requests.
-    static func enqueue(_ plan: RacePlan?, id: RacePlan.ID, revision: Int) {
-        guard revision > latestRevisions[id, default: 0] else { return }
-        latestRevisions[id] = revision
-        let previous = queuedTasks[id]
-        queuedTasks[id] = Task {
+    /// Serialize startup and save-driven updates so the newest saved plans win.
+    static func enqueueReconciliation(for plans: [RacePlan]) {
+        let previous = queuedTask
+        queuedOperationID += 1
+        let operationID = queuedOperationID
+        queuedTask = Task {
             await previous?.value
-            guard latestRevisions[id] == revision else { return }
-            await reconcile(plan, id: id)
+            await reconcileAll(plans)
+            if queuedOperationID == operationID {
+                queuedTask = nil
+            }
         }
     }
 
     /// Remove notifications for deleted or disabled plans that may have survived an app termination.
-    static func reconcileAll(_ plans: [RacePlan]) async {
-        let existing = Set(
-            await center.pendingNotificationRequests()
-                .map(\.identifier)
-                .filter { $0.hasPrefix("checklist-reminder.") }
+    private static func reconcileAll(_ plans: [RacePlan]) async {
+        let pendingRequests = await center.pendingNotificationRequests()
+        let existingChecklistIDs = Set(
+            pendingRequests.map(\.identifier).filter { $0.hasPrefix(checklistIdentifierPrefix) }
         )
         let status = await center.notificationSettings().authorizationStatus
         guard status == .authorized || status == .provisional || status == .ephemeral else {
-            center.removePendingNotificationRequests(withIdentifiers: Array(existing))
+            center.removePendingNotificationRequests(withIdentifiers: Array(existingChecklistIDs))
             return
         }
 
-        let remindersByPlan = Dictionary(uniqueKeysWithValues: plans.map {
-            ($0.id, ChecklistReminderPlanner.reminders(for: $0))
-        })
-        var scheduledIDs: Set<String> = []
-        for plan in plans {
-            for reminder in remindersByPlan[plan.id] ?? [] {
-                let content = notificationContent(for: plan, reminder: reminder)
-                let trigger = notificationTrigger(for: reminder.date)
-                do {
-                    try await center.add(UNNotificationRequest(
-                        identifier: reminder.identifier, content: content, trigger: trigger
-                    ))
-                    scheduledIDs.insert(reminder.identifier)
-                } catch {
-                    // A failed replacement must not leave stale notification content behind.
-                }
-            }
-        }
-        center.removePendingNotificationRequests(withIdentifiers: Array(existing.subtracting(scheduledIDs)))
-    }
+        let nonChecklistCount = pendingRequests.count - existingChecklistIDs.count
+        let availableCount = maximumPendingNotificationCount - nonChecklistCount
+        let requests = ChecklistReminderPlanner.reminderRequests(
+            for: plans, maximumCount: availableCount
+        )
 
-    private static func reconcile(_ plan: RacePlan?, id: RacePlan.ID) async {
-        let prefix = "checklist-reminder.\(id.uuidString)."
-        let existing = await center.pendingNotificationRequests()
-            .map(\.identifier)
-            .filter { $0.hasPrefix(prefix) }
-
-        var reminders: [ChecklistReminder] = []
-        if let plan, plan.checklistNotificationsEnabled {
-            let status = await center.notificationSettings().authorizationStatus
-            if status == .authorized || status == .provisional || status == .ephemeral {
-                reminders = ChecklistReminderPlanner.reminders(for: plan)
-            }
-        }
-
-        var scheduledIDs: Set<String> = []
-        for reminder in reminders {
-            let content = notificationContent(for: plan, reminder: reminder)
-            let trigger = notificationTrigger(for: reminder.date)
+        // Remove current checklist requests first so a template replacement never exceeds iOS's 64-request limit.
+        center.removePendingNotificationRequests(withIdentifiers: Array(existingChecklistIDs))
+        for request in requests {
+            let content = notificationContent(raceName: request.raceName, reminder: request.reminder)
+            let trigger = notificationTrigger(for: request.reminder.date)
             do {
                 try await center.add(UNNotificationRequest(
-                    identifier: reminder.identifier, content: content, trigger: trigger
+                    identifier: request.reminder.identifier, content: content, trigger: trigger
                 ))
-                scheduledIDs.insert(reminder.identifier)
             } catch {
-                // Do not leave a pending request with stale content when replacement fails.
+                // The next queued reconciliation retries any request that could not be added.
             }
         }
-
-        center.removePendingNotificationRequests(withIdentifiers: existing.filter { !scheduledIDs.contains($0) })
     }
 
-    private static func notificationContent(for plan: RacePlan?, reminder: ChecklistReminder) -> UNMutableNotificationContent {
+    private static func notificationContent(raceName: String, reminder: ChecklistReminder) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
-        content.title = "\(plan?.name ?? "レース")の準備"
+        content.title = "\(raceName)の準備"
         content.body = "必須項目「\(reminder.title)」が未完了です。"
         content.sound = .default
         return content

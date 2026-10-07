@@ -8,7 +8,6 @@ final class RacePlanStore {
     private(set) var validationError: String?
 
     private let storage: RacePlanStorage
-    private var checklistReminderRevisions: [RacePlan.ID: Int] = [:]
 
     init(storage: RacePlanStorage = UserDefaultsRacePlanStorage()) {
         self.storage = storage
@@ -16,7 +15,7 @@ final class RacePlanStore {
             racePlans = try storage.loadRacePlans()
             let loadedPlans = racePlans
             Task { @MainActor in
-                await ChecklistReminderScheduler.reconcileAll(loadedPlans)
+                ChecklistReminderScheduler.enqueueReconciliation(for: loadedPlans)
             }
         } catch {
             racePlans = []
@@ -122,14 +121,9 @@ final class RacePlanStore {
         guard storageError == nil else { return false }
         do {
             try storage.saveRacePlans(updated)
-            let previous = Dictionary(uniqueKeysWithValues: racePlans.map { ($0.id, $0) })
             racePlans = updated
-            for plan in updated where previous[plan.id] != plan {
-                enqueueChecklistReminders(for: plan, id: plan.id)
-            }
-            let updatedIDs = Set(updated.map(\.id))
-            for id in previous.keys where !updatedIDs.contains(id) {
-                enqueueChecklistReminders(for: nil, id: id)
+            Task { @MainActor in
+                ChecklistReminderScheduler.enqueueReconciliation(for: updated)
             }
             return true
         } catch {
@@ -138,11 +132,4 @@ final class RacePlanStore {
         }
     }
 
-    private func enqueueChecklistReminders(for plan: RacePlan?, id: RacePlan.ID) {
-        let revision = checklistReminderRevisions[id, default: 0] + 1
-        checklistReminderRevisions[id] = revision
-        Task { @MainActor in
-            ChecklistReminderScheduler.enqueue(plan, id: id, revision: revision)
-        }
-    }
 }
