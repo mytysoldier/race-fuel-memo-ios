@@ -539,6 +539,7 @@ struct RaceDetailView: View {
         reminderSchedulingGeneration += 1
         isLoadingReminderState = false
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
+        ChecklistReminderScheduler.enqueueReconciliation(for: racePlanStore.racePlans)
         registeredReminderDates = []
         registeredReminderTimings = []
         selectedReminderTimings = []
