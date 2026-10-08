@@ -116,6 +116,14 @@ final class RacePlanStore {
         _ = commit(updated)
     }
 
+    @MainActor
+    func reserveChecklistReminderCapacity(for additionalNotificationCount: Int) async {
+        await ChecklistReminderScheduler.reconcile(
+            for: racePlans,
+            reservingNotificationSlots: additionalNotificationCount
+        )
+    }
+
     @discardableResult
     private func commit(_ updated: [RacePlan]) -> Bool {
         guard storageError == nil else { return false }

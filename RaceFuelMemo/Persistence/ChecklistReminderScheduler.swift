@@ -70,20 +70,45 @@ enum ChecklistReminderPlanner {
 
     /// Serialize startup and save-driven updates so the newest saved plans win.
     static func enqueueReconciliation(for plans: [RacePlan]) {
+        _ = enqueueReconciliation(for: plans, reservingNotificationSlots: 0)
+    }
+
+    /// Reserve slots before another notification flow schedules its requests.
+    static func reconcile(
+        for plans: [RacePlan],
+        reservingNotificationSlots: Int
+    ) async {
+        let task = enqueueReconciliation(
+            for: plans,
+            reservingNotificationSlots: reservingNotificationSlots
+        )
+        await task.value
+    }
+
+    @discardableResult
+    private static func enqueueReconciliation(
+        for plans: [RacePlan],
+        reservingNotificationSlots: Int
+    ) -> Task<Void, Never> {
         let previous = queuedTask
         queuedOperationID += 1
         let operationID = queuedOperationID
-        queuedTask = Task {
+        let task = Task {
             await previous?.value
-            await reconcileAll(plans)
+            await reconcileAll(plans, reservingNotificationSlots: reservingNotificationSlots)
             if queuedOperationID == operationID {
                 queuedTask = nil
             }
         }
+        queuedTask = task
+        return task
     }
 
     /// Remove notifications for deleted or disabled plans that may have survived an app termination.
-    private static func reconcileAll(_ plans: [RacePlan]) async {
+    private static func reconcileAll(
+        _ plans: [RacePlan],
+        reservingNotificationSlots: Int
+    ) async {
         let pendingRequests = await center.pendingNotificationRequests()
         let existingChecklistRequests = pendingRequests.filter {
             $0.identifier.hasPrefix(checklistIdentifierPrefix)
@@ -101,7 +126,7 @@ enum ChecklistReminderPlanner {
         let nonChecklistCount = pendingRequests.count - existingChecklistIDs.count
         let availableCount = min(
             maximumChecklistReminderCount,
-            maximumPendingNotificationCount - nonChecklistCount
+            maximumPendingNotificationCount - nonChecklistCount - max(0, reservingNotificationSlots)
         )
         let requests = ChecklistReminderPlanner.reminderRequests(
             for: plans, maximumCount: availableCount
