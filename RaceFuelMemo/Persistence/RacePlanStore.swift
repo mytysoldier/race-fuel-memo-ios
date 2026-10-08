@@ -120,11 +120,16 @@ final class RacePlanStore {
     }
 
     @MainActor
-    func reserveChecklistReminderCapacity(for additionalNotificationCount: Int) async {
-        await ChecklistReminderScheduler.reconcile(
+    func reserveChecklistReminderCapacity(for additionalNotificationCount: Int) async -> UUID {
+        await ChecklistReminderScheduler.reserveCapacity(
             for: racePlans,
-            reservingNotificationSlots: additionalNotificationCount
+            notificationCount: additionalNotificationCount
         )
+    }
+
+    @MainActor
+    func releaseChecklistReminderCapacity(_ token: UUID) {
+        ChecklistReminderScheduler.releaseCapacity(token, for: racePlans)
     }
 
     @discardableResult

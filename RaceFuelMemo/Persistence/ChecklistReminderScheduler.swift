@@ -51,6 +51,7 @@ enum ChecklistReminderPlanner {
     private static let center = UNUserNotificationCenter.current()
     private static var queuedTask: Task<Void, Never>?
     private static var queuedOperationID = 0
+    private static var reservedNotificationSlots: [UUID: Int] = [:]
 
     static func requestAuthorization() async throws {
         let settings = await center.notificationSettings()
@@ -70,32 +71,31 @@ enum ChecklistReminderPlanner {
 
     /// Serialize startup and save-driven updates so the newest saved plans win.
     static func enqueueReconciliation(for plans: [RacePlan]) {
-        _ = enqueueReconciliation(for: plans, reservingNotificationSlots: 0)
+        _ = enqueueReconciliationTask(for: plans)
     }
 
-    /// Reserve slots before another notification flow schedules its requests.
-    static func reconcile(
-        for plans: [RacePlan],
-        reservingNotificationSlots: Int
-    ) async {
-        let task = enqueueReconciliation(
-            for: plans,
-            reservingNotificationSlots: reservingNotificationSlots
-        )
+    /// Hold slots until another notification flow finishes scheduling its requests.
+    static func reserveCapacity(for plans: [RacePlan], notificationCount: Int) async -> UUID {
+        let token = UUID()
+        reservedNotificationSlots[token] = max(0, notificationCount)
+        let task = enqueueReconciliationTask(for: plans)
         await task.value
+        return token
+    }
+
+    static func releaseCapacity(_ token: UUID, for plans: [RacePlan]) {
+        guard reservedNotificationSlots.removeValue(forKey: token) != nil else { return }
+        _ = enqueueReconciliationTask(for: plans)
     }
 
     @discardableResult
-    private static func enqueueReconciliation(
-        for plans: [RacePlan],
-        reservingNotificationSlots: Int
-    ) -> Task<Void, Never> {
+    private static func enqueueReconciliationTask(for plans: [RacePlan]) -> Task<Void, Never> {
         let previous = queuedTask
         queuedOperationID += 1
         let operationID = queuedOperationID
         let task = Task {
             await previous?.value
-            await reconcileAll(plans, reservingNotificationSlots: reservingNotificationSlots)
+            await reconcileAll(plans)
             if queuedOperationID == operationID {
                 queuedTask = nil
             }
@@ -105,10 +105,7 @@ enum ChecklistReminderPlanner {
     }
 
     /// Remove notifications for deleted or disabled plans that may have survived an app termination.
-    private static func reconcileAll(
-        _ plans: [RacePlan],
-        reservingNotificationSlots: Int
-    ) async {
+    private static func reconcileAll(_ plans: [RacePlan]) async {
         let pendingRequests = await center.pendingNotificationRequests()
         let existingChecklistRequests = pendingRequests.filter {
             $0.identifier.hasPrefix(checklistIdentifierPrefix)
@@ -124,9 +121,10 @@ enum ChecklistReminderPlanner {
         }
 
         let nonChecklistCount = pendingRequests.count - existingChecklistIDs.count
+        let reservedCount = reservedNotificationSlots.values.reduce(0, +)
         let availableCount = min(
             maximumChecklistReminderCount,
-            maximumPendingNotificationCount - nonChecklistCount - max(0, reservingNotificationSlots)
+            maximumPendingNotificationCount - nonChecklistCount - reservedCount
         )
         let requests = ChecklistReminderPlanner.reminderRequests(
             for: plans, maximumCount: availableCount
