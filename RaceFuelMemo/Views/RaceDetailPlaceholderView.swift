@@ -443,6 +443,9 @@ struct RaceDetailView: View {
         }
 
         notificationRegistrationTask = Task { @MainActor in
+            defer {
+                ChecklistReminderScheduler.enqueueReconciliation(for: racePlanStore.racePlans)
+            }
             do {
                 await racePlanStore.reserveChecklistReminderCapacity(
                     for: reminderTimings.count
@@ -463,7 +466,6 @@ struct RaceDetailView: View {
                     : String(format: String(localized: "notification.message.registered"), count)
                 isShowingNotificationAlert = true
                 shouldOfferSettings = false
-                ChecklistReminderScheduler.enqueueReconciliation(for: racePlanStore.racePlans)
                 await refreshRegisteredReminderDates()
             } catch is CancellationError {
                 return
@@ -491,6 +493,9 @@ struct RaceDetailView: View {
         let generation = reminderSchedulingGeneration
         let reminderTimings = registeredReminderTimings
         reminderReschedulingTask = Task { @MainActor in
+            defer {
+                ChecklistReminderScheduler.enqueueReconciliation(for: racePlanStore.racePlans)
+            }
             guard generation == reminderSchedulingGeneration else {
                 return
             }
@@ -510,7 +515,6 @@ struct RaceDetailView: View {
                     return
                 }
 
-                ChecklistReminderScheduler.enqueueReconciliation(for: racePlanStore.racePlans)
                 await refreshRegisteredReminderDates()
             } catch is CancellationError {
                 return

@@ -20,6 +20,9 @@ final class RacePlanStore {
         } catch {
             racePlans = []
             storageError = error.localizedDescription
+            Task { @MainActor in
+                ChecklistReminderScheduler.enqueueReconciliation(for: [])
+            }
         }
     }
 
