@@ -47,6 +47,7 @@ enum ChecklistReminderPlanner {
 @MainActor enum ChecklistReminderScheduler {
     private static let checklistIdentifierPrefix = "checklist-reminder."
     private static let maximumPendingNotificationCount = 64
+    private static let maximumChecklistReminderCount = 50
     private static let center = UNUserNotificationCenter.current()
     private static var queuedTask: Task<Void, Never>?
     private static var queuedOperationID = 0
@@ -84,8 +85,12 @@ enum ChecklistReminderPlanner {
     /// Remove notifications for deleted or disabled plans that may have survived an app termination.
     private static func reconcileAll(_ plans: [RacePlan]) async {
         let pendingRequests = await center.pendingNotificationRequests()
-        let existingChecklistIDs = Set(
-            pendingRequests.map(\.identifier).filter { $0.hasPrefix(checklistIdentifierPrefix) }
+        let existingChecklistRequests = pendingRequests.filter {
+            $0.identifier.hasPrefix(checklistIdentifierPrefix)
+        }
+        let existingChecklistIDs = Set(existingChecklistRequests.map(\.identifier))
+        let existingChecklistRequestsByID = Dictionary(
+            uniqueKeysWithValues: existingChecklistRequests.map { ($0.identifier, $0) }
         )
         let status = await center.notificationSettings().authorizationStatus
         guard status == .authorized || status == .provisional || status == .ephemeral else {
@@ -94,7 +99,10 @@ enum ChecklistReminderPlanner {
         }
 
         let nonChecklistCount = pendingRequests.count - existingChecklistIDs.count
-        let availableCount = maximumPendingNotificationCount - nonChecklistCount
+        let availableCount = min(
+            maximumChecklistReminderCount,
+            maximumPendingNotificationCount - nonChecklistCount
+        )
         let requests = ChecklistReminderPlanner.reminderRequests(
             for: plans, maximumCount: availableCount
         )
@@ -109,7 +117,10 @@ enum ChecklistReminderPlanner {
                     identifier: request.reminder.identifier, content: content, trigger: trigger
                 ))
             } catch {
-                // The next queued reconciliation retries any request that could not be added.
+                // Keep a previously valid request if replacing it fails transiently.
+                if let existingRequest = existingChecklistRequestsByID[request.reminder.identifier] {
+                    try? await center.add(existingRequest)
+                }
             }
         }
     }

@@ -88,6 +88,24 @@ import Testing
     #expect(!requests.contains { $0.raceName == "通知オフ" })
 }
 
+@Test func checklistReminderBudgetNeverExceedsFifty() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = try #require(TimeZone(secondsFromGMT: 0))
+    let start = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 8, hour: 8)))
+    let now = try #require(calendar.date(from: DateComponents(year: 2026, month: 11, day: 6)))
+    let items = (1...60).map {
+        ChecklistItem(title: "必須\($0)", isRequired: true, dueTiming: .dayBefore)
+    }
+    let race = RacePlan(name: "通知上限", raceDate: start, startTime: start,
+                        distanceKm: 10, targetHours: 1, targetMinutes: 0, gelCount: 0,
+                        checklistItems: items, checklistNotificationsEnabled: true)
+
+    let requests = ChecklistReminderPlanner.reminderRequests(
+        for: [race], maximumCount: 50, now: now, calendar: calendar
+    )
+    #expect(requests.count == 50)
+}
+
 @Test func oldChecklistItemKeepsCheckedStateAndUsesSafeDefaults() throws {
     let id = UUID()
     let data = Data("""
