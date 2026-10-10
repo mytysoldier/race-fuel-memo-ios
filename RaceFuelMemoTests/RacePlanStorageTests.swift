@@ -18,7 +18,10 @@ import Testing
         targetMinutes: 0,
         gelCount: 2,
         memo: "テストメモ",
-        checklistItems: [ChecklistItem(title: "ゼッケン", isChecked: true)]
+        checklistItems: [ChecklistItem(title: "ゼッケン", isChecked: true,
+                                       category: ChecklistCategory.registration.rawValue,
+                                       isRequired: true, dueTiming: .dayBefore)],
+        checklistNotificationsEnabled: true
     )
 
     try storage.saveRacePlans([racePlan])

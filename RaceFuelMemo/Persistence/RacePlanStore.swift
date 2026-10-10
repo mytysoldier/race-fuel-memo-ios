@@ -13,9 +13,16 @@ final class RacePlanStore {
         self.storage = storage
         do {
             racePlans = try storage.loadRacePlans()
+            let loadedPlans = racePlans
+            Task { @MainActor in
+                ChecklistReminderScheduler.enqueueReconciliation(for: loadedPlans)
+            }
         } catch {
             racePlans = []
             storageError = error.localizedDescription
+            Task { @MainActor in
+                ChecklistReminderScheduler.enqueueReconciliation(for: [])
+            }
         }
     }
 
@@ -112,16 +119,33 @@ final class RacePlanStore {
         _ = commit(updated)
     }
 
+    @MainActor
+    func reserveChecklistReminderCapacity(for additionalNotificationCount: Int) async -> UUID {
+        await ChecklistReminderScheduler.reserveCapacity(
+            for: racePlans,
+            notificationCount: additionalNotificationCount
+        )
+    }
+
+    @MainActor
+    func releaseChecklistReminderCapacity(_ token: UUID) {
+        ChecklistReminderScheduler.releaseCapacity(token, for: racePlans)
+    }
+
     @discardableResult
     private func commit(_ updated: [RacePlan]) -> Bool {
         guard storageError == nil else { return false }
         do {
             try storage.saveRacePlans(updated)
             racePlans = updated
+            Task { @MainActor in
+                ChecklistReminderScheduler.enqueueReconciliation(for: updated)
+            }
             return true
         } catch {
             storageError = error.localizedDescription
             return false
         }
     }
+
 }

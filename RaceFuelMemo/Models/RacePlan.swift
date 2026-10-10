@@ -12,6 +12,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     var gelNames: [String]?
     var memo: String
     var checklistItems: [ChecklistItem]
+    var checklistNotificationsEnabled: Bool
     var checkpoints: [RaceCheckpoint]
     var pacePlans: [RacePacePlan]
     var selectedPacePlanID: UUID?
@@ -29,6 +30,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         gelNames: [String] = [],
         memo: String = "",
         checklistItems: [ChecklistItem] = RacePlan.defaultChecklistItems,
+        checklistNotificationsEnabled: Bool = false,
         checkpoints: [RaceCheckpoint] = [],
         pacePlans: [RacePacePlan] = [],
         selectedPacePlanID: UUID? = nil,
@@ -45,6 +47,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.gelNames = gelNames
         self.memo = memo
         self.checklistItems = checklistItems
+        self.checklistNotificationsEnabled = checklistNotificationsEnabled
         self.checkpoints = checkpoints
         self.pacePlans = pacePlans
         self.selectedPacePlanID = selectedPacePlanID
@@ -53,7 +56,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
 
     private enum CodingKeys: String, CodingKey {
         case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
-        case gelCount, gelNames, memo, checklistItems, checkpoints, pacePlans
+        case gelCount, gelNames, memo, checklistItems, checklistNotificationsEnabled, checkpoints, pacePlans
         case selectedPacePlanID, fuelingEvents
     }
 
@@ -70,6 +73,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         gelNames = try values.decodeIfPresent([String].self, forKey: .gelNames)
         memo = try values.decodeIfPresent(String.self, forKey: .memo) ?? ""
         checklistItems = try values.decodeIfPresent([ChecklistItem].self, forKey: .checklistItems) ?? []
+        checklistNotificationsEnabled = try values.decodeIfPresent(Bool.self, forKey: .checklistNotificationsEnabled) ?? false
         pacePlans = try values.decodeIfPresent([RacePacePlan].self, forKey: .pacePlans) ?? []
         selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
         fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
@@ -374,16 +378,16 @@ extension Array where Element == RaceCheckpoint {
 extension RacePlan {
     static var defaultChecklistItems: [ChecklistItem] {
         let items = [
-            ChecklistItem(title: "ランニングシューズ"),
-            ChecklistItem(title: "ウェア"),
-            ChecklistItem(title: "ゼッケン"),
-            ChecklistItem(title: "計測チップ"),
-            ChecklistItem(title: "ランニングウォッチ"),
-            ChecklistItem(title: "補給ジェル"),
-            ChecklistItem(title: "塩タブレット"),
-            ChecklistItem(title: "着替え"),
-            ChecklistItem(title: "タオル"),
-            ChecklistItem(title: "モバイルバッテリー")
+            ChecklistItem(title: "ランニングシューズ", category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: "ウェア", category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: "ゼッケン", category: ChecklistCategory.registration.rawValue),
+            ChecklistItem(title: "計測チップ", category: ChecklistCategory.registration.rawValue),
+            ChecklistItem(title: "ランニングウォッチ", category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: "補給ジェル", category: ChecklistCategory.fueling.rawValue),
+            ChecklistItem(title: "塩タブレット", category: ChecklistCategory.fueling.rawValue),
+            ChecklistItem(title: "着替え", category: ChecklistCategory.afterFinish.rawValue),
+            ChecklistItem(title: "タオル", category: ChecklistCategory.afterFinish.rawValue),
+            ChecklistItem(title: "モバイルバッテリー", category: ChecklistCategory.gear.rawValue)
         ]
         return items.enumerated().map { index, item in
             var orderedItem = item

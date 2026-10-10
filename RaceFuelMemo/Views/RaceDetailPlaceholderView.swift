@@ -4,6 +4,7 @@ struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
+    @State private var isShowingChecklistEditor = false
     @State private var isShowingRacePlanEditor = false
     @State private var isShowingPaceComparison = false
     @State private var isShowingPacePlanSelectionError = false
@@ -195,11 +196,32 @@ struct RaceDetailView: View {
             }
 
             Section(String(localized: "race_detail.section.checklist")) {
-                ForEach(currentRacePlan.checklistItems) { checklistItem in
-                    Toggle(
-                        checklistItem.title,
-                        isOn: checklistItemBinding(for: checklistItem)
-                    )
+                ForEach(currentRacePlan.checklistItems.sorted(by: { $0.order < $1.order })) { checklistItem in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Toggle(checklistItem.title, isOn: checklistItemBinding(for: checklistItem))
+                        HStack(spacing: 8) {
+                            let category = ChecklistCategory(rawValue: checklistItem.category ?? "")
+                            Text(category?.title ?? "その他")
+                            if checklistItem.isRequired {
+                                Label("必須", systemImage: "exclamationmark.circle.fill")
+                            }
+                            if let dueDate = checklistItem.resolvedDueDate(for: currentRacePlan) {
+                                Text("期限 \(dueDate.formatted(date: .abbreviated, time: .shortened))")
+                            }
+                        }
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    }
+                }
+                Button {
+                    isShowingChecklistEditor = true
+                } label: {
+                    Label("チェックリストを編集", systemImage: "checklist")
+                }
+                if currentRacePlan.checklistNotificationsEnabled {
+                    Label("必須項目の期限通知はオン", systemImage: "bell.fill")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
 
@@ -253,6 +275,14 @@ struct RaceDetailView: View {
                 RacePlanEditView(racePlan: currentRacePlan) { updatedRacePlan in
                     rescheduleRemindersIfNeeded(for: updatedRacePlan)
                 }
+            }
+        }
+        .sheet(isPresented: $isShowingChecklistEditor) {
+            RaceChecklistEditorView(racePlan: currentRacePlan) { items, notificationsEnabled in
+                var updated = currentRacePlan
+                updated.checklistItems = items
+                updated.checklistNotificationsEnabled = notificationsEnabled
+                return racePlanStore.updateRacePlan(updated)
             }
         }
         .sheet(isPresented: $isShowingPaceComparison) {
@@ -414,6 +444,15 @@ struct RaceDetailView: View {
 
         notificationRegistrationTask = Task { @MainActor in
             do {
+                let reservationToken = await racePlanStore.reserveChecklistReminderCapacity(
+                    for: reminderTimings.count
+                )
+                defer {
+                    racePlanStore.releaseChecklistReminderCapacity(reservationToken)
+                }
+                guard !Task.isCancelled else {
+                    return
+                }
                 let count = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
                     for: racePlan,
                     timings: reminderTimings
@@ -459,6 +498,15 @@ struct RaceDetailView: View {
             }
 
             do {
+                let reservationToken = await racePlanStore.reserveChecklistReminderCapacity(
+                    for: reminderTimings.count
+                )
+                defer {
+                    racePlanStore.releaseChecklistReminderCapacity(reservationToken)
+                }
+                guard generation == reminderSchedulingGeneration, isDetailVisible else {
+                    return
+                }
                 _ = try await RaceReminderScheduler.requestAuthorizationAndSchedule(
                     for: racePlan,
                     timings: reminderTimings
@@ -491,6 +539,7 @@ struct RaceDetailView: View {
         reminderSchedulingGeneration += 1
         isLoadingReminderState = false
         RaceReminderScheduler.cancelReminders(for: currentRacePlan.id)
+        ChecklistReminderScheduler.enqueueReconciliation(for: racePlanStore.racePlans)
         registeredReminderDates = []
         registeredReminderTimings = []
         selectedReminderTimings = []
@@ -1007,6 +1056,7 @@ private struct ReminderSettingsSheet: View {
         RaceDetailView(racePlan: racePlan)
     }
     .environment(RacePlanStore(storage: RaceDetailPreviewRacePlanStorage(racePlans: [racePlan])))
+    .environment(ChecklistTemplateStore())
 }
 
 private struct RaceDetailPreviewRacePlanStorage: RacePlanStorage {
