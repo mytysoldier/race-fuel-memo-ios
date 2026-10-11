@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        8A1A00B02DFF000200000001 /* RaceCardDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B12DFF000200000001 /* RaceCardDocument.swift */; };
+        8A1A00B22DFF000200000001 /* RaceCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B32DFF000200000001 /* RaceCardRenderer.swift */; };
+        8A1A00B42DFF000200000001 /* RaceCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B52DFF000200000001 /* RaceCardView.swift */; };
+        8A1A00B62DFF000200000001 /* RaceCardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B72DFF000200000001 /* RaceCardTests.swift */; };
         8A1A00A02DFF000200000001 /* RacePlanTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00A12DFF000200000001 /* RacePlanTemplate.swift */; };
         8A1A00A22DFF000200000001 /* RacePlanTemplateStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00A32DFF000200000001 /* RacePlanTemplateStore.swift */; };
         8A1A00A42DFF000200000001 /* RacePlanTemplatesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00A52DFF000200000001 /* RacePlanTemplatesView.swift */; };
@@ -41,6 +45,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+        8A1A00B12DFF000200000001 /* RaceCardDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardDocument.swift; sourceTree = "<group>"; };
+        8A1A00B32DFF000200000001 /* RaceCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardRenderer.swift; sourceTree = "<group>"; };
+        8A1A00B52DFF000200000001 /* RaceCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardView.swift; sourceTree = "<group>"; };
+        8A1A00B72DFF000200000001 /* RaceCardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardTests.swift; sourceTree = "<group>"; };
         8A1A00A12DFF000200000001 /* RacePlanTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanTemplate.swift; sourceTree = "<group>"; };
         8A1A00A32DFF000200000001 /* RacePlanTemplateStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanTemplateStore.swift; sourceTree = "<group>"; };
         8A1A00A52DFF000200000001 /* RacePlanTemplatesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanTemplatesView.swift; sourceTree = "<group>"; };
@@ -128,6 +136,8 @@
 				8A1A00832DFF000200000001 /* RaceFuelingPlanView.swift */,
 				8A1A00952DFF000200000001 /* RaceChecklistEditorView.swift */,
 				8A1A00A52DFF000200000001 /* RacePlanTemplatesView.swift */,
+				8A1A00B32DFF000200000001 /* RaceCardRenderer.swift */,
+				8A1A00B52DFF000200000001 /* RaceCardView.swift */,
 				8A1A00092DFF000200000001 /* SettingsView.swift */,
 			);
 			path = Views;
@@ -140,6 +150,7 @@
 				8A1A00212DFF000200000001 /* DistanceOption.swift */,
 				8A1A00222DFF000200000001 /* RacePlan.swift */,
 				8A1A00A12DFF000200000001 /* RacePlanTemplate.swift */,
+				8A1A00B12DFF000200000001 /* RaceCardDocument.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -184,6 +195,7 @@
 				8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */,
 				8A1A00972DFF000200000001 /* RaceChecklistTests.swift */,
 				8A1A00A72DFF000200000001 /* RacePlanTemplateTests.swift */,
+				8A1A00B72DFF000200000001 /* RaceCardTests.swift */,
 			);
 			path = RaceFuelMemoTests;
 			sourceTree = "<group>";
@@ -345,6 +357,9 @@
 				8A1A00A02DFF000200000001 /* RacePlanTemplate.swift in Sources */,
 				8A1A00A22DFF000200000001 /* RacePlanTemplateStore.swift in Sources */,
 				8A1A00A42DFF000200000001 /* RacePlanTemplatesView.swift in Sources */,
+				8A1A00B02DFF000200000001 /* RaceCardDocument.swift in Sources */,
+				8A1A00B22DFF000200000001 /* RaceCardRenderer.swift in Sources */,
+				8A1A00B42DFF000200000001 /* RaceCardView.swift in Sources */,
 				8A1A000F2DFF000200000001 /* SettingsView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -359,6 +374,7 @@
 				8A1A00842DFF000200000001 /* RaceFuelingPlanTests.swift in Sources */,
 				8A1A00962DFF000200000001 /* RaceChecklistTests.swift in Sources */,
 				8A1A00A62DFF000200000001 /* RacePlanTemplateTests.swift in Sources */,
+				8A1A00B62DFF000200000001 /* RaceCardTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -237,6 +237,14 @@ struct RaceDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("Race Card") {
+                NavigationLink {
+                    RaceCardView(racePlan: currentRacePlan)
+                } label: {
+                    Label("画像・PDF・ペースバンド出力", systemImage: "square.and.arrow.up")
+                }
+            }
+
             Section("計画を再利用") {
                 Button {
                     duplicateDraft = currentRacePlan.duplicated()
