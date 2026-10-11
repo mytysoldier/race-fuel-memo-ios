@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        8A1A00C02DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C12DFF000200000001; };
+        8A1A00C22DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C32DFF000200000001; };
+        8A1A00C42DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C52DFF000200000001; };
+        8A1A00C62DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C72DFF000200000001; };
+        8A1A00C82DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C92DFF000200000001; };
         8A1A00B02DFF000200000001 /* RaceCardDocument.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B12DFF000200000001 /* RaceCardDocument.swift */; };
         8A1A00B22DFF000200000001 /* RaceCardRenderer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B32DFF000200000001 /* RaceCardRenderer.swift */; };
         8A1A00B42DFF000200000001 /* RaceCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00B52DFF000200000001 /* RaceCardView.swift */; };
@@ -45,6 +50,12 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+        8A1A00C12DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePreparation.swift; sourceTree = "<group>"; };
+        8A1A00C32DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCreationDraftStore.swift; sourceTree = "<group>"; };
+        8A1A00C52DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePreparationView.swift; sourceTree = "<group>"; };
+        8A1A00C72DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePreparationTests.swift; sourceTree = "<group>"; };
+        8A1A00C92DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePreparationUITests.swift; sourceTree = "<group>"; };
+        8A1A00CA2DFF000200000001 = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RaceFuelMemoUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
         8A1A00B12DFF000200000001 /* RaceCardDocument.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardDocument.swift; sourceTree = "<group>"; };
         8A1A00B32DFF000200000001 /* RaceCardRenderer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardRenderer.swift; sourceTree = "<group>"; };
         8A1A00B52DFF000200000001 /* RaceCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCardView.swift; sourceTree = "<group>"; };
@@ -90,6 +101,7 @@
 			children = (
 				8A1A00112DFF000200000001 /* RaceFuelMemo */,
 				8A1A00472DFF000200000001 /* RaceFuelMemoTests */,
+                8A1A00CB2DFF000200000001 /* RaceFuelMemoUITests */,
 				8A1A00032DFF000200000001 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -99,6 +111,7 @@
 			children = (
 				8A1A00012DFF000200000001 /* RaceFuelMemo.app */,
 				8A1A00432DFF000200000001 /* RaceFuelMemoTests.xctest */,
+                8A1A00CA2DFF000200000001 /* RaceFuelMemoUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -129,6 +142,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00062DFF000200000001 /* RaceListView.swift */,
+                8A1A00C52DFF000200000001 /* RacePreparationView.swift */,
 				8A1A00072DFF000200000001 /* RaceCreatePlaceholderView.swift */,
 				8A1A00082DFF000200000001 /* RaceDetailPlaceholderView.swift */,
 				8A1A00612DFF000200000001 /* RaceCheckpointEditorView.swift */,
@@ -147,6 +161,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00202DFF000200000001 /* ChecklistItem.swift */,
+                8A1A00C12DFF000200000001 /* RacePreparation.swift */,
 				8A1A00212DFF000200000001 /* DistanceOption.swift */,
 				8A1A00222DFF000200000001 /* RacePlan.swift */,
 				8A1A00A12DFF000200000001 /* RacePlanTemplate.swift */,
@@ -159,6 +174,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00242DFF000200000001 /* RacePlanStorage.swift */,
+                8A1A00C32DFF000200000001 /* RaceCreationDraftStore.swift */,
 				8A1A00252DFF000200000001 /* RacePlanStore.swift */,
 				8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */,
 				8A1A00912DFF000200000001 /* ChecklistTemplateStore.swift */,
@@ -196,13 +212,26 @@
 				8A1A00972DFF000200000001 /* RaceChecklistTests.swift */,
 				8A1A00A72DFF000200000001 /* RacePlanTemplateTests.swift */,
 				8A1A00B72DFF000200000001 /* RaceCardTests.swift */,
+                8A1A00C72DFF000200000001 /* RacePreparationTests.swift */,
 			);
 			path = RaceFuelMemoTests;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
+        8A1A00CB2DFF000200000001 = {isa = PBXGroup; children = (8A1A00C92DFF000200000001); path = RaceFuelMemoUITests; sourceTree = "<group>"; };
 
 /* Begin PBXNativeTarget section */
+        8A1A00CC2DFF000200000001 = {
+            isa = PBXNativeTarget;
+            buildConfigurationList = 8A1A00D42DFF000200000001;
+            buildPhases = (8A1A00CD2DFF000200000001, 8A1A00CE2DFF000200000001);
+            buildRules = ();
+            dependencies = (8A1A00D02DFF000200000001);
+            name = RaceFuelMemoUITests;
+            productName = RaceFuelMemoUITests;
+            productReference = 8A1A00CA2DFF000200000001;
+            productType = "com.apple.product-type.bundle.ui-testing";
+        };
 		8A1A00042DFF000200000001 /* RaceFuelMemo */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 8A1A00182DFF000200000001 /* Build configuration list for PBXNativeTarget "RaceFuelMemo" */;
@@ -268,11 +297,13 @@
 			targets = (
 				8A1A00042DFF000200000001 /* RaceFuelMemo */,
 				8A1A00482DFF000200000001 /* RaceFuelMemoTests */,
+                8A1A00CC2DFF000200000001 /* RaceFuelMemoUITests */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXContainerItemProxy section */
+        8A1A00CF2DFF000200000001 = {isa = PBXContainerItemProxy; containerPortal = 8A1A00002DFF000200000001; proxyType = 1; remoteGlobalIDString = 8A1A00042DFF000200000001; remoteInfo = RaceFuelMemo; };
 		8A1A00492DFF000200000001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 8A1A00002DFF000200000001 /* Project object */;
@@ -283,6 +314,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFrameworksBuildPhase section */
+        8A1A00CE2DFF000200000001 = {isa = PBXFrameworksBuildPhase; buildActionMask = 2147483647; files = (); runOnlyForDeploymentPostprocessing = 0; };
 		8A1A00152DFF000200000001 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -312,6 +344,7 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+        8A1A00D02DFF000200000001 = {isa = PBXTargetDependency; target = 8A1A00042DFF000200000001; targetProxy = 8A1A00CF2DFF000200000001; };
 		8A1A00502DFF000200000001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			target = 8A1A00042DFF000200000001 /* RaceFuelMemo */;
@@ -331,11 +364,15 @@
 /* End PBXVariantGroup section */
 
 /* Begin PBXSourcesBuildPhase section */
+        8A1A00CD2DFF000200000001 = {isa = PBXSourcesBuildPhase; buildActionMask = 2147483647; files = (8A1A00C82DFF000200000001); runOnlyForDeploymentPostprocessing = 0; };
 		8A1A00142DFF000200000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 				8A1A000B2DFF000200000001 /* RaceFuelMemoApp.swift in Sources */,
+                8A1A00C02DFF000200000001 /* RacePreparation.swift in Sources */,
+                8A1A00C22DFF000200000001 /* RaceCreationDraftStore.swift in Sources */,
+                8A1A00C42DFF000200000001 /* RacePreparationView.swift in Sources */,
 				8A1A001D2DFF000200000001 /* ChecklistItem.swift in Sources */,
 				8A1A001E2DFF000200000001 /* DistanceOption.swift in Sources */,
 				8A1A001F2DFF000200000001 /* RacePlan.swift in Sources */,
@@ -375,12 +412,33 @@
 				8A1A00962DFF000200000001 /* RaceChecklistTests.swift in Sources */,
 				8A1A00A62DFF000200000001 /* RacePlanTemplateTests.swift in Sources */,
 				8A1A00B62DFF000200000001 /* RaceCardTests.swift in Sources */,
+                8A1A00C62DFF000200000001 /* RacePreparationTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+        8A1A00D22DFF000200000001 = {isa = XCBuildConfiguration; buildSettings = {
+            CODE_SIGN_STYLE = Automatic;
+            GENERATE_INFOPLIST_FILE = YES;
+            IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+            PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelMemoUITests;
+            PRODUCT_NAME = "$(TARGET_NAME)";
+            SWIFT_VERSION = 5.0;
+            TARGETED_DEVICE_FAMILY = "1,2";
+            TEST_TARGET_NAME = RaceFuelMemo;
+        }; name = Debug; };
+        8A1A00D32DFF000200000001 = {isa = XCBuildConfiguration; buildSettings = {
+            CODE_SIGN_STYLE = Automatic;
+            GENERATE_INFOPLIST_FILE = YES;
+            IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+            PRODUCT_BUNDLE_IDENTIFIER = com.mytysoldier.RaceFuelMemoUITests;
+            PRODUCT_NAME = "$(TARGET_NAME)";
+            SWIFT_VERSION = 5.0;
+            TARGETED_DEVICE_FAMILY = "1,2";
+            TEST_TARGET_NAME = RaceFuelMemo;
+        }; name = Release; };
 		8A1A00192DFF000200000001 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -585,6 +643,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+        8A1A00D42DFF000200000001 = {isa = XCConfigurationList; buildConfigurations = (8A1A00D22DFF000200000001, 8A1A00D32DFF000200000001); defaultConfigurationIsVisible = 0; defaultConfigurationName = Release; };
 		8A1A00172DFF000200000001 /* Build configuration list for PBXProject "RaceFuelMemo" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

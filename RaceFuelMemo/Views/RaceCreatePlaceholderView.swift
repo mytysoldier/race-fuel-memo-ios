@@ -3,11 +3,13 @@ import SwiftUI
 struct RaceCreatePlaceholderView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(ChecklistTemplateStore.self) private var checklistTemplateStore
+    @Environment(RaceCreationDraftStore.self) private var draftStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var raceName = ""
     @State private var raceDate = Date()
-    @State private var startTime = Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now) ?? .now
+    @State private var startTime =
+        Calendar.current.date(bySettingHour: 9, minute: 0, second: 0, of: .now) ?? .now
     @State private var distance = DistanceOption.halfMarathon
     @State private var usesCustomDistance = false
     @State private var customDistanceKm = 21.0975
@@ -27,10 +29,37 @@ struct RaceCreatePlaceholderView: View {
     @State private var isShowingFuelingEditor = false
     @State private var isShowingChecklistEditor = false
     @State private var isShowingReuse = false
+    @State private var step = RacePreparationStep.basic
+    @State private var isGuided = true
+    @State private var savedPlan: RacePlan?
+    @State private var didSave = false
     private let isDuplicate: Bool
 
-    init(initialPlan: RacePlan? = nil) {
+    init(initialPlan: RacePlan? = nil, savedDraft: RaceCreationDraft? = nil) {
         isDuplicate = initialPlan != nil
+        if initialPlan == nil, let draft = savedDraft {
+            _raceName = State(initialValue: draft.name)
+            _raceDate = State(initialValue: draft.raceDate)
+            _startTime = State(initialValue: draft.startTime)
+            let option = DistanceOption.allCases.first { $0.distanceKm == draft.distanceKm }
+            _distance = State(initialValue: option ?? .halfMarathon)
+            _usesCustomDistance = State(initialValue: draft.usesCustomDistance)
+            _customDistanceKm = State(initialValue: draft.customDistanceKm)
+            _targetHours = State(initialValue: draft.targetHours)
+            _targetMinutes = State(initialValue: draft.targetMinutes)
+            _gels = State(initialValue: draft.gelNames.map { GelDraft(name: $0) })
+            _memo = State(initialValue: draft.memo)
+            _checkpoints = State(initialValue: draft.checkpoints)
+            _pacePlans = State(initialValue: draft.pacePlans)
+            _selectedPacePlanID = State(initialValue: draft.selectedPacePlanID)
+            _fuelingEvents = State(initialValue: draft.fuelingEvents)
+            _checklistItems = State(initialValue: draft.checklistItems)
+            _checklistNotificationsEnabled = State(
+                initialValue: draft.checklistNotificationsEnabled)
+            _draftRacePlanID = State(initialValue: draft.id)
+            _step = State(initialValue: draft.step)
+            _isGuided = State(initialValue: draft.isGuided)
+        }
         guard let plan = initialPlan else { return }
         _raceName = State(initialValue: plan.name)
         _raceDate = State(initialValue: plan.raceDate)
@@ -41,9 +70,11 @@ struct RaceCreatePlaceholderView: View {
         _customDistanceKm = State(initialValue: plan.distanceKm)
         _targetHours = State(initialValue: plan.targetHours)
         _targetMinutes = State(initialValue: plan.targetMinutes)
-        _gels = State(initialValue: (0..<max(0, max(plan.gelCount, plan.gelNames?.count ?? 0))).map {
-            GelDraft(name: $0 < (plan.gelNames?.count ?? 0) ? plan.gelNames![$0] : "補給ジェル \($0 + 1)")
-        })
+        _gels = State(
+            initialValue: (0..<max(0, max(plan.gelCount, plan.gelNames?.count ?? 0))).map {
+                GelDraft(
+                    name: $0 < (plan.gelNames?.count ?? 0) ? plan.gelNames![$0] : "補給ジェル \($0 + 1)")
+            })
         _memo = State(initialValue: plan.memo)
         _checkpoints = State(initialValue: plan.checkpoints)
         _pacePlans = State(initialValue: plan.pacePlans)
@@ -55,195 +86,126 @@ struct RaceCreatePlaceholderView: View {
     }
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 20) {
-                formSection("計画を再利用") {
-                    if isDuplicate {
-                        Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。")
-                            .foregroundStyle(.secondary)
-                    }
-                    Button("テンプレート・保存済みレースから設定を再利用") {
-                        isShowingReuse = true
-                    }
-                }
-                formSection(String(localized: "race_create.section.basic_info")) {
-                    TextField(String(localized: "race_create.field.name"), text: $raceName)
-                        .textInputAutocapitalization(.never)
-                        .textFieldStyle(.roundedBorder)
-
-                if trimmedRaceName.isEmpty {
-                    validationMessage(String(localized: "race_create.validation.name_required"))
-                }
-
-                DatePicker(String(localized: "race_create.field.race_date"), selection: $raceDate, displayedComponents: .date)
-
-                DatePicker(String(localized: "race_create.field.start_time"), selection: $startTime, displayedComponents: .hourAndMinute)
-
-                Picker(String(localized: "race_create.field.distance"), selection: $distance) {
-                    ForEach(DistanceOption.allCases) { distanceOption in
-                        Text(distanceOption.label)
-                            .tag(distanceOption)
-                    }
-                }
-                Toggle("任意の距離を指定", isOn: $usesCustomDistance)
-                if usesCustomDistance {
-                    TextField("距離 (1〜200km)", value: $customDistanceKm,
-                              format: .number.precision(.fractionLength(0...4)))
-                        .keyboardType(.decimalPad)
-                }
-            }
-
-                formSection("基本目標タイム") {
-                    Stepper(value: $targetHours, in: 0...240) {
-                    LabeledContent(
-                        String(localized: "race_create.field.target_hours"),
-                        value: String(format: String(localized: "race_create.value.hours"), targetHours)
-                    )
-                }
-
-                HStack(spacing: 16) {
-                    Text(String(localized: "race_create.field.target_minutes"))
-                        .frame(width: 52, alignment: .leading)
-
-                    Picker("", selection: $targetMinutes) {
-                        ForEach(0..<60) { minute in
-                            Text(String(format: String(localized: "race_create.value.minutes"), minute))
-                                .tag(minute)
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(spacing: 20) {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Toggle("順番に作成（オフで従来の一括入力）", isOn: $isGuided)
+                            .accessibilityIdentifier("creation.guided")
+                        if isGuided {
+                            Text(
+                                "\(RacePreparationStep.allCases.firstIndex(of: step)! + 1)/6・\(step.title)"
+                            )
+                            .font(.title3.weight(.semibold))
+                            .accessibilityIdentifier("creation.step")
+                            Text(step.guidance).foregroundStyle(.secondary)
+                        }
+                        Text(
+                            isDuplicate
+                                ? "複製の入力はこの画面内で保持します。" : "入力は下書きとして自動保存します。編集画面の変更は「保存」で反映してください。"
+                        )
+                        .font(.footnote).foregroundStyle(.secondary)
+                        if let error = draftStore.error, !isDuplicate {
+                            validationMessage(error)
                         }
                     }
-                    .labelsHidden()
-                    .pickerStyle(.wheel)
-                    .frame(maxWidth: .infinity)
-                    .frame(height: 120)
-                    .clipped()
-                }
+                    .padding(.horizontal)
+                    .id("creation.top")
+                    if shows(.basic) {
+                        reuseSection
+                        basicSection
+                    }
 
-                if !hasValidTargetTime {
-                    validationMessage(String(localized: "race_create.validation.target_time_required"))
-                }
-            }
+                    if shows(.pace) {
+                        targetSection
+                        paceSection
+                    }
 
-                formSection(String(localized: "race_create.section.fueling")) {
-                    if fuelingEvents.isEmpty {
-                        Text("従来の補給ジェル")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-                        ForEach($gels) { $gel in
-                            HStack {
-                                TextField("補給ジェル名", text: $gel.name)
-                                    .textFieldStyle(.roundedBorder)
-                                Button(role: .destructive) {
-                                    gels.removeAll { $0.id == gel.id }
-                                } label: {
-                                    Image(systemName: "minus.circle.fill")
-                                }
-                                .buttonStyle(.plain)
+                    if shows(.fueling) {
+                        fuelingSection
+                    }
+
+                    if shows(.checkpoints) {
+                        checkpointSection
+                    }
+
+                    if shows(.checklist) {
+                        checklistSection
+                    }
+
+                    if shows(.output) {
+                        memoSection
+                        outputSection
+
+                        HStack {
+                            Spacer()
+                            Button(action: saveRacePlan) {
+                                Text("レースプランを作成")
+                                    .fontWeight(.semibold)
+                                    .padding(.horizontal, 24)
                             }
+                            .buttonStyle(.borderedProminent)
+                            .controlSize(.regular)
+                            .disabled(!canSave)
+                            .accessibilityIdentifier("creation.save")
+                            Spacer()
                         }
-
-                        Button {
-                            gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
-                        } label: {
-                            Label("補給ジェルを追加", systemImage: "plus.circle.fill")
-                        }
                     }
-
-                    Divider()
-                    Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
-                        .foregroundStyle(.secondary)
-                    Button {
-                        isShowingFuelingEditor = true
-                    } label: {
-                        Label("補給・給水プランを設定", systemImage: "drop.fill")
-                    }
-                    if let error = RaceFuelingPlanCalculator.validationError(for: draftRacePlan) {
-                        validationMessage(error)
-                    }
-                }
-
-                formSection("チェックポイント") {
-                    Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
-                        .foregroundStyle(.secondary)
-                    Button {
-                        isShowingCheckpointEditor = true
-                    } label: {
-                        Label("地点を編集", systemImage: "mappin.and.ellipse")
-                    }
-                    if let validationError = RaceCheckpointValidator.error(for: draftRacePlan) {
-                        validationMessage(validationError)
-                    }
-                }
-
-                formSection("ペース戦略") {
-                    Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
-                        .foregroundStyle(.secondary)
-                    Button {
-                        isShowingPacePlanEditor = true
-                    } label: {
-                        Label("A・B・Cプランを設定", systemImage: "figure.run")
-                    }
-                    if let error = RacePacePlanCalculator.validationError(for: draftRacePlan) {
-                        validationMessage(error)
-                    }
-                }
-
-                formSection("チェックリスト") {
-                    Text("\(checklistItems.count)項目を設定済み")
-                        .foregroundStyle(.secondary)
-                    Menu("テンプレートを適用") {
-                        ForEach(checklistTemplateStore.templates) { template in
-                            Button(template.name) {
-                                checklistItems = template.checklistItems()
+                    if isGuided {
+                        HStack {
+                            if step != .basic {
+                                Button("前へ") { moveStep(-1) }
+                                    .accessibilityIdentifier("creation.previous")
                             }
+                            Spacer()
+                            if step != .output {
+                                Button("次へ") { moveStep(1) }
+                                    .buttonStyle(.borderedProminent)
+                                    .accessibilityIdentifier("creation.next")
+                            }
+                        }.padding(.horizontal)
+                    }
+                    if isGuided && step != .output {
+                        formSection("全体を確認") {
+                            RacePreparationView(plan: draftRacePlan) { select($0) }
                         }
                     }
-                    Button {
-                        isShowingChecklistEditor = true
-                    } label: {
-                        Label("項目と期限を編集", systemImage: "checklist")
+                    if let saveError = racePlanStore.storageError ?? racePlanStore.validationError {
+                        validationMessage(saveError)
+                            .padding(.horizontal)
                     }
-                }
-
-                formSection(String(localized: "race_create.section.memo")) {
-                    TextField(
-                        String(localized: "race_create.section.memo"),
-                        text: $memo,
-                        prompt: Text(String(localized: "race_create.field.memo_placeholder")),
-                        axis: .vertical
-                    )
-                    .lineLimit(4...8)
-                    .textFieldStyle(.roundedBorder)
-                }
-
-                HStack {
-                    Spacer()
-                    Button(action: saveRacePlan) {
-                        Text("レースプランを作成")
-                            .fontWeight(.semibold)
-                            .padding(.horizontal, 24)
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.regular)
-                    .disabled(!canSave)
-                    Spacer()
-                }
-                if let saveError = racePlanStore.storageError ?? racePlanStore.validationError {
-                    validationMessage(saveError)
-                        .padding(.horizontal)
                 }
             }
+            .onChange(of: step) { _, _ in proxy.scrollTo("creation.top", anchor: .top) }
         }
         .scrollDismissesKeyboard(.interactively)
+        .onChange(of: creationDraft) { _, draft in
+            if !isDuplicate && !didSave { draftStore.save(draft) }
+        }
+        .onDisappear {
+            if !isDuplicate && !didSave { draftStore.save(creationDraft) }
+        }
         .onChange(of: raceStartDateTime) { previousStartTime, newStartTime in
             checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
             let offset = newStartTime.timeIntervalSince(previousStartTime)
             for index in checklistItems.indices where checklistItems[index].dueDate != nil {
-                checklistItems[index].dueDate = checklistItems[index].dueDate?.addingTimeInterval(offset)
+                checklistItems[index].dueDate = checklistItems[index].dueDate?.addingTimeInterval(
+                    offset)
             }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(String(localized: "race_create.title"))
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("入力完了") {
+                    UIApplication.shared.sendAction(
+                        #selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .accessibilityIdentifier("creation.keyboardDone")
+            }
+        }
         .sheet(isPresented: $isShowingCheckpointEditor) {
             RaceCheckpointEditorView(racePlan: draftRacePlan) {
                 checkpoints = $0
@@ -277,9 +239,239 @@ struct RaceCreatePlaceholderView: View {
                 return true
             }
         }
+        .sheet(item: $savedPlan, onDismiss: { dismiss() }) { plan in
+            NavigationStack {
+                RaceCardView(racePlan: plan)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("完了") { savedPlan = nil }
+                                .accessibilityIdentifier("creation.done")
+                        }
+                    }
+            }
+        }
     }
 
-    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func shows(_ step: RacePreparationStep) -> Bool { !isGuided || self.step == step }
+    private func select(_ step: RacePreparationStep) {
+        isGuided = true
+        self.step = step
+    }
+    private func moveStep(_ offset: Int) {
+        let steps = RacePreparationStep.allCases
+        guard let index = steps.firstIndex(of: step), steps.indices.contains(index + offset) else {
+            return
+        }
+        step = steps[index + offset]
+    }
+    private var creationDraft: RaceCreationDraft {
+        RaceCreationDraft(
+            id: draftRacePlanID, name: raceName, raceDate: raceDate, startTime: startTime,
+            distanceKm: distance.distanceKm, usesCustomDistance: usesCustomDistance,
+            customDistanceKm: customDistanceKm, targetHours: targetHours,
+            targetMinutes: targetMinutes,
+            gelNames: gels.map(\.name), memo: memo, checkpoints: checkpoints, pacePlans: pacePlans,
+            selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents,
+            checklistItems: checklistItems,
+            checklistNotificationsEnabled: checklistNotificationsEnabled,
+            step: step, isGuided: isGuided)
+    }
+
+    private var reuseSection: some View {
+        formSection("計画を再利用") {
+            if isDuplicate {
+                Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。")
+                    .foregroundStyle(.secondary)
+            }
+            Button("テンプレート・保存済みレースから設定を再利用") {
+                isShowingReuse = true
+            }
+        }
+    }
+
+    private var basicSection: some View {
+        formSection(String(localized: "race_create.section.basic_info")) {
+            TextField(String(localized: "race_create.field.name"), text: $raceName)
+                .accessibilityIdentifier("creation.name")
+                .textInputAutocapitalization(.never)
+                .textFieldStyle(.roundedBorder)
+
+            if trimmedRaceName.isEmpty {
+                validationMessage(String(localized: "race_create.validation.name_required"))
+            }
+
+            DatePicker(
+                String(localized: "race_create.field.race_date"), selection: $raceDate,
+                displayedComponents: .date)
+
+            DatePicker(
+                String(localized: "race_create.field.start_time"), selection: $startTime,
+                displayedComponents: .hourAndMinute)
+
+            Picker(String(localized: "race_create.field.distance"), selection: $distance) {
+                ForEach(DistanceOption.allCases) { distanceOption in
+                    Text(distanceOption.label)
+                        .tag(distanceOption)
+                }
+            }
+            Toggle("任意の距離を指定", isOn: $usesCustomDistance)
+            if usesCustomDistance {
+                TextField(
+                    "距離 (1〜200km)", value: $customDistanceKm,
+                    format: .number.precision(.fractionLength(0...4))
+                )
+                .keyboardType(.decimalPad)
+            }
+        }
+    }
+
+    private var targetSection: some View {
+        formSection("基本目標タイム") {
+            Stepper(value: $targetHours, in: 0...240) {
+                LabeledContent(
+                    String(localized: "race_create.field.target_hours"),
+                    value: String(format: String(localized: "race_create.value.hours"), targetHours)
+                )
+            }
+
+            HStack(spacing: 16) {
+                Text(String(localized: "race_create.field.target_minutes"))
+                    .frame(width: 52, alignment: .leading)
+
+                Picker("", selection: $targetMinutes) {
+                    ForEach(0..<60) { minute in
+                        Text(String(format: String(localized: "race_create.value.minutes"), minute))
+                            .tag(minute)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.wheel)
+                .frame(maxWidth: .infinity)
+                .frame(height: 120)
+                .clipped()
+            }
+
+            if !hasValidTargetTime {
+                validationMessage(String(localized: "race_create.validation.target_time_required"))
+            }
+        }
+    }
+
+    private var paceSection: some View {
+        formSection("ペース戦略・Pro対象") {
+            Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
+                .foregroundStyle(.secondary)
+            Button("A・B・Cプランを設定") { isShowingPacePlanEditor = true }
+            if let error = RacePacePlanCalculator.validationError(for: draftRacePlan) {
+                validationMessage(error)
+            }
+        }
+    }
+
+    private var fuelingSection: some View {
+        formSection(String(localized: "race_create.section.fueling")) {
+            if fuelingEvents.isEmpty {
+                Text("従来の補給ジェル")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                ForEach($gels) { $gel in
+                    HStack {
+                        TextField("補給ジェル名", text: $gel.name)
+                            .textFieldStyle(.roundedBorder)
+                        Button(role: .destructive) {
+                            gels.removeAll { $0.id == gel.id }
+                        } label: {
+                            Image(systemName: "minus.circle.fill")
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+
+                Button {
+                    gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
+                } label: {
+                    Label("補給ジェルを追加", systemImage: "plus.circle.fill")
+                }
+            }
+
+            Divider()
+            Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
+                .foregroundStyle(.secondary)
+            Button {
+                isShowingFuelingEditor = true
+            } label: {
+                Label("補給・給水プランを設定", systemImage: "drop.fill")
+            }
+            if let error = RaceFuelingPlanCalculator.validationError(for: draftRacePlan) {
+                validationMessage(error)
+            }
+        }
+    }
+
+    private var checkpointSection: some View {
+        formSection("チェックポイント") {
+            Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
+                .foregroundStyle(.secondary)
+            Button {
+                isShowingCheckpointEditor = true
+            } label: {
+                Label("地点を編集", systemImage: "mappin.and.ellipse")
+            }
+            if let validationError = RaceCheckpointValidator.error(for: draftRacePlan) {
+                validationMessage(validationError)
+            }
+        }
+    }
+
+    private var checklistSection: some View {
+        formSection("チェックリスト") {
+            Text("\(checklistItems.count)項目を設定済み")
+                .foregroundStyle(.secondary)
+            Menu("テンプレートを適用") {
+                ForEach(checklistTemplateStore.templates) { template in
+                    Button(template.name) {
+                        checklistItems = template.checklistItems()
+                    }
+                }
+            }
+            Button {
+                isShowingChecklistEditor = true
+            } label: {
+                Label("項目と期限を編集", systemImage: "checklist")
+            }
+            ForEach($checklistItems) { $item in
+                Toggle(item.title, isOn: $item.isChecked)
+            }
+        }
+    }
+
+    private var memoSection: some View {
+        formSection(String(localized: "race_create.section.memo")) {
+            TextField(
+                String(localized: "race_create.section.memo"),
+                text: $memo,
+                prompt: Text(String(localized: "race_create.field.memo_placeholder")),
+                axis: .vertical
+            )
+            .lineLimit(4...8)
+            .textFieldStyle(.roundedBorder)
+        }
+    }
+
+    private var outputSection: some View {
+        formSection("確認・出力") {
+            RacePreparationView(plan: draftRacePlan) { select($0) }
+            NavigationLink("保存前にRace Cardを確認") {
+                RaceCardView(racePlan: draftRacePlan)
+            }
+            .disabled(!canSave)
+            .accessibilityIdentifier("creation.preview")
+        }
+    }
+
+    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content)
+        -> some View
+    {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
                 .font(.headline)
@@ -314,7 +506,8 @@ struct RaceCreatePlaceholderView: View {
 
     private var draftRacePlan: RacePlan {
         var racePlan = RacePlan(
-            id: draftRacePlanID, name: trimmedRaceName, raceDate: raceDate, startTime: raceStartDateTime,
+            id: draftRacePlanID, name: trimmedRaceName, raceDate: raceDate,
+            startTime: raceStartDateTime,
             distanceKm: selectedDistanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gels.count, gelNames: gels.map(\.name), memo: trimmedMemo,
             checklistItems: checklistItems,
@@ -386,7 +579,11 @@ struct RaceCreatePlaceholderView: View {
         var racePlan = draftRacePlan
         racePlan.gelNames = gels.map { $0.name.trimmingCharacters(in: .whitespacesAndNewlines) }
         let saved = racePlanStore.addRacePlan(racePlan)
-        if saved { dismiss() }
+        if saved {
+            didSave = true
+            if !isDuplicate { draftStore.clear(savedID: racePlan.id) }
+            savedPlan = racePlan
+        }
     }
 }
 
@@ -403,6 +600,7 @@ private struct GelDraft: Identifiable {
     .environment(RaceFuelingPresetStore())
     .environment(ChecklistTemplateStore())
     .environment(RacePlanTemplateStore())
+    .environment(RaceCreationDraftStore())
 }
 
 private struct EmptyRacePlanStorage: RacePlanStorage {

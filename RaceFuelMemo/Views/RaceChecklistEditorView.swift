@@ -126,6 +126,7 @@ struct RaceChecklistEditorView: View {
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存", action: save)
+                        .accessibilityIdentifier("checklist.save")
                         .disabled(hasInvalidTitle || isSaving)
                 }
             }
@@ -155,18 +156,33 @@ struct RaceChecklistEditorView: View {
         VStack(alignment: .leading, spacing: 8) {
             TextField("項目名", text: item.title)
                 .font(.headline)
-            Picker("カテゴリ", selection: categoryBinding(for: item)) {
+            // Form pickers inside this row can capture taps on adjacent switches.
+            // Explicit borderless menus keep each control's hit area independent.
+            Menu {
                 ForEach(ChecklistCategory.allCases, id: \.self) { category in
-                    Text(category.title).tag(category)
+                    Button(category.title) { categoryBinding(for: item).wrappedValue = category }
                 }
+            } label: {
+                LabeledContent("カテゴリ", value: categoryBinding(for: item).wrappedValue.title)
             }
+            .buttonStyle(.borderless)
             Toggle("必須", isOn: item.isRequired)
-            Picker("期限", selection: dueTimingBinding(for: item)) {
-                Text("なし").tag(Optional<ChecklistDueTiming>.none)
-                ForEach(ChecklistDueTiming.allCases, id: \.self) { timing in
-                    Text(timing.title).tag(Optional(timing))
-                }
+            HStack {
+                Text("準備完了").accessibilityHidden(true)
+                Spacer()
+                Toggle("準備完了", isOn: item.isChecked)
+                    .labelsHidden()
+                    .accessibilityLabel("準備完了")
             }
+            Menu {
+                Button("なし") { dueTimingBinding(for: item).wrappedValue = nil }
+                ForEach(ChecklistDueTiming.allCases, id: \.self) { timing in
+                    Button(timing.title) { dueTimingBinding(for: item).wrappedValue = timing }
+                }
+            } label: {
+                LabeledContent("期限", value: dueTimingBinding(for: item).wrappedValue?.title ?? "なし")
+            }
+            .buttonStyle(.borderless)
             if item.wrappedValue.dueTiming == nil, let dueDate = item.wrappedValue.dueDate {
                 Text("従来の期限: \(dueDate.formatted(date: .abbreviated, time: .shortened))")
                     .font(.footnote)
