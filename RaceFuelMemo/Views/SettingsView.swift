@@ -5,6 +5,11 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("再利用") {
+                NavigationLink("計画テンプレートを管理") {
+                    RacePlanTemplatesView()
+                }
+            }
             Section(String(localized: "settings.section.app")) {
                 NavigationLink {
                     AppInformationView()
@@ -134,4 +139,5 @@ private struct PrivacyPolicyView: View {
     NavigationStack {
         SettingsView()
     }
+    .environment(RacePlanTemplateStore())
 }

@@ -26,10 +26,46 @@ struct RaceCreatePlaceholderView: View {
     @State private var isShowingPacePlanEditor = false
     @State private var isShowingFuelingEditor = false
     @State private var isShowingChecklistEditor = false
+    @State private var isShowingReuse = false
+    private let isDuplicate: Bool
+
+    init(initialPlan: RacePlan? = nil) {
+        isDuplicate = initialPlan != nil
+        guard let plan = initialPlan else { return }
+        _raceName = State(initialValue: plan.name)
+        _raceDate = State(initialValue: plan.raceDate)
+        _startTime = State(initialValue: plan.startTime)
+        let option = DistanceOption.allCases.first { $0.distanceKm == plan.distanceKm }
+        _distance = State(initialValue: option ?? .halfMarathon)
+        _usesCustomDistance = State(initialValue: option == nil)
+        _customDistanceKm = State(initialValue: plan.distanceKm)
+        _targetHours = State(initialValue: plan.targetHours)
+        _targetMinutes = State(initialValue: plan.targetMinutes)
+        _gels = State(initialValue: (0..<max(0, max(plan.gelCount, plan.gelNames?.count ?? 0))).map {
+            GelDraft(name: $0 < (plan.gelNames?.count ?? 0) ? plan.gelNames![$0] : "補給ジェル \($0 + 1)")
+        })
+        _memo = State(initialValue: plan.memo)
+        _checkpoints = State(initialValue: plan.checkpoints)
+        _pacePlans = State(initialValue: plan.pacePlans)
+        _selectedPacePlanID = State(initialValue: plan.selectedPacePlanID)
+        _fuelingEvents = State(initialValue: plan.fuelingEvents)
+        _checklistItems = State(initialValue: plan.checklistItems)
+        _checklistNotificationsEnabled = State(initialValue: plan.checklistNotificationsEnabled)
+        _draftRacePlanID = State(initialValue: plan.id)
+    }
 
     var body: some View {
         ScrollView {
             VStack(spacing: 20) {
+                formSection("計画を再利用") {
+                    if isDuplicate {
+                        Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。")
+                            .foregroundStyle(.secondary)
+                    }
+                    Button("テンプレート・保存済みレースから設定を再利用") {
+                        isShowingReuse = true
+                    }
+                }
                 formSection(String(localized: "race_create.section.basic_info")) {
                     TextField(String(localized: "race_create.field.name"), text: $raceName)
                         .textInputAutocapitalization(.never)
@@ -200,6 +236,10 @@ struct RaceCreatePlaceholderView: View {
         .scrollDismissesKeyboard(.interactively)
         .onChange(of: raceStartDateTime) { previousStartTime, newStartTime in
             checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
+            let offset = newStartTime.timeIntervalSince(previousStartTime)
+            for index in checklistItems.indices where checklistItems[index].dueDate != nil {
+                checklistItems[index].dueDate = checklistItems[index].dueDate?.addingTimeInterval(offset)
+            }
         }
         .background(Color(.systemGroupedBackground))
         .navigationTitle(String(localized: "race_create.title"))
@@ -228,6 +268,12 @@ struct RaceCreatePlaceholderView: View {
             RaceChecklistEditorView(racePlan: draftRacePlan) { items, notificationsEnabled in
                 checklistItems = items
                 checklistNotificationsEnabled = notificationsEnabled
+                return true
+            }
+        }
+        .sheet(isPresented: $isShowingReuse) {
+            RacePlanReuseView(destination: draftRacePlan) { updated in
+                applyReusableSettings(updated)
                 return true
             }
         }
@@ -287,6 +333,25 @@ struct RaceCreatePlaceholderView: View {
         pacePlans = plan.pacePlans
     }
 
+    private func applyReusableSettings(_ plan: RacePlan) {
+        let option = DistanceOption.allCases.first { $0.distanceKm == plan.distanceKm }
+        distance = option ?? .halfMarathon
+        usesCustomDistance = option == nil
+        customDistanceKm = plan.distanceKm
+        targetHours = plan.targetHours
+        targetMinutes = plan.targetMinutes
+        pacePlans = plan.pacePlans
+        selectedPacePlanID = plan.selectedPacePlanID
+        fuelingEvents = plan.fuelingEvents
+        let names = plan.gelNames ?? []
+        gels = (0..<max(0, max(plan.gelCount, names.count))).map {
+            GelDraft(name: $0 < names.count ? names[$0] : "補給ジェル \($0 + 1)")
+        }
+        checkpoints = plan.checkpoints
+        checklistItems = plan.checklistItems
+        checklistNotificationsEnabled = plan.checklistNotificationsEnabled
+    }
+
     private func validationMessage(_ message: String) -> some View {
         Label(message, systemImage: "exclamationmark.circle")
             .font(.footnote)
@@ -337,6 +402,7 @@ private struct GelDraft: Identifiable {
     .environment(RacePlanStore(storage: EmptyRacePlanStorage()))
     .environment(RaceFuelingPresetStore())
     .environment(ChecklistTemplateStore())
+    .environment(RacePlanTemplateStore())
 }
 
 private struct EmptyRacePlanStorage: RacePlanStorage {
