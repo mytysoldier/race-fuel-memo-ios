@@ -69,6 +69,8 @@
             ReferencedContainer = "container:RaceFuelMemo.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
+      <StoreKitConfigurationFileReference identifier = "../../StoreKit/RunningRaceMate.storekit">
+      </StoreKitConfigurationFileReference>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
