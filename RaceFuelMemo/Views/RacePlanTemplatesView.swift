@@ -145,6 +145,7 @@ struct RacePlanTemplatesView: View {
         .alert("テンプレートの名称変更", isPresented: $showsRename) {
             TextField("名前", text: $name)
             Button("保存") {
+                operationError = nil
                 if let template = templateToRename, !templateStore.rename(id: template.id, to: name) {
                     operationError = "名称を変更できません。空でない名前を入力してください。"
                 }
@@ -153,6 +154,7 @@ struct RacePlanTemplatesView: View {
         }
         .alert("テンプレートを削除しますか？", isPresented: $showsDelete) {
             Button("削除", role: .destructive) {
+                operationError = nil
                 if let template = templateToDelete, !templateStore.delete(id: template.id) {
                     operationError = "テンプレートを削除できませんでした。"
                 }
