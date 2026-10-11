@@ -7,6 +7,7 @@
 - Open a pull request targeting `main` for the Issue work.
 - Keep each pull request scoped to its Issue unless the user explicitly asks to combine work.
 - Include the related Issue number in the pull request body, using `Closes #<number>` when the PR should close the Issue.
+- Immediately after creating each pull request, post `@codex review` on that pull request. Treat the review request as part of pull request creation, before reporting the Issue work complete.
 
 ## Implementation Completion Rule
 
