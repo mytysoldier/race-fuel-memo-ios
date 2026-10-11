@@ -61,6 +61,7 @@ struct RaceListView: View {
             }
             .navigationTitle(String(localized: "race_list.title"))
             .toolbar {
+                ToolbarItem(placement: .bottomBar) { ProInformationButton() }
                 ToolbarItem(placement: .topBarLeading) {
                     Button {
                         isShowingSettings = true
@@ -136,6 +137,7 @@ struct RaceListView: View {
         .environment(RacePlanStore.preview)
         .environment(RacePlanTemplateStore())
         .environment(RaceCreationDraftStore())
+        .environment(ProStore())
 }
 
 private struct RacePlanRow: View {

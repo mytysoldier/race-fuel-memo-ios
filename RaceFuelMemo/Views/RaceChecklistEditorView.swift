@@ -4,6 +4,7 @@ struct RaceChecklistEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(ChecklistTemplateStore.self) private var templateStore
+    @Environment(ProStore.self) private var proStore
 
     let racePlan: RacePlan
     let onSave: ([ChecklistItem], Bool) -> Bool
@@ -62,6 +63,7 @@ struct RaceChecklistEditorView: View {
                 Section("テンプレートとして保存") {
                     TextField("テンプレート名", text: $templateName)
                     Button("現在の項目を保存") {
+                        guard proStore.canUse(.customChecklist) else { return }
                         if templateStore.save(name: templateName, items: normalizedItems) {
                             templateName = ""
                         }
@@ -84,6 +86,7 @@ struct RaceChecklistEditorView: View {
                             }
                             Spacer()
                             Button("適用") {
+                                guard proStore.canUse(.customChecklist) else { return }
                                 items = template.checklistItems()
                             }
                             .buttonStyle(.borderless)
@@ -133,6 +136,7 @@ struct RaceChecklistEditorView: View {
             .alert("テンプレート名を変更", isPresented: $isRenaming) {
                 TextField("名前", text: $renameName)
                 Button("保存") {
+                    guard proStore.canUse(.customChecklist) else { return }
                     if let id = renameTemplateID { _ = templateStore.rename(id: id, to: renameName) }
                 }
                 Button("キャンセル", role: .cancel) {}
@@ -150,6 +154,7 @@ struct RaceChecklistEditorView: View {
                 Text(errorText)
             }
         }
+        .proProtected(.customChecklist)
     }
 
     private func itemEditor(_ item: Binding<ChecklistItem>) -> some View {
@@ -235,6 +240,7 @@ struct RaceChecklistEditorView: View {
                     denied = true
                 }
             }
+            guard proStore.canUse(.customChecklist) else { isSaving = false; return }
             let saved = onSave(normalizedItems, enable)
             isSaving = false
             if saved && !denied {

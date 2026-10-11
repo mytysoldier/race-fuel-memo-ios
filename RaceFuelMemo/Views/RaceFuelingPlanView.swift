@@ -3,6 +3,7 @@ import SwiftUI
 struct RaceFuelingPlanEditorView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(RaceFuelingPresetStore.self) private var presetStore
+    @Environment(ProStore.self) private var proStore
     @State private var events: [RaceFuelingEvent]
     @State private var presetName = ""
 
@@ -50,6 +51,7 @@ struct RaceFuelingPlanEditorView: View {
                     Section("この計画をプリセットに保存") {
                         TextField("プリセット名", text: $presetName)
                         Button("保存") {
+                            guard proStore.canUse(.fuelingPlan) else { return }
                             let name = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
                             guard !name.isEmpty else { return }
                             var plan = candidate
@@ -75,6 +77,7 @@ struct RaceFuelingPlanEditorView: View {
                                 }
                                 Spacer()
                                 Button("適用") {
+                                    guard proStore.canUse(.fuelingPlan) else { return }
                                     events = preset.events(for: racePlan)
                                 }
                                 .buttonStyle(.borderless)
@@ -107,6 +110,7 @@ struct RaceFuelingPlanEditorView: View {
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
+                        guard proStore.canUse(.fuelingPlan) else { return }
                         onSave(events)
                         dismiss()
                     }
@@ -114,6 +118,7 @@ struct RaceFuelingPlanEditorView: View {
                 }
             }
         }
+        .proProtected(.fuelingPlan)
     }
 
     private func eventRow(_ binding: Binding<RaceFuelingEvent>) -> some View {

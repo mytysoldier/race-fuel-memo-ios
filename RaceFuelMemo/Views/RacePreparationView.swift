@@ -1,37 +1,44 @@
 import SwiftUI
 
 struct RacePreparationView: View {
+    @Environment(ProStore.self) private var proStore
     let plan: RacePlan
     let onSelect: (RacePreparationStep) -> Void
     var body: some View {
         let preparation = RacePreparation(plan: plan)
         VStack(alignment: .leading, spacing: 12) {
-            Text("準備状況・Pro対象").font(.headline).accessibilityAddTraits(.isHeader)
-            ForEach(preparation.statuses) { status in
-                Button {
-                    onSelect(status.step)
-                } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Label(
-                            "\(status.step.title)・\(status.label)",
-                            systemImage: symbol(status.state)
-                        )
-                        .font(.subheadline.weight(.semibold))
-                        Text(status.detail).font(.footnote).foregroundStyle(.secondary)
+            Text("準備状況 · Pro").font(.headline).accessibilityAddTraits(.isHeader)
+            if proStore.canUse(.preparationDashboard) {
+                ForEach(preparation.statuses) { status in
+                    Button {
+                        onSelect(status.step)
+                    } label: {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label(
+                                "\(status.step.title)・\(status.label)",
+                                systemImage: symbol(status.state)
+                            )
+                            .font(.subheadline.weight(.semibold))
+                            Text(status.detail).font(.footnote).foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.vertical, 5)
                     }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, 5)
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("preparation.\(status.id)")
+                    .accessibilityElement(children: .combine)
+                    .accessibilityHint("タップして設定を確認・修正")
                 }
-                .buttonStyle(.plain)
-                .accessibilityIdentifier("preparation.\(status.id)")
-                .accessibilityElement(children: .combine)
-                .accessibilityHint("タップして設定を確認・修正")
+                Button("次に設定: \(preparation.nextStep.title)") {
+                    onSelect(preparation.nextStep)
+                }
+                .accessibilityIdentifier("preparation.next")
+            } else {
+                Text("関門・補給・必須項目の準備状況をまとめて確認できます。基本情報や標準チェックリストは無料で利用できます。")
+                    .font(.footnote).foregroundStyle(.secondary)
+                ProFeatureButton(feature: .preparationDashboard, title: "準備状況の詳細を見る") {}
             }
-            Button("次に設定: \(preparation.nextStep.title)") {
-                onSelect(preparation.nextStep)
-            }
-            .accessibilityIdentifier("preparation.next")
-            Text("Pro対象: 詳細ペース・通過地点・補給プラン・チェックリスト拡張・計画の再利用・Race Card出力。現在は購入なしで利用できます。")
+            Text("Pro対象: 詳細ペース・通過地点・補給プラン・チェックリスト拡張・計画の再利用・Race Card出力。")
                 .font(.footnote).foregroundStyle(.secondary)
         }
     }

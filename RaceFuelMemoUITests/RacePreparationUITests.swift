@@ -9,24 +9,36 @@ final class RacePreparationUITests: XCTestCase {
         app = XCUIApplication()
         app.launchArguments = [
             "--ui-testing", "--reset-ui-testing", "-AppleLanguages", "(ja)", "-AppleLocale",
-            "ja_JP",
+            "ja_JP", "--pro-ui-testing",
         ]
     }
 
     private func tap(_ element: XCUIElement) {
-        XCTAssertTrue(element.waitForExistence(timeout: 10))
-        if element.label == "キャンセル" || element.label == "保存" {
+        _ = element.waitForExistence(timeout: 3)
+        if element.exists && (element.label == "キャンセル" || element.label == "保存") {
             XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(
                 predicate: NSPredicate(format: "hittable == true"), object: element)], timeout: 10), .completed)
         }
-        for _ in 0..<40 where !element.isHittable {
-            let scroll = app.scrollViews.firstMatch.exists ? app.scrollViews.firstMatch : app.collectionViews.firstMatch
-            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.8))
+        for attempt in 0..<40 {
+            if element.exists && element.isHittable { break }
+            // Exclude the keyboard's short horizontal candidate scroll view.
+            // Only use a visible content surface (not the screen behind a sheet).
+            let scroll = app.scrollViews.allElementsBoundByIndex
+                .filter { $0.frame.height > 150 && $0.isHittable }
+                .max { $0.frame.height < $1.frame.height }
+                ?? app.collectionViews.allElementsBoundByIndex
+                    .filter { $0.frame.height > 150 && $0.isHittable }
+                    .max { $0.frame.height < $1.frame.height }
+                ?? app.collectionViews.firstMatch
+            let above = element.exists && !element.frame.isEmpty
+                ? element.frame.midY < scroll.frame.midY : attempt >= 20
+            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: above ? 0.2 : 0.8))
                 .press(
                     forDuration: 0.05,
-                    thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: 0.2))
+                    thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: above ? 0.8 : 0.2))
                 )
         }
+        XCTAssertTrue(element.exists)
         XCTAssertTrue(element.isHittable)
         XCTAssertTrue(
             NSPredicate(format: "enabled == true").evaluate(with: element)
@@ -36,7 +48,14 @@ final class RacePreparationUITests: XCTestCase {
                             predicate: NSPredicate(format: "enabled == true"), object: element)
                     ], timeout: 10) == .completed
         )
-        element.tap()
+        if element.elementType == .switch {
+            // A SwiftUI Toggle's accessibility frame can include its entire
+            // label row. Hit the native switch at the trailing edge, not the label.
+            element.coordinate(withNormalizedOffset: CGVector(dx: 1, dy: 0.5))
+                .withOffset(CGVector(dx: -20, dy: 0)).tap()
+        } else {
+            element.tap()
+        }
     }
 
     private func screenshot(_ name: String) {
@@ -113,5 +132,118 @@ final class RacePreparationUITests: XCTestCase {
         screenshot("large-dark-race-card")
         tap(app.buttons["creation.done"])
         XCTAssertTrue(app.staticTexts["Legacy race"].waitForExistence(timeout: 10))
+    }
+
+    private func assertPaywallAndClose() {
+        XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["paywall.priceUnavailable"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.staticTexts["paywall.price"].exists)
+        tap(app.buttons["paywall.retry"])
+        XCTAssertTrue(app.staticTexts["paywall.priceUnavailable"].waitForExistence(timeout: 10))
+        tap(app.buttons["paywall.close"])
+    }
+
+    func testFreeCreationGatesEveryAdvancedFeatureAndKeepsDraftOnDismiss() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments += ["--large-ui-testing", "--dark-ui-testing"]
+        app.launch()
+        tap(app.buttons["races.add"])
+        tap(app.textFields["creation.name"])
+        app.textFields["creation.name"].typeText("Free race")
+        tap(app.buttons["creation.keyboardDone"])
+        tap(app.buttons["pro.planReuse"])
+        screenshot("paywall-large-dark")
+        assertPaywallAndClose()
+        tap(app.buttons["pro.preparationDashboard"])
+        assertPaywallAndClose()
+        for feature in ["paceStrategies", "checkpoints", "fuelingPlan", "customChecklist"] {
+            tap(app.buttons["creation.next"])
+            tap(app.buttons["pro.\(feature)"])
+            assertPaywallAndClose()
+        }
+        tap(app.buttons["creation.next"])
+        tap(app.buttons["creation.preview"])
+        assertPaywallAndClose()
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--reset-ui-testing" }
+        app.launch()
+        tap(app.buttons["races.add"])
+        XCTAssertTrue(app.staticTexts["creation.step"].label.contains("確認・出力"))
+        // Saving this restored draft and finding its original name below proves
+        // that the input survived all paywall dismissals and the app restart.
+        tap(app.buttons["creation.save"])
+        XCTAssertTrue(app.staticTexts["Free race"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.navigationBars["Race Card出力"].exists)
+        tap(app.staticTexts["Free race"])
+        XCTAssertTrue(app.buttons["編集"].waitForExistence(timeout: 10))
+        screenshot("free-saved-detail-large-dark")
+    }
+
+    func testFreeSavedAdvancedRaceRemainsReadableAndBasicEditingAndChecksWork() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments.append("--preparation-fixture")
+        app.launch()
+        tap(app.staticTexts["Warning race"])
+        tap(app.staticTexts["Late cutoff"])
+        tap(app.switches["Required gear"])
+        XCTAssertEqual(app.switches["Required gear"].value as? String, "1")
+        tap(app.buttons["pro.customChecklist"])
+        assertPaywallAndClose()
+        tap(app.buttons["編集"])
+        tap(app.textFields["planEditor.name"])
+        app.textFields["planEditor.name"].typeText(" updated")
+        tap(app.buttons["pro.checkpoints"])
+        assertPaywallAndClose()
+        tap(app.buttons["planEditor.save"])
+        tap(app.staticTexts["Late cutoff"])
+        tap(app.switches["Required gear"])
+        // Basic editing has not reset the saved checked state.
+        XCTAssertEqual(app.switches["Required gear"].value as? String, "0")
+        app.terminate()
+        app.launchArguments.removeAll { $0 == "--reset-ui-testing" || $0 == "--preparation-fixture" }
+        app.launch()
+        tap(app.staticTexts["Warning race updated"])
+        tap(app.staticTexts["Late cutoff"])
+        screenshot("free-existing-advanced-race")
+    }
+
+    func testPaywallInformationAccessibilityAndDismissal() throws {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launch()
+        tap(app.buttons["pro.information"])
+        XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 10))
+        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped, .sufficientElementDescription])
+        screenshot("paywall-information-accessibility")
+        assertPaywallAndClose()
+        XCTAssertTrue(app.buttons["races.add"].waitForExistence(timeout: 10))
+    }
+
+    func testPaywallMaximumTextDarkModeDismissal() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments += ["--large-ui-testing", "--dark-ui-testing"]
+        app.launch()
+        tap(app.buttons["pro.information"])
+        XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 10))
+        screenshot("paywall-maximum-text-dark")
+        tap(app.buttons["paywall.close"])
+        XCTAssertTrue(app.buttons["races.add"].waitForExistence(timeout: 10))
+    }
+
+    func testProCreationCanOpenAdvancedEditorsWithoutPaywall() {
+        app.launch()
+        tap(app.buttons["races.add"])
+        tap(app.buttons["pro.planReuse"])
+        XCTAssertTrue(app.navigationBars["計画の設定を再利用"].waitForExistence(timeout: 10))
+        tap(app.buttons["キャンセル"])
+        for (feature, title) in [
+            ("paceStrategies", "ペース戦略"), ("checkpoints", "チェックポイント"),
+            ("fuelingPlan", "補給・給水プラン"), ("customChecklist", "レースのチェックリスト")
+        ] {
+            tap(app.buttons["creation.next"])
+            tap(app.buttons["pro.\(feature)"])
+            XCTAssertTrue(app.navigationBars[title].waitForExistence(timeout: 10))
+            XCTAssertFalse(app.navigationBars["Proのご案内"].exists)
+            tap(app.buttons["キャンセル"])
+        }
     }
 }

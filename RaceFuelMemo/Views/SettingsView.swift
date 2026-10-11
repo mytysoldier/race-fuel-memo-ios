@@ -5,6 +5,7 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Pro") { ProInformationButton() }
             Section("再利用") {
                 NavigationLink("計画テンプレートを管理") {
                     RacePlanTemplatesView()
@@ -140,4 +141,5 @@ private struct PrivacyPolicyView: View {
         SettingsView()
     }
     .environment(RacePlanTemplateStore())
+    .environment(ProStore())
 }

@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RacePacePlansEditorView: View {
+    @Environment(ProStore.self) private var proStore
     @Environment(\.dismiss) private var dismiss
     @State private var draft: RacePlan
     @State private var editingID: UUID
@@ -58,6 +59,7 @@ struct RacePacePlansEditorView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存") {
+                    guard proStore.canUse(.paceStrategies) else { return }
                     draft.normalizePacePlans()
                     onSave(draft.pacePlans, draft.selectedPacePlanID)
                     dismiss()
@@ -65,6 +67,7 @@ struct RacePacePlansEditorView: View {
                 .disabled(RacePacePlanCalculator.validationError(for: draft) != nil)
             }
         }
+        .proProtected(.paceStrategies)
     }
 
     @ViewBuilder
@@ -261,5 +264,6 @@ struct RacePaceComparisonView: View {
             }
         }
         .navigationTitle("プラン比較")
+        .proProtected(.paceStrategies)
     }
 }

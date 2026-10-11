@@ -18,6 +18,35 @@ final class ProStoreTests: XCTestCase {
         let store = ProStore(client: MockProClient())
         XCTAssertEqual(store.entitlementState, .checking)
         XCTAssertFalse(store.isPro)
+        XCTAssertTrue(ProFeature.allCases.allSatisfy { !store.canUse($0) })
+        XCTAssertEqual(store.pricePresentation, .loading)
+    }
+
+    func testEveryAdvancedFeatureRequiresVerifiedEntitlementAndRefundClosesAccess() async {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        XCTAssertEqual(store.pricePresentation, .unavailable)
+        XCTAssertTrue(ProFeature.allCases.allSatisfy { !store.canUse($0) })
+        client.entitlements = [verified()]
+        await store.refreshEntitlements()
+        XCTAssertTrue(ProFeature.allCases.allSatisfy { store.canUse($0) })
+        // Product failure must not hide advanced functions for a Pro owner.
+        client.fetchHandler = { throw URLError(.notConnectedToInternet) }
+        await store.loadProduct()
+        XCTAssertEqual(store.pricePresentation, .unavailable)
+        XCTAssertTrue(ProFeature.allCases.allSatisfy { store.canUse($0) })
+        client.entitlements = [verified(revoked: Date())]
+        await store.refreshEntitlements()
+        XCTAssertTrue(ProFeature.allCases.allSatisfy { !store.canUse($0) })
+    }
+
+    func testPaywallCatalogMatchesAdvancedFeatureBoundary() {
+        XCTAssertEqual(Set(ProFeature.allCases), Set([
+            .checkpoints, .paceStrategies, .fuelingPlan, .customChecklist,
+            .planReuse, .raceCard, .preparationDashboard]))
+        XCTAssertEqual(Set(ProFeature.allCases.map(\.id)).count, ProFeature.allCases.count)
+        XCTAssertTrue(ProFeature.allCases.allSatisfy { !$0.title.isEmpty && !$0.summary.isEmpty })
     }
 
     func testMissingProductAndNoEntitlements() async {
@@ -57,6 +86,7 @@ final class ProStoreTests: XCTestCase {
         let startup = Task { await store.start() }
         try await eventually { productQuery != nil && store.isPro }
         guard case .loading = store.productState else { return XCTFail("Expected loading product") }
+        XCTAssertEqual(store.pricePresentation, .loading)
         startup.cancel()
         productQuery?.resume(returning: nil)
         await startup.value

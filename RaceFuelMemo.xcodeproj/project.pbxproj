@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        8A1A00F02DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00F12DFF000200000001; };
+        8A1A00F22DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00F32DFF000200000001; };
         8A1A00E02DFF000200000001 /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E12DFF000200000001; };
         8A1A00E22DFF000200000001 /* ProStoreKitClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E32DFF000200000001; };
         8A1A00E42DFF000200000001 /* ProStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E52DFF000200000001; };
@@ -55,6 +57,8 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+        8A1A00F12DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProFeature.swift; sourceTree = "<group>"; };
+        8A1A00F32DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProPaywallView.swift; sourceTree = "<group>"; };
         8A1A00E12DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStore.swift; sourceTree = "<group>"; };
         8A1A00E32DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreKitClient.swift; sourceTree = "<group>"; };
         8A1A00E52DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreTests.swift; sourceTree = "<group>"; };
@@ -106,7 +110,7 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
-        8A1A00EA2DFF000200000001 = {isa = PBXGroup; children = (8A1A00E12DFF000200000001, 8A1A00E32DFF000200000001); path = Purchases; sourceTree = "<group>"; };
+        8A1A00EA2DFF000200000001 = {isa = PBXGroup; children = (8A1A00E12DFF000200000001, 8A1A00E32DFF000200000001, 8A1A00F12DFF000200000001); path = Purchases; sourceTree = "<group>"; };
         8A1A00EB2DFF000200000001 = {isa = PBXGroup; children = (8A1A00E92DFF000200000001); path = StoreKit; sourceTree = "<group>"; };
 		8A1A00022DFF000200000001 = {
 			isa = PBXGroup;
@@ -155,6 +159,7 @@
 		8A1A00132DFF000200000001 /* Views */ = {
 			isa = PBXGroup;
 			children = (
+                8A1A00F32DFF000200000001 /* ProPaywallView.swift */,
 				8A1A00062DFF000200000001 /* RaceListView.swift */,
                 8A1A00C52DFF000200000001 /* RacePreparationView.swift */,
 				8A1A00072DFF000200000001 /* RaceCreatePlaceholderView.swift */,
@@ -390,6 +395,8 @@
 				8A1A000B2DFF000200000001 /* RaceFuelMemoApp.swift in Sources */,
                 8A1A00E02DFF000200000001 /* ProStore.swift in Sources */,
                 8A1A00E22DFF000200000001 /* ProStoreKitClient.swift in Sources */,
+                8A1A00F02DFF000200000001 /* ProFeature.swift in Sources */,
+                8A1A00F22DFF000200000001 /* ProPaywallView.swift in Sources */,
                 8A1A00C02DFF000200000001 /* RacePreparation.swift in Sources */,
                 8A1A00C22DFF000200000001 /* RaceCreationDraftStore.swift in Sources */,
                 8A1A00C42DFF000200000001 /* RacePreparationView.swift in Sources */,

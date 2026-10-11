@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import UserNotifications
 
 final class RaceFuelMemoAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -34,6 +35,8 @@ struct RaceFuelMemoApp: App {
         #if DEBUG
         let defaults: UserDefaults
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            _proStore = State(initialValue: ProStore(client: ProUITestClient(
+                purchased: ProcessInfo.processInfo.arguments.contains("--pro-ui-testing"))))
             let suite = "com.mytysoldier.RaceFuelMemo.UITests"
             defaults = UserDefaults(suiteName: suite)!
             if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
@@ -91,9 +94,25 @@ struct RaceFuelMemoApp: App {
         #if DEBUG
         // Unit tests configure their own SKTestSession before starting their Store.
         // Avoid a second listener and requests against the pre-test StoreKit environment.
-        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+        return ProcessInfo.processInfo.arguments.contains("--ui-testing")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
         #else
         return true
         #endif
     }
 }
+
+#if DEBUG
+/// Deterministic UI fixtures, never compiled into the distributed app. Production
+/// always uses StoreKit verification, not launch arguments or stored flags.
+@MainActor
+private struct ProUITestClient: ProStoreKitClient {
+    let purchased: Bool
+    func fetchProduct() async throws -> Product? { nil }
+    func currentEntitlements() async -> [ProVerificationResult] {
+        purchased ? [.verified(ProEntitlement(productID: ProProductID.lifetime,
+            isNonConsumable: true, revocationDate: nil, expirationDate: nil, isUpgraded: false))] : []
+    }
+    func updates() -> AsyncStream<ProTransactionUpdate> { AsyncStream { $0.finish() } }
+}
+#endif
