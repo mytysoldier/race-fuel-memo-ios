@@ -2,9 +2,16 @@ import SwiftUI
 
 struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
+    @Environment(RacePlanTemplateStore.self) private var templateStore
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
     @State private var isShowingChecklistEditor = false
+    @State private var duplicateDraft: RacePlan?
+    @State private var isShowingReuse = false
+    @State private var isShowingSaveTemplate = false
+    @State private var templateName = ""
+    @State private var templateMessage = ""
+    @State private var isShowingTemplateMessage = false
     @State private var isShowingRacePlanEditor = false
     @State private var isShowingPaceComparison = false
     @State private var isShowingPacePlanSelectionError = false
@@ -230,6 +237,21 @@ struct RaceDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("計画を再利用") {
+                Button {
+                    duplicateDraft = currentRacePlan.duplicated()
+                } label: {
+                    Label("この計画を複製", systemImage: "doc.on.doc")
+                }
+                Button("テンプレートとして保存") {
+                    templateName = ""
+                    isShowingSaveTemplate = true
+                }
+                Button("テンプレート・別のレースから設定を適用") {
+                    isShowingReuse = true
+                }
+            }
+
             Section {
                 Button {
                     selectedReminderTimings = registeredReminderTimings
@@ -276,6 +298,40 @@ struct RaceDetailView: View {
                     rescheduleRemindersIfNeeded(for: updatedRacePlan)
                 }
             }
+        }
+        .sheet(item: $duplicateDraft) { draft in
+            NavigationStack {
+                RaceCreatePlaceholderView(initialPlan: draft)
+                    .toolbar {
+                        ToolbarItem(placement: .cancellationAction) {
+                            Button("キャンセル") { duplicateDraft = nil }
+                        }
+                    }
+            }
+        }
+        .sheet(isPresented: $isShowingReuse) {
+            RacePlanReuseView(destination: currentRacePlan) { updated in
+                guard racePlanStore.updateRacePlan(updated) else { return false }
+                rescheduleRemindersIfNeeded(for: updated)
+                return true
+            }
+        }
+        .alert("計画テンプレートを保存", isPresented: $isShowingSaveTemplate) {
+            TextField("テンプレート名", text: $templateName)
+            Button("保存") {
+                let saved = templateStore.save(name: templateName, source: currentRacePlan)
+                templateMessage = saved ? "テンプレートを保存しました。" :
+                    (templateStore.error ?? "保存できませんでした。名前と計画の設定を確認してください。")
+                isShowingTemplateMessage = true
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("大会名・日時・メモ・コース地点・固定期限を除いて、設定を保存します。")
+        }
+        .alert("計画テンプレート", isPresented: $isShowingTemplateMessage) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(templateMessage)
         }
         .sheet(isPresented: $isShowingChecklistEditor) {
             RaceChecklistEditorView(racePlan: currentRacePlan) { items, notificationsEnabled in
@@ -1057,6 +1113,7 @@ private struct ReminderSettingsSheet: View {
     }
     .environment(RacePlanStore(storage: RaceDetailPreviewRacePlanStorage(racePlans: [racePlan])))
     .environment(ChecklistTemplateStore())
+    .environment(RacePlanTemplateStore())
 }
 
 private struct RaceDetailPreviewRacePlanStorage: RacePlanStorage {

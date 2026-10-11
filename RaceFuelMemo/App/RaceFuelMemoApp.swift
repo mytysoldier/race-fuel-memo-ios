@@ -25,6 +25,7 @@ struct RaceFuelMemoApp: App {
     @State private var racePlanStore = RacePlanStore()
     @State private var fuelingPresetStore = RaceFuelingPresetStore()
     @State private var checklistTemplateStore = ChecklistTemplateStore()
+    @State private var racePlanTemplateStore = RacePlanTemplateStore()
 
     var body: some Scene {
         WindowGroup {
@@ -32,6 +33,7 @@ struct RaceFuelMemoApp: App {
                 .environment(racePlanStore)
                 .environment(fuelingPresetStore)
                 .environment(checklistTemplateStore)
+                .environment(racePlanTemplateStore)
         }
     }
 }

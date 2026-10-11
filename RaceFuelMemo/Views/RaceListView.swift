@@ -133,6 +133,7 @@ struct RaceListView: View {
 #Preview {
     RaceListView()
         .environment(RacePlanStore.preview)
+        .environment(RacePlanTemplateStore())
 }
 
 private struct RacePlanRow: View {
