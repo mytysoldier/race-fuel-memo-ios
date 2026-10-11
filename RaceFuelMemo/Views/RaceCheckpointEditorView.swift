@@ -58,6 +58,7 @@ struct RaceCheckpointEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") { dismiss() }
+                        .accessibilityIdentifier("checkpoints.cancel")
                 }
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
                 ToolbarItem(placement: .confirmationAction) {

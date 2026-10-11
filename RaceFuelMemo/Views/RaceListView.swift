@@ -72,11 +72,12 @@ struct RaceListView: View {
 
                 ToolbarItem(placement: .topBarTrailing) {
                     NavigationLink {
-                        RaceCreatePlaceholderView()
+                        RaceCreationEntryView()
                     } label: {
                         Image(systemName: "plus")
                     }
                     .accessibilityLabel(String(localized: "race_list.action.add"))
+                    .accessibilityIdentifier("races.add")
                     .disabled(racePlanStore.storageError != nil)
                 }
             }
@@ -123,7 +124,7 @@ struct RaceListView: View {
             Text(String(localized: "race_list.empty.description"))
         } actions: {
             NavigationLink(String(localized: "race_list.empty.action")) {
-                RaceCreatePlaceholderView()
+                RaceCreationEntryView()
             }
             .buttonStyle(.borderedProminent)
         }
@@ -134,6 +135,7 @@ struct RaceListView: View {
     RaceListView()
         .environment(RacePlanStore.preview)
         .environment(RacePlanTemplateStore())
+        .environment(RaceCreationDraftStore())
 }
 
 private struct RacePlanRow: View {

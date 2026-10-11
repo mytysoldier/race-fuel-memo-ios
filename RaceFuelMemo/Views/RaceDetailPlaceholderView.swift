@@ -12,7 +12,8 @@ struct RaceDetailView: View {
     @State private var templateName = ""
     @State private var templateMessage = ""
     @State private var isShowingTemplateMessage = false
-    @State private var isShowingRacePlanEditor = false
+    @State private var preparationEditorStep: RacePreparationStep?
+    @State private var isShowingPreparationOutput = false
     @State private var isShowingPaceComparison = false
     @State private var isShowingPacePlanSelectionError = false
     @State private var pacePlanSelectionError = ""
@@ -35,6 +36,17 @@ struct RaceDetailView: View {
 
     var body: some View {
         List {
+            Section {
+                RacePreparationView(plan: currentRacePlan) { step in
+                    switch step {
+                    case .checklist: isShowingChecklistEditor = true
+                    case .output: isShowingPreparationOutput = true
+                    default:
+                        preparationEditorStep = step
+                    }
+                }
+                .disabled(isLoadingReminderState)
+            }
             Section(String(localized: "race_detail.section.basic_info")) {
                 LabeledContent(
                     String(localized: "race_detail.field.name"),
@@ -295,16 +307,26 @@ struct RaceDetailView: View {
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 Button("編集") {
-                    isShowingRacePlanEditor = true
+                    preparationEditorStep = .basic
                 }
                 .disabled(isLoadingReminderState)
             }
         }
-        .sheet(isPresented: $isShowingRacePlanEditor) {
+        .sheet(item: $preparationEditorStep) { step in
             NavigationStack {
-                RacePlanEditView(racePlan: currentRacePlan) { updatedRacePlan in
+                RacePlanEditView(racePlan: currentRacePlan, initialStep: step) { updatedRacePlan in
                     rescheduleRemindersIfNeeded(for: updatedRacePlan)
                 }
+            }
+        }
+        .sheet(isPresented: $isShowingPreparationOutput) {
+            NavigationStack {
+                RaceCardView(racePlan: currentRacePlan)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("閉じる") { isShowingPreparationOutput = false }
+                        }
+                    }
             }
         }
         .sheet(item: $duplicateDraft) { draft in
@@ -667,6 +689,7 @@ private struct RacePlanEditView: View {
 
     let racePlan: RacePlan
     let onSaved: (RacePlan) -> Void
+    let initialStep: RacePreparationStep
 
     @State private var raceName: String
     @State private var raceDate: Date
@@ -686,10 +709,12 @@ private struct RacePlanEditView: View {
     @State private var isShowingPacePlanEditor = false
     @State private var isShowingFuelingEditor = false
     @State private var isShowingSaveError = false
+    @State private var didOpenInitialStep = false
 
-    init(racePlan: RacePlan, onSaved: @escaping (RacePlan) -> Void) {
+    init(racePlan: RacePlan, initialStep: RacePreparationStep = .basic, onSaved: @escaping (RacePlan) -> Void) {
         self.racePlan = racePlan
         self.onSaved = onSaved
+        self.initialStep = initialStep
         _raceName = State(initialValue: racePlan.name)
         _raceDate = State(initialValue: racePlan.raceDate)
         _startTime = State(initialValue: racePlan.startTime)
@@ -707,6 +732,7 @@ private struct RacePlanEditView: View {
     }
 
     var body: some View {
+        ScrollViewReader { proxy in
         ScrollView {
             VStack(spacing: 20) {
                 formSection("基本情報") {
@@ -747,6 +773,7 @@ private struct RacePlanEditView: View {
                     .clipped()
                 }
             }
+            .id("edit.pace")
 
             formSection("補給") {
                 if fuelingEvents.isEmpty {
@@ -823,7 +850,21 @@ private struct RacePlanEditView: View {
                 }
             }
         }
+        .onAppear {
+            if initialStep == .pace { proxy.scrollTo("edit.pace", anchor: .top) }
+        }
+        }
         .scrollDismissesKeyboard(.interactively)
+        .onAppear {
+            guard !didOpenInitialStep else { return }
+            didOpenInitialStep = true
+            switch initialStep {
+            case .pace: break
+            case .checkpoints: isShowingCheckpointEditor = true
+            case .fueling: isShowingFuelingEditor = true
+            default: break
+            }
+        }
         .onChange(of: raceStartDateTime) { previousStartTime, newStartTime in
             checkpoints.moveCutoffTimes(from: previousStartTime, to: newStartTime)
         }
@@ -860,6 +901,7 @@ private struct RacePlanEditView: View {
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("キャンセル", action: dismiss.callAsFunction)
+                    .accessibilityIdentifier("planEditor.cancel")
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存", action: save)

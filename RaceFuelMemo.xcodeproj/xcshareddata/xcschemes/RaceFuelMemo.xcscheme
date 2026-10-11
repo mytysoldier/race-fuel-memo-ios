@@ -29,6 +29,14 @@
       selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
+         <TestableReference skipped = "NO">
+            <BuildableReference BuildableIdentifier = "primary"
+               BlueprintIdentifier = "8A1A00CC2DFF000200000001"
+               BuildableName = "RaceFuelMemoUITests.xctest"
+               BlueprintName = "RaceFuelMemoUITests"
+               ReferencedContainer = "container:RaceFuelMemo.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
          <TestableReference
             skipped = "NO">
             <BuildableReference

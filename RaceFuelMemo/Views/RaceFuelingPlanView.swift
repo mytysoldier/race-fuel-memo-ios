@@ -102,6 +102,7 @@ struct RaceFuelingPlanEditorView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("キャンセル") { dismiss() }
+                        .accessibilityIdentifier("fueling.cancel")
                 }
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
                 ToolbarItem(placement: .confirmationAction) {
