@@ -7,6 +7,11 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+        8A1A00E02DFF000200000001 /* ProStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E12DFF000200000001; };
+        8A1A00E22DFF000200000001 /* ProStoreKitClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E32DFF000200000001; };
+        8A1A00E42DFF000200000001 /* ProStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E52DFF000200000001; };
+        8A1A00E62DFF000200000001 /* ProStoreKitIntegrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A1A00E72DFF000200000001; };
+        8A1A00E82DFF000200000001 /* RunningRaceMate.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 8A1A00E92DFF000200000001; };
         8A1A00C02DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C12DFF000200000001; };
         8A1A00C22DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C32DFF000200000001; };
         8A1A00C42DFF000200000001 = {isa = PBXBuildFile; fileRef = 8A1A00C52DFF000200000001; };
@@ -50,6 +55,11 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+        8A1A00E12DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStore.swift; sourceTree = "<group>"; };
+        8A1A00E32DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreKitClient.swift; sourceTree = "<group>"; };
+        8A1A00E52DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreTests.swift; sourceTree = "<group>"; };
+        8A1A00E72DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProStoreKitIntegrationTests.swift; sourceTree = "<group>"; };
+        8A1A00E92DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = text; path = RunningRaceMate.storekit; sourceTree = "<group>"; };
         8A1A00C12DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePreparation.swift; sourceTree = "<group>"; };
         8A1A00C32DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceCreationDraftStore.swift; sourceTree = "<group>"; };
         8A1A00C52DFF000200000001 = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePreparationView.swift; sourceTree = "<group>"; };
@@ -96,10 +106,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
+        8A1A00EA2DFF000200000001 = {isa = PBXGroup; children = (8A1A00E12DFF000200000001, 8A1A00E32DFF000200000001); path = Purchases; sourceTree = "<group>"; };
+        8A1A00EB2DFF000200000001 = {isa = PBXGroup; children = (8A1A00E92DFF000200000001); path = StoreKit; sourceTree = "<group>"; };
 		8A1A00022DFF000200000001 = {
 			isa = PBXGroup;
 			children = (
 				8A1A00112DFF000200000001 /* RaceFuelMemo */,
+                8A1A00EB2DFF000200000001 /* StoreKit */,
 				8A1A00472DFF000200000001 /* RaceFuelMemoTests */,
                 8A1A00CB2DFF000200000001 /* RaceFuelMemoUITests */,
 				8A1A00032DFF000200000001 /* Products */,
@@ -120,6 +133,7 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00122DFF000200000001 /* App */,
+                8A1A00EA2DFF000200000001 /* Purchases */,
 				8A1A00232DFF000200000001 /* Models */,
 				8A1A00292DFF000200000001 /* Calculations */,
 				8A1A00282DFF000200000001 /* Persistence */,
@@ -206,6 +220,8 @@
 			isa = PBXGroup;
 			children = (
 				8A1A00442DFF000200000001 /* RacePlanCalculatorTests.swift */,
+                8A1A00E52DFF000200000001 /* ProStoreTests.swift */,
+                8A1A00E72DFF000200000001 /* ProStoreKitIntegrationTests.swift */,
 				8A1A00452DFF000200000001 /* RacePlanStorageTests.swift */,
 				8A1A00462DFF000200000001 /* RacePlanStoreTests.swift */,
 				8A1A00852DFF000200000001 /* RaceFuelingPlanTests.swift */,
@@ -255,6 +271,7 @@
 			buildPhases = (
 				8A1A00522DFF000200000001 /* Sources */,
 				8A1A00512DFF000200000001 /* Frameworks */,
+                8A1A00EC2DFF000200000001 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -332,6 +349,7 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXResourcesBuildPhase section */
+        8A1A00EC2DFF000200000001 = {isa = PBXResourcesBuildPhase; buildActionMask = 2147483647; files = (8A1A00E82DFF000200000001); runOnlyForDeploymentPostprocessing = 0; };
 		8A1A00162DFF000200000001 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -370,6 +388,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A1A000B2DFF000200000001 /* RaceFuelMemoApp.swift in Sources */,
+                8A1A00E02DFF000200000001 /* ProStore.swift in Sources */,
+                8A1A00E22DFF000200000001 /* ProStoreKitClient.swift in Sources */,
                 8A1A00C02DFF000200000001 /* RacePreparation.swift in Sources */,
                 8A1A00C22DFF000200000001 /* RaceCreationDraftStore.swift in Sources */,
                 8A1A00C42DFF000200000001 /* RacePreparationView.swift in Sources */,
@@ -406,6 +426,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				8A1A00402DFF000200000001 /* RacePlanCalculatorTests.swift in Sources */,
+                8A1A00E42DFF000200000001 /* ProStoreTests.swift in Sources */,
+                8A1A00E62DFF000200000001 /* ProStoreKitIntegrationTests.swift in Sources */,
 				8A1A00412DFF000200000001 /* RacePlanStorageTests.swift in Sources */,
 				8A1A00422DFF000200000001 /* RacePlanStoreTests.swift in Sources */,
 				8A1A00842DFF000200000001 /* RaceFuelingPlanTests.swift in Sources */,

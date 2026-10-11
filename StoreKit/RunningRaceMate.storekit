@@ -1,0 +1,28 @@
+{
+  "identifier" : "13D2D2B4-BC9D-4FF4-98E4-A9790FE11044",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "600",
+      "familyShareable" : false,
+      "internalID" : "7AD579EB",
+      "localizations" : [
+        {
+          "description" : "高度なレース計画・準備・出力機能を利用できます。",
+          "displayName" : "Running Race Mate Pro",
+          "locale" : "ja_JP"
+        }
+      ],
+      "productID" : "com.mytysoldier.RaceFuelMemo.pro",
+      "referenceName" : "Running Race Mate Pro (Lifetime)",
+      "type" : "NonConsumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ja_JP",
+    "_storefront" : "JPN"
+  },
+  "subscriptionGroups" : [],
+  "version" : { "major" : 3, "minor" : 0 }
+}

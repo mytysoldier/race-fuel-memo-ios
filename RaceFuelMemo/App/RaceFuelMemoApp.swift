@@ -21,12 +21,14 @@ final class RaceFuelMemoAppDelegate: NSObject, UIApplicationDelegate, UNUserNoti
 
 @main
 struct RaceFuelMemoApp: App {
+    @Environment(\.scenePhase) private var scenePhase
     @UIApplicationDelegateAdaptor(RaceFuelMemoAppDelegate.self) private var appDelegate
     @State private var racePlanStore: RacePlanStore
     @State private var fuelingPresetStore: RaceFuelingPresetStore
     @State private var checklistTemplateStore: ChecklistTemplateStore
     @State private var racePlanTemplateStore: RacePlanTemplateStore
     @State private var creationDraftStore: RaceCreationDraftStore
+    @State private var proStore = ProStore()
 
     init() {
         #if DEBUG
@@ -67,6 +69,15 @@ struct RaceFuelMemoApp: App {
                 .environment(checklistTemplateStore)
                 .environment(racePlanTemplateStore)
                 .environment(creationDraftStore)
+                .environment(proStore)
+                .task {
+                    if shouldStartStoreKit { await proStore.start() }
+                }
+                .onChange(of: scenePhase) { _, phase in
+                    if phase == .active && shouldStartStoreKit {
+                        Task { await proStore.refreshEntitlements() }
+                    }
+                }
                 #if DEBUG
                 .preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--dark-ui-testing") ? .dark : nil)
                 .transformEnvironment(\.dynamicTypeSize) { size in
@@ -74,5 +85,15 @@ struct RaceFuelMemoApp: App {
                 }
                 #endif
         }
+    }
+
+    private var shouldStartStoreKit: Bool {
+        #if DEBUG
+        // Unit tests configure their own SKTestSession before starting their Store.
+        // Avoid a second listener and requests against the pre-test StoreKit environment.
+        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+        #else
+        return true
+        #endif
     }
 }
