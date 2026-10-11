@@ -32,10 +32,19 @@ final class RacePreparationUITests: XCTestCase {
                 ?? app.collectionViews.firstMatch
             let above = element.exists && !element.frame.isEmpty
                 ? element.frame.midY < scroll.frame.midY : attempt >= 20
-            scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: above ? 0.2 : 0.8))
+            let keyboard = app.keyboards.firstMatch
+            let visibleBottom = keyboard.exists && !keyboard.frame.isEmpty
+                ? min(scroll.frame.maxY, keyboard.frame.minY) : scroll.frame.maxY
+            let visibleHeight = max(50, visibleBottom - scroll.frame.minY)
+            let origin = scroll.coordinate(withNormalizedOffset: .zero)
+            // The scroll view's accessibility frame can extend behind the
+            // keyboard. Keep both ends of the gesture in visible app content.
+            origin.withOffset(CGVector(dx: scroll.frame.width * 0.97,
+                                       dy: visibleHeight * (above ? 0.2 : 0.8)))
                 .press(
                     forDuration: 0.05,
-                    thenDragTo: scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.97, dy: above ? 0.8 : 0.2))
+                    thenDragTo: origin.withOffset(CGVector(dx: scroll.frame.width * 0.97,
+                                                          dy: visibleHeight * (above ? 0.8 : 0.2)))
                 )
         }
         XCTAssertTrue(element.exists)
