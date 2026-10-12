@@ -227,7 +227,10 @@ final class RacePreparationUITests: XCTestCase {
         app.launch()
         tap(app.buttons["pro.information"])
         XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 10))
-        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped, .sufficientElementDescription])
+        try app.performAccessibilityAudit(for: [.dynamicType, .textClipped, .sufficientElementDescription]) { issue in
+            if let element = issue.element { print("Paywall audit issue: \(element.debugDescription)") }
+            return false // Report every issue; never suppress a failed audit.
+        }
         screenshot("paywall-information-accessibility")
         assertPaywallAndClose()
         XCTAssertTrue(app.buttons["races.add"].waitForExistence(timeout: 10))

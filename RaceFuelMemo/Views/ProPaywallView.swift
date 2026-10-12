@@ -18,7 +18,7 @@ struct ProPaywallView: View {
                             .fixedSize(horizontal: false, vertical: true)
                         Text(feature.summary).fixedSize(horizontal: false, vertical: true)
                         Text("買い切り・一度の購入でPro機能を解放。サブスクリプションではありません。")
-                            .font(.subheadline).foregroundStyle(.secondary)
+                            .font(.body).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     price
@@ -29,7 +29,7 @@ struct ProPaywallView: View {
                         Text("10km地点・エイド\n通過 1:00 ／ 関門まで 15分\n補給ジェル・給水をこの地点で予定")
                             .fixedSize(horizontal: false, vertical: true)
                         Text("Proなら地点・ペース・補給を結びつけて確認し、Race Cardとして持ち出せます。サンプルは補給量やペースの推奨ではありません。")
-                            .font(.footnote).foregroundStyle(.secondary)
+                            .font(.body).foregroundStyle(.secondary)
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding().frame(maxWidth: .infinity, alignment: .leading)
@@ -43,16 +43,17 @@ struct ProPaywallView: View {
                             VStack(alignment: .leading, spacing: 4) {
                                 Label(feature.title, systemImage: "checkmark.circle")
                                     .font(.subheadline.weight(.semibold))
+                                    .accessibilityAddTraits(.isHeader)
                                     .fixedSize(horizontal: false, vertical: true)
-                                Text(feature.summary).font(.footnote).foregroundStyle(.secondary)
+                                Text(feature.summary).font(.body).foregroundStyle(.secondary)
                                     .fixedSize(horizontal: false, vertical: true)
-                            }.accessibilityElement(children: .combine)
+                            }
                         }
                     }
                     Text(
                         "無料のままでもレースの作成・保存・履歴、基本のペース・固定区間の通過計算、標準チェックリストを利用できます。保存件数に新たな制限はなく、保存済みのレースや詳細データも閲覧できます。閉じても入力中の内容は失われません。"
                     )
-                    .font(.footnote).foregroundStyle(.secondary)
+                    .font(.body).foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
                 }.padding()
             }
@@ -112,7 +113,7 @@ struct ProPaywallView: View {
             }
             // Purchase and restore actions are intentionally supplied by Issue #46.
             Text("このバージョンでは購入手続きをまだ利用できません。")
-                .font(.footnote).foregroundStyle(.secondary)
+                .font(.body).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
