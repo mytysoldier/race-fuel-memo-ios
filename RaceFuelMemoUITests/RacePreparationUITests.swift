@@ -222,6 +222,39 @@ final class RacePreparationUITests: XCTestCase {
         screenshot("free-existing-advanced-race")
     }
 
+    func testFreeShorterDistanceOffersConfirmedCheckpointCleanup() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments.append("--checkpoint-cleanup-fixture")
+        app.launch()
+        tap(app.staticTexts["Shorten race"])
+        tap(app.buttons["編集"])
+        let distancePicker = app.buttons.matching(
+            NSPredicate(format: "label CONTAINS %@", "10km")
+        ).firstMatch
+        tap(distancePicker)
+        tap(app.buttons["5km"])
+        XCTAssertFalse(app.buttons["planEditor.save"].isEnabled)
+        tap(app.buttons["planEditor.cleanupOutOfCourse"])
+        XCTAssertTrue(app.alerts["範囲外のデータを削除しますか？"].waitForExistence(timeout: 5))
+        tap(app.alerts.buttons["キャンセル"])
+        XCTAssertFalse(app.buttons["planEditor.save"].isEnabled)
+        tap(app.buttons["planEditor.cleanupOutOfCourse"])
+        tap(app.alerts.buttons["削除"])
+        XCTAssertTrue(app.buttons["planEditor.save"].isEnabled)
+        tap(app.buttons["planEditor.save"])
+        XCTAssertTrue(app.navigationBars["Shorten race"].waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchArguments.removeAll {
+            $0 == "--reset-ui-testing" || $0 == "--checkpoint-cleanup-fixture"
+        }
+        app.launch()
+        tap(app.staticTexts["Shorten race"])
+        tap(app.buttons["編集"])
+        XCTAssertTrue(app.staticTexts["1地点を設定済み"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["planEditor.cleanupOutOfCourse"].exists)
+        XCTAssertTrue(app.buttons["planEditor.save"].isEnabled)
+    }
+
     func testPaywallInformationAccessibilityAndDismissal() throws {
         app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
         app.launch()

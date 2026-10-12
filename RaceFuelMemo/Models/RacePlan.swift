@@ -396,3 +396,48 @@ extension RacePlan {
         }
     }
 }
+
+/// A narrow, explicit cleanup for basic distance edits. Existing advanced data
+/// remains untouched until the user confirms the removal in the plan editor.
+struct RacePlanDistanceCleanup {
+    let checkpoints: [RaceCheckpoint]
+    let fuelingEvents: [RaceFuelingEvent]
+
+    init(originalDistanceKm: Double, candidate: RacePlan) {
+        guard originalDistanceKm.isFinite, candidate.distanceKm.isFinite,
+              (1...200).contains(candidate.distanceKm),
+              candidate.distanceKm < originalDistanceKm - 0.000_001 else {
+            checkpoints = []
+            fuelingEvents = []
+            return
+        }
+
+        // A finish checkpoint follows the basic race distance automatically.
+        // A regular checkpoint at the new finish is invalid too: only finish
+        // checkpoints may be placed exactly at the race distance.
+        checkpoints = candidate.checkpoints.filter {
+            $0.kind != .finish && $0.distanceKm >= candidate.distanceKm - 0.000_001
+        }
+        let removedCheckpointIDs = Set(checkpoints.map(\.id))
+        fuelingEvents = candidate.fuelingEvents.filter { event in
+            if let checkpointID = event.checkpointID,
+               removedCheckpointIDs.contains(checkpointID) { return true }
+            return event.checkpointID == nil
+                && event.distanceKm.map { $0 > candidate.distanceKm } == true
+        }
+    }
+
+    var isEmpty: Bool { checkpoints.isEmpty && fuelingEvents.isEmpty }
+
+    func applying(to candidate: RacePlan) -> RacePlan {
+        var updated = candidate
+        let removedCheckpointIDs = Set(checkpoints.map(\.id))
+        let removedFuelingIDs = Set(fuelingEvents.map(\.id))
+        updated.checkpoints.removeAll { removedCheckpointIDs.contains($0.id) }
+        updated.fuelingEvents.removeAll { removedFuelingIDs.contains($0.id) }
+        for index in updated.checkpoints.indices { updated.checkpoints[index].order = index }
+        for index in updated.fuelingEvents.indices { updated.fuelingEvents[index].order = index }
+        updated.normalizePacePlans()
+        return updated
+    }
+}

@@ -86,6 +86,45 @@ import Testing
     #expect(storage.racePlans == [original])
 }
 
+@Test func shorterBasicDistanceCanExplicitlyRemoveOnlyOutOfCourseAdvancedData() {
+    var original = makeStoreRacePlan(name: "距離変更テスト")
+    original.distanceKm = 10
+    let kept = RaceCheckpoint(order: 0, name: "残す地点", distanceKm: 4)
+    let removed = RaceCheckpoint(order: 1, name: "範囲外の地点", distanceKm: 8)
+    let finish = RaceCheckpoint(order: 2, name: "ゴール", distanceKm: 10, kind: .finish)
+    original.checkpoints = [kept, removed, finish]
+    let keptFuel = RaceFuelingEvent(order: 0, name: "残す補給", quantity: 1, distanceKm: 3)
+    let linkedFuel = RaceFuelingEvent(order: 1, name: "地点連動の補給", quantity: 1,
+                                      checkpointID: removed.id)
+    let distantFuel = RaceFuelingEvent(order: 2, name: "範囲外の補給", quantity: 1, distanceKm: 9)
+    original.fuelingEvents = [keptFuel, linkedFuel, distantFuel]
+    let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [original]))
+
+    var candidate = original
+    candidate.distanceKm = 5
+    candidate.normalizeFinishCheckpoints()
+    candidate.normalizePacePlans()
+    #expect(RaceCheckpointValidator.error(for: candidate) != nil)
+    #expect(!store.updateRacePlan(candidate))
+    #expect(store.racePlans == [original])
+
+    let cleanup = RacePlanDistanceCleanup(originalDistanceKm: original.distanceKm, candidate: candidate)
+    #expect(cleanup.checkpoints.map(\.id) == [removed.id])
+    #expect(Set(cleanup.fuelingEvents.map(\.id)) == [linkedFuel.id, distantFuel.id])
+    let cleaned = cleanup.applying(to: candidate)
+    #expect(cleaned.checkpoints.map(\.id) == [kept.id, finish.id])
+    #expect(cleaned.checkpoints.last?.distanceKm == 5)
+    #expect(cleaned.fuelingEvents.map(\.id) == [keptFuel.id])
+    #expect(RaceCheckpointValidator.error(for: cleaned) == nil)
+    #expect(store.updateRacePlan(cleaned))
+    #expect(store.racePlans.first?.distanceKm == 5)
+    #expect(original.checkpoints.count == 3)
+
+    var longer = original
+    longer.distanceKm = 12
+    #expect(RacePlanDistanceCleanup(originalDistanceKm: 10, candidate: longer).isEmpty)
+}
+
 private func makeStoreRacePlan(name: String) -> RacePlan {
     RacePlan(
         name: name,

@@ -713,6 +713,7 @@ private struct RacePlanEditView: View {
     @State private var isShowingPacePlanEditor = false
     @State private var isShowingFuelingEditor = false
     @State private var isShowingSaveError = false
+    @State private var isShowingDistanceCleanupConfirmation = false
     @State private var didOpenInitialStep = false
 
     init(racePlan: RacePlan, initialStep: RacePreparationStep = .basic, onSaved: @escaping (RacePlan) -> Void) {
@@ -830,6 +831,23 @@ private struct RacePlanEditView: View {
                 }
             }
 
+            if !proStore.canUse(.checkpoints), !distanceCleanup.isEmpty {
+                formSection("距離変更に伴う整理") {
+                    Text("新しい距離の範囲外になった保存済みデータがあります。削除を確認すると基本情報を保存できます。")
+                        .foregroundStyle(.secondary)
+                    if !distanceCleanup.checkpoints.isEmpty {
+                        Text("地点: \(distanceCleanup.checkpoints.map(\.name).joined(separator: "、"))")
+                    }
+                    if !distanceCleanup.fuelingEvents.isEmpty {
+                        Text("補給予定: \(distanceCleanup.fuelingEvents.map(\.name).joined(separator: "、"))")
+                    }
+                    Button("範囲外のデータを整理", role: .destructive) {
+                        isShowingDistanceCleanupConfirmation = true
+                    }
+                    .accessibilityIdentifier("planEditor.cleanupOutOfCourse")
+                }
+            }
+
             formSection("ペース戦略") {
                 Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
                     .foregroundStyle(.secondary)
@@ -903,6 +921,19 @@ private struct RacePlanEditView: View {
         } message: {
             Text(racePlanStore.storageError ?? racePlanStore.validationError ?? "保存処理に失敗しました。")
         }
+        .alert("範囲外のデータを削除しますか？", isPresented: $isShowingDistanceCleanupConfirmation) {
+            Button("削除", role: .destructive) {
+                let cleanup = distanceCleanup
+                guard !cleanup.isEmpty else { return }
+                let cleaned = cleanup.applying(to: workingRacePlan)
+                checkpoints = cleaned.checkpoints
+                fuelingEvents = cleaned.fuelingEvents
+                pacePlans = cleaned.pacePlans
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("表示された地点と補給予定を削除します。保存するまではレースに反映されません。")
+        }
         .sheet(item: $paywallFeature) { ProPaywallView(feature: $0) }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
@@ -936,6 +967,10 @@ private struct RacePlanEditView: View {
 
     private var hasValidTargetTime: Bool {
         targetHours > 0 || targetMinutes > 0
+    }
+
+    private var distanceCleanup: RacePlanDistanceCleanup {
+        RacePlanDistanceCleanup(originalDistanceKm: racePlan.distanceKm, candidate: workingRacePlan)
     }
 
     private var workingRacePlan: RacePlan {
