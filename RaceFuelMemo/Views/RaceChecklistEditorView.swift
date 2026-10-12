@@ -255,3 +255,73 @@ struct RaceChecklistEditorView: View {
         }
     }
 }
+
+/// Saved data remains manageable without Pro. Applying/editing templates still
+/// belongs to the protected race checklist editor.
+struct ChecklistTemplatesView: View {
+    @Environment(ChecklistTemplateStore.self) private var templateStore
+    @Environment(ProStore.self) private var proStore
+    @State private var deletion: ChecklistTemplate?
+    @State private var rename: ChecklistTemplate?
+    @State private var name = ""
+    @State private var showsDelete = false
+    @State private var showsRename = false
+    @State private var showsPaywall = false
+    @State private var operationError: String?
+
+    var body: some View {
+        List {
+            ForEach(templateStore.templates) { template in
+                Section(template.name) {
+                    DisclosureGroup("\(template.items.count)項目を確認") {
+                        ForEach(Array(template.items.enumerated()), id: \.offset) { _, item in
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(item.title)
+                                if let category = item.category, !category.isEmpty { Text(category) }
+                                if item.isRequired { Label("必須", systemImage: "exclamationmark.circle") }
+                                if let timing = item.dueTiming { Text(timing.title) }
+                            }.accessibilityElement(children: .combine)
+                        }
+                    }
+                    if !template.isStandard {
+                        ProFeatureButton(feature: .customChecklist, title: "名前を変更") {
+                            rename = template
+                            name = template.name
+                            showsRename = true
+                        }
+                        Button("削除", role: .destructive) {
+                            deletion = template
+                            showsDelete = true
+                        }
+                    }
+                }
+            }
+            if let error = templateStore.error ?? operationError {
+                Label(error, systemImage: "exclamationmark.circle").foregroundStyle(.red)
+            }
+        }
+        .navigationTitle("チェックリストテンプレート")
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("テンプレートの名前を変更", isPresented: $showsRename) {
+            TextField("名前", text: $name)
+            Button("保存") {
+                guard proStore.canUse(.customChecklist) else { showsPaywall = true; return }
+                if let template = rename, !templateStore.rename(id: template.id, to: name) {
+                    operationError = "名前を変更できませんでした。"
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        }
+        .alert("テンプレートを削除しますか？", isPresented: $showsDelete) {
+            Button("削除", role: .destructive) {
+                if let template = deletion, !templateStore.delete(id: template.id) {
+                    operationError = "テンプレートを削除できませんでした。"
+                }
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("保存済みレースのチェックリストには影響しません。")
+        }
+        .sheet(isPresented: $showsPaywall) { ProPaywallView(feature: .customChecklist) }
+    }
+}

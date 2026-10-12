@@ -69,6 +69,7 @@ struct RaceListView: View {
                         Image(systemName: "gearshape")
                     }
                     .accessibilityLabel(String(localized: "race_list.action.settings"))
+                    .accessibilityIdentifier("races.settings")
                 }
 
                 ToolbarItem(placement: .topBarTrailing) {
@@ -136,6 +137,7 @@ struct RaceListView: View {
     RaceListView()
         .environment(RacePlanStore.preview)
         .environment(RacePlanTemplateStore())
+        .environment(ChecklistTemplateStore())
         .environment(RaceCreationDraftStore())
         .environment(ProStore())
 }

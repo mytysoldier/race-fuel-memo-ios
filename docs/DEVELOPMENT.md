@@ -63,6 +63,7 @@ xcodebuild -project RaceFuelMemo.xcodeproj -scheme RaceFuelMemo -destination 'pl
   期限通知、複製／再利用、Race Card出力、高度な準備状況確認。
 - 保存済みの詳細データの閲覧とチェック済み状態の変更は無料。テンプレートの閲覧／削除も
   データ管理として無料のまま残します。課金状態で保存データを削除・移行しません。
+  チェックリストテンプレートは設定の管理画面から閲覧／削除でき、名前変更のみProで保護します。
 - 無料の作成完了は一覧へ戻ります。Proのみ保存後にRace Cardへ進みます。
 - 価格は `Product.displayPrice` のみ。未取得中は読み込み表示、失敗は金額なしで再試行を案内します。
 
@@ -71,4 +72,5 @@ UIテストでは `--ui-testing` によりDebug限定の注入クライアント
 これらの引数・クライアントはReleaseの権利判定に影響しません。
 `RacePreparationUITests` は無料の全入口、Paywallの閉じる／再試行、下書きの再起動復元、
 無料保存、既存詳細データ・チェック状態の保持、Proの編集／出力と大文字／ダークを確認します。
+無料のチェックリストテンプレート閲覧／削除と、名前変更時のPaywallも検証します。
 PaywallはDynamic Type・文字の切れ・読み上げ用説明のXCTest監査も行います。

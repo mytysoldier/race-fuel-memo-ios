@@ -51,6 +51,15 @@ struct RaceFuelMemoApp: App {
                         cutoffTime: start.addingTimeInterval(1800), kind: .cutoff)])
                 try? UserDefaultsRacePlanStorage(userDefaults: defaults).saveRacePlans([fixture])
             }
+            if ProcessInfo.processInfo.arguments.contains("--checklist-template-fixture") {
+                let store = ChecklistTemplateStore(defaults: defaults)
+                if !store.templates.contains(where: { $0.name == "Saved checklist" }) {
+                    _ = store.save(name: "Saved checklist", items: [
+                        ChecklistItem(title: "Saved gear"),
+                        ChecklistItem(title: "Saved deadline", isRequired: true, dueTiming: .dayBefore)
+                    ])
+                }
+            }
         } else {
             defaults = .standard
         }

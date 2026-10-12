@@ -12,20 +12,25 @@ struct ProPaywallView: View {
                     VStack(alignment: .leading, spacing: 8) {
                         Label("Running Race Mate Pro", systemImage: "sparkles")
                             .font(.title2.bold()).accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("\(feature.title)はProの機能です。")
                             .font(.headline)
-                        Text(feature.summary)
+                            .fixedSize(horizontal: false, vertical: true)
+                        Text(feature.summary).fixedSize(horizontal: false, vertical: true)
                         Text("買い切り・一度の購入でPro機能を解放。サブスクリプションではありません。")
                             .font(.subheadline).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     price
                     VStack(alignment: .leading, spacing: 12) {
                         Text("計画のイメージ（サンプル）")
                             .font(.headline).accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
                         Text("10km地点・エイド\n通過 1:00 ／ 関門まで 15分\n補給ジェル・給水をこの地点で予定")
                             .fixedSize(horizontal: false, vertical: true)
                         Text("Proなら地点・ペース・補給を結びつけて確認し、Race Cardとして持ち出せます。サンプルは補給量やペースの推奨ではありません。")
                             .font(.footnote).foregroundStyle(.secondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
                     .padding().frame(maxWidth: .infinity, alignment: .leading)
                     .background(
@@ -33,11 +38,14 @@ struct ProPaywallView: View {
                         in: RoundedRectangle(cornerRadius: 16))
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Proでできること").font(.headline).accessibilityAddTraits(.isHeader)
+                            .fixedSize(horizontal: false, vertical: true)
                         ForEach(ProFeature.allCases) { feature in
                             VStack(alignment: .leading, spacing: 4) {
                                 Label(feature.title, systemImage: "checkmark.circle")
                                     .font(.subheadline.weight(.semibold))
+                                    .fixedSize(horizontal: false, vertical: true)
                                 Text(feature.summary).font(.footnote).foregroundStyle(.secondary)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }.accessibilityElement(children: .combine)
                         }
                     }
@@ -45,6 +53,7 @@ struct ProPaywallView: View {
                         "無料のままでもレースの作成・保存・履歴、基本のペース・固定区間の通過計算、標準チェックリストを利用できます。保存件数に新たな制限はなく、保存済みのレースや詳細データも閲覧できます。閉じても入力中の内容は失われません。"
                     )
                     .font(.footnote).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
                 }.padding()
             }
             .background(Color(.systemGroupedBackground))
@@ -85,15 +94,18 @@ struct ProPaywallView: View {
                 ProgressView("購入状況を確認中")
             } else if proStore.isPro {
                 Label("Proは解放済みです。閉じて機能を利用してください。", systemImage: "checkmark.seal")
+                    .fixedSize(horizontal: false, vertical: true)
             }
             switch proStore.pricePresentation {
             case .loading:
                 ProgressView("価格を読み込み中")
             case .available(let price):
                 Text("\(price)・買い切り").font(.title3.bold())
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("paywall.price")
             case .unavailable:
                 Text("価格を取得できませんでした。通信環境を確認して再試行してください。")
+                    .fixedSize(horizontal: false, vertical: true)
                     .accessibilityIdentifier("paywall.priceUnavailable")
                 Button("価格を再読み込み") { Task { await proStore.loadProduct() } }
                     .accessibilityIdentifier("paywall.retry")
@@ -101,6 +113,7 @@ struct ProPaywallView: View {
             // Purchase and restore actions are intentionally supplied by Issue #46.
             Text("このバージョンでは購入手続きをまだ利用できません。")
                 .font(.footnote).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
     }
 }

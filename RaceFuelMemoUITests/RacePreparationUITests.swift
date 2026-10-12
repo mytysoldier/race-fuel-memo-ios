@@ -199,8 +199,14 @@ final class RacePreparationUITests: XCTestCase {
         tap(app.buttons["pro.customChecklist"])
         assertPaywallAndClose()
         tap(app.buttons["編集"])
-        tap(app.textFields["planEditor.name"])
-        app.textFields["planEditor.name"].typeText(" updated")
+        let nameField = app.textFields["planEditor.name"]
+        tap(nameField)
+        if !app.keyboards.firstMatch.waitForExistence(timeout: 3) {
+            // Tap the text itself if the sheet transition consumed the first tap.
+            nameField.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.5)).tap()
+        }
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5))
+        nameField.typeText(" updated")
         tap(app.buttons["pro.checkpoints"])
         assertPaywallAndClose()
         tap(app.buttons["planEditor.save"])
@@ -236,6 +242,23 @@ final class RacePreparationUITests: XCTestCase {
         screenshot("paywall-maximum-text-dark")
         tap(app.buttons["paywall.close"])
         XCTAssertTrue(app.buttons["races.add"].waitForExistence(timeout: 10))
+    }
+
+    func testFreeChecklistTemplatesCanBeReadAndDeletedButRenameRequiresPro() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments.append("--checklist-template-fixture")
+        app.launch()
+        tap(app.buttons["races.settings"])
+        tap(app.buttons["settings.checklistTemplates"])
+        XCTAssertTrue(app.staticTexts["Saved checklist"].waitForExistence(timeout: 10))
+        tap(app.buttons["2項目を確認"])
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "Saved gear")).firstMatch.exists)
+        tap(app.buttons["pro.customChecklist"])
+        assertPaywallAndClose()
+        tap(app.buttons["削除"])
+        tap(app.alerts.buttons["削除"])
+        XCTAssertFalse(app.staticTexts["Saved checklist"].exists)
+        XCTAssertTrue(app.staticTexts["標準の持ち物10項目"].exists)
     }
 
     func testProCreationCanOpenAdvancedEditorsWithoutPaywall() {
