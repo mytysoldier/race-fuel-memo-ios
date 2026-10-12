@@ -713,7 +713,7 @@ private struct RacePlanEditView: View {
     @State private var isShowingPacePlanEditor = false
     @State private var isShowingFuelingEditor = false
     @State private var isShowingSaveError = false
-    @State private var isShowingDistanceCleanupConfirmation = false
+    @State private var isShowingBasicEditCleanupConfirmation = false
     @State private var didOpenInitialStep = false
 
     init(racePlan: RacePlan, initialStep: RacePreparationStep = .basic, onSaved: @escaping (RacePlan) -> Void) {
@@ -831,20 +831,23 @@ private struct RacePlanEditView: View {
                 }
             }
 
-            if !proStore.canUse(.checkpoints), !distanceCleanup.isEmpty {
-                formSection("距離変更に伴う整理") {
-                    Text("新しい距離の範囲外になった保存済みデータがあります。削除を確認すると基本情報を保存できます。")
+            if !proStore.canUse(.checkpoints), !basicEditCleanup.isEmpty {
+                formSection("基本情報の変更に伴う整理") {
+                    Text("新しい距離・目標タイムに合わない保存済みデータがあります。対象を確認して整理できます。")
                         .foregroundStyle(.secondary)
-                    if !distanceCleanup.checkpoints.isEmpty {
-                        Text("地点: \(distanceCleanup.checkpoints.map(\.name).joined(separator: "、"))")
+                    if !basicEditCleanup.removedCheckpoints.isEmpty {
+                        Text("削除する地点: \(basicEditCleanup.removedCheckpoints.map(\.name).joined(separator: "、"))")
                     }
-                    if !distanceCleanup.fuelingEvents.isEmpty {
-                        Text("補給予定: \(distanceCleanup.fuelingEvents.map(\.name).joined(separator: "、"))")
+                    if !basicEditCleanup.clearedCheckpointTimes.isEmpty {
+                        Text("手動通過時刻を解除する地点: \(basicEditCleanup.clearedCheckpointTimes.map(\.name).joined(separator: "、"))")
                     }
-                    Button("範囲外のデータを整理", role: .destructive) {
-                        isShowingDistanceCleanupConfirmation = true
+                    if !basicEditCleanup.removedFuelingEvents.isEmpty {
+                        Text("削除する補給予定: \(basicEditCleanup.removedFuelingEvents.map(\.name).joined(separator: "、"))")
                     }
-                    .accessibilityIdentifier("planEditor.cleanupOutOfCourse")
+                    Button("合わないデータを整理", role: .destructive) {
+                        isShowingBasicEditCleanupConfirmation = true
+                    }
+                    .accessibilityIdentifier("planEditor.cleanupInvalidAdvancedData")
                 }
             }
 
@@ -921,9 +924,9 @@ private struct RacePlanEditView: View {
         } message: {
             Text(racePlanStore.storageError ?? racePlanStore.validationError ?? "保存処理に失敗しました。")
         }
-        .alert("範囲外のデータを削除しますか？", isPresented: $isShowingDistanceCleanupConfirmation) {
-            Button("削除", role: .destructive) {
-                let cleanup = distanceCleanup
+        .alert("保存済みデータを整理しますか？", isPresented: $isShowingBasicEditCleanupConfirmation) {
+            Button("整理する", role: .destructive) {
+                let cleanup = basicEditCleanup
                 guard !cleanup.isEmpty else { return }
                 let cleaned = cleanup.applying(to: workingRacePlan)
                 checkpoints = cleaned.checkpoints
@@ -932,7 +935,7 @@ private struct RacePlanEditView: View {
             }
             Button("キャンセル", role: .cancel) {}
         } message: {
-            Text("表示された地点と補給予定を削除します。保存するまではレースに反映されません。")
+            Text("表示された地点・補給予定の削除と手動通過時刻の解除を行います。保存するまではレースに反映されません。")
         }
         .sheet(item: $paywallFeature) { ProPaywallView(feature: $0) }
         .toolbar {
@@ -969,8 +972,8 @@ private struct RacePlanEditView: View {
         targetHours > 0 || targetMinutes > 0
     }
 
-    private var distanceCleanup: RacePlanDistanceCleanup {
-        RacePlanDistanceCleanup(originalDistanceKm: racePlan.distanceKm, candidate: workingRacePlan)
+    private var basicEditCleanup: RacePlanBasicEditCleanup {
+        RacePlanBasicEditCleanup(original: racePlan, candidate: workingRacePlan)
     }
 
     private var workingRacePlan: RacePlan {

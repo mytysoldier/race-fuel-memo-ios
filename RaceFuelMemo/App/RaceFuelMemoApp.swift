@@ -61,6 +61,16 @@ struct RaceFuelMemoApp: App {
                                                      checkpointID: distant.id)])
                 try? UserDefaultsRacePlanStorage(userDefaults: defaults).saveRacePlans([fixture])
             }
+            if ProcessInfo.processInfo.arguments.contains("--target-cleanup-fixture") {
+                let start = Date().addingTimeInterval(86_400)
+                let fixture = RacePlan(name: "Shorten target", raceDate: start, startTime: start,
+                    distanceKm: 10, targetHours: 0, targetMinutes: 50, gelCount: 0,
+                    checkpoints: [RaceCheckpoint(order: 0, name: "Keep timed point", distanceKm: 4,
+                                                 plannedElapsedSeconds: 1_800)],
+                    fuelingEvents: [RaceFuelingEvent(order: 0, name: "Late timed fuel", quantity: 1,
+                                                     elapsedSeconds: 2_400)])
+                try? UserDefaultsRacePlanStorage(userDefaults: defaults).saveRacePlans([fixture])
+            }
             if ProcessInfo.processInfo.arguments.contains("--checklist-template-fixture") {
                 let store = ChecklistTemplateStore(defaults: defaults)
                 if !store.templates.contains(where: { $0.name == "Saved checklist" }) {

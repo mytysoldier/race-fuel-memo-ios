@@ -234,12 +234,12 @@ final class RacePreparationUITests: XCTestCase {
         tap(distancePicker)
         tap(app.buttons["5km"])
         XCTAssertFalse(app.buttons["planEditor.save"].isEnabled)
-        tap(app.buttons["planEditor.cleanupOutOfCourse"])
-        XCTAssertTrue(app.alerts["範囲外のデータを削除しますか？"].waitForExistence(timeout: 5))
+        tap(app.buttons["planEditor.cleanupInvalidAdvancedData"])
+        XCTAssertTrue(app.alerts["保存済みデータを整理しますか？"].waitForExistence(timeout: 5))
         tap(app.alerts.buttons["キャンセル"])
         XCTAssertFalse(app.buttons["planEditor.save"].isEnabled)
-        tap(app.buttons["planEditor.cleanupOutOfCourse"])
-        tap(app.alerts.buttons["削除"])
+        tap(app.buttons["planEditor.cleanupInvalidAdvancedData"])
+        tap(app.alerts.buttons["整理する"])
         XCTAssertTrue(app.buttons["planEditor.save"].isEnabled)
         tap(app.buttons["planEditor.save"])
         XCTAssertTrue(app.navigationBars["Shorten race"].waitForExistence(timeout: 10))
@@ -251,8 +251,36 @@ final class RacePreparationUITests: XCTestCase {
         tap(app.staticTexts["Shorten race"])
         tap(app.buttons["編集"])
         XCTAssertTrue(app.staticTexts["1地点を設定済み"].waitForExistence(timeout: 10))
-        XCTAssertFalse(app.buttons["planEditor.cleanupOutOfCourse"].exists)
+        XCTAssertFalse(app.buttons["planEditor.cleanupInvalidAdvancedData"].exists)
         XCTAssertTrue(app.buttons["planEditor.save"].isEnabled)
+    }
+
+    func testFreeShorterTargetCanKeepCheckpointAndClearInvalidTimes() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments.append("--target-cleanup-fixture")
+        app.launch()
+        tap(app.staticTexts["Shorten target"])
+        tap(app.buttons["編集"])
+        let minutes = app.pickerWheels.firstMatch
+        XCTAssertTrue(minutes.waitForExistence(timeout: 10))
+        minutes.adjust(toPickerWheelValue: "20分")
+        XCTAssertFalse(app.buttons["planEditor.save"].isEnabled)
+        tap(app.buttons["planEditor.cleanupInvalidAdvancedData"])
+        XCTAssertTrue(app.alerts["保存済みデータを整理しますか？"].waitForExistence(timeout: 5))
+        tap(app.alerts.buttons["整理する"])
+        XCTAssertTrue(app.buttons["planEditor.save"].isEnabled)
+        tap(app.buttons["planEditor.save"])
+        XCTAssertTrue(app.navigationBars["Shorten target"].waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchArguments.removeAll {
+            $0 == "--reset-ui-testing" || $0 == "--target-cleanup-fixture"
+        }
+        app.launch()
+        tap(app.staticTexts["Shorten target"])
+        tap(app.buttons["編集"])
+        XCTAssertTrue(app.staticTexts["1地点を設定済み"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.pickerWheels.firstMatch.value as? String, "20分")
+        XCTAssertFalse(app.buttons["planEditor.cleanupInvalidAdvancedData"].exists)
     }
 
     func testPaywallInformationAccessibilityAndDismissal() throws {
