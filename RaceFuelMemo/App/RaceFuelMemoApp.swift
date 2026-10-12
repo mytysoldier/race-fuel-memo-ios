@@ -36,7 +36,8 @@ struct RaceFuelMemoApp: App {
         let defaults: UserDefaults
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
             _proStore = State(initialValue: ProStore(client: ProUITestClient(
-                purchased: ProcessInfo.processInfo.arguments.contains("--pro-ui-testing"))))
+                purchased: ProcessInfo.processInfo.arguments.contains("--pro-ui-testing"),
+                restorePurchase: ProcessInfo.processInfo.arguments.contains("--restore-pro-ui-testing"))))
             let suite = "com.mytysoldier.RaceFuelMemo.UITests"
             defaults = UserDefaults(suiteName: suite)!
             if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
@@ -135,8 +136,17 @@ struct RaceFuelMemoApp: App {
 /// Deterministic UI fixtures, never compiled into the distributed app. Production
 /// always uses StoreKit verification, not launch arguments or stored flags.
 @MainActor
-private struct ProUITestClient: ProStoreKitClient {
-    let purchased: Bool
+private final class ProUITestClient: ProStoreKitClient {
+    var purchased: Bool
+    let restorePurchase: Bool
+
+    init(purchased: Bool, restorePurchase: Bool) {
+        self.purchased = purchased
+        self.restorePurchase = restorePurchase
+    }
+
+    func purchase(_ product: Product) async throws -> ProPurchaseResult { .userCancelled }
+    func sync() async throws { purchased = purchased || restorePurchase }
     func fetchProduct() async throws -> Product? { nil }
     func currentEntitlements() async -> [ProVerificationResult] {
         purchased ? [.verified(ProEntitlement(productID: ProProductID.lifetime,

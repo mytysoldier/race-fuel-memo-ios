@@ -5,7 +5,11 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
-            Section("Pro") { ProInformationButton() }
+            Section("Pro") {
+                ProInformationButton()
+                ProRestorePurchasesButton()
+                ProPurchaseStatusView()
+            }
             Section("再利用") {
                 NavigationLink("チェックリストテンプレートを管理") {
                     ChecklistTemplatesView()

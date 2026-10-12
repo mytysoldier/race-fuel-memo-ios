@@ -30,9 +30,11 @@ Xcodeの **Debug > StoreKit > Manage Transactions** からローカル購入・�
 Sandboxを確認する場合はスキームの **Run > Options > StoreKit Configuration** を **None** にします。
 このファイルは単体テストのバンドルにだけコピーされ、配布アプリには含めません。
 
-`ProStoreTests` は商品取得失敗、未検証結果、購入・返金更新、競合する権利照会、監視の終了を検証します。
-`ProStoreKitIntegrationTests` は `SKTestSession` を使い、実際の商品取得、ローカル購入、
-Store再生成による権利再取得、返金通知をまとめて確認します。
+`ProStoreTests` は商品取得失敗、未検証結果、購入・返金更新、競合する権利照会、監視の終了に加え、
+購入結果の検証と完了、キャンセル／保留／通信失敗、復元結果、多重実行と呼び出し元の中断を検証します。
+`ProStoreKitIntegrationTests` は `SKTestSession` を使い、実際の商品取得、`Product.purchase()` による
+ローカル購入と取引完了、Store再生成による権利再取得、`AppStore.sync()` による復元、返金通知、
+Ask to Buyの保留と承認後の解放を確認します。
 Debug単体テストのホストアプリではStoreKitの自動起動を抑え、`SKTestSession` 初期化後に
 テスト用のStoreを起動します。
 
@@ -43,10 +45,17 @@ StoreKit実購入テストはXcode 26.2 / iOS 26.2で確認しています。こ
 xcodebuild -project RaceFuelMemo.xcodeproj -scheme RaceFuelMemo -destination 'platform=iOS Simulator,name=iPhone 17,OS=26.2' -parallel-testing-enabled NO -only-testing:RaceFuelMemoTests CODE_SIGN_IDENTITY=- test
 ```
 
-購入・復元のユーザー導線は #46 で追加します。#45 のPaywallは商品価格・買い切りの説明と
-機能紹介までで、まだ実購入できないことを明示します。端末内の購入成功結果は
-`Transaction.updates` だけで受け取れるとは限らないため、購入処理の実装時には
-`Product.PurchaseResult.success` の検証・権利再評価・完了処理も行います。
+Paywallの「Proを購入する」から購入し、Paywallと設定の「購入を復元する」から復元できます。
+復元はユーザーの明示操作でのみ `AppStore.sync()` を呼びます。商品価格を取得できなくても復元は可能です。
+端末内の購入成功結果は `Transaction.updates` だけで受け取れるとは限らないため、
+`Product.PurchaseResult.success` の検証・現在の権利再評価・`finish()` も購入処理で行います。
+未検証・別商品・不正な商品種別・失効した結果は解放せず、未検証取引は完了しません。
+購入／復元は全画面で共通の状態管理を使い、処理中はどちらも多重実行できません。
+画面を閉じたり呼び出し元が中断してもStore側の処理は継続し、フォアグラウンド復帰とTransaction監視で
+権利を再確認します。承認待ちは解放せず、承認後の更新通知で反映します。
+キャンセルは通常の状態として案内し、復元対象なし・通信失敗・検証失敗は別のメッセージで表示します。
+StoreKitエラーやトランザクションの個人情報・機密情報はアプリのログへ出力しません。
+App Store Connectの商品設定と実機Sandboxでの最終確認は #47 の検証手順に従います。
 
 ## 無料／Pro境界とPaywall
 
@@ -73,6 +82,7 @@ xcodebuild -project RaceFuelMemo.xcodeproj -scheme RaceFuelMemo -destination 'pl
 
 UIテストでは `--ui-testing` によりDebug限定の注入クライアントを使い、既定は未購入です。
 `--pro-ui-testing` を併用すると検証済み権利のフィクスチャでPro導線を検証します。
+`--restore-pro-ui-testing` は明示的な復元操作後に権利を返すDebug限定フィクスチャです。
 これらの引数・クライアントはReleaseの権利判定に影響しません。
 `RacePreparationUITests` は無料の全入口、Paywallの閉じる／再試行、下書きの再起動復元、
 無料保存、既存詳細データ・チェック状態の保持、Proの編集／出力と大文字／ダークを確認します。
@@ -80,3 +90,4 @@ UIテストでは `--ui-testing` によりDebug限定の注入クライアント
 保存済み地点がある無料レースの距離短縮と目標タイム短縮、整理のキャンセル／確定、再起動後の
 保存結果も検証します。
 PaywallはDynamic Type・文字の切れ・読み上げ用説明のXCTest監査も行います。
+購入不可時のボタン無効化、価格取得失敗中の復元と即時Pro解放、設定での復元対象なしの案内も確認します。

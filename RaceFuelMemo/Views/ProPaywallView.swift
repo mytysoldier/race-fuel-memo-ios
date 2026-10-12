@@ -111,10 +111,52 @@ struct ProPaywallView: View {
                 Button("価格を再読み込み") { Task { await proStore.loadProduct() } }
                     .accessibilityIdentifier("paywall.retry")
             }
-            // Purchase and restore actions are intentionally supplied by Issue #46.
-            Text("このバージョンでは購入手続きをまだ利用できません。")
-                .font(.body).foregroundStyle(.secondary)
+            if !proStore.isPro {
+                Button {
+                    Task { await proStore.purchase() }
+                } label: {
+                    Text("Proを購入する").font(.body.weight(.semibold))
+                        .frame(maxWidth: .infinity, minHeight: 44)
+                }
+                .buttonStyle(.borderedProminent)
+                .disabled(!proStore.canPurchase)
+                .accessibilityIdentifier("paywall.purchase")
+            }
+            ProRestorePurchasesButton()
+            ProPurchaseStatusView()
+        }
+    }
+}
+
+struct ProRestorePurchasesButton: View {
+    @Environment(ProStore.self) private var proStore
+
+    var body: some View {
+        Button {
+            Task { await proStore.restorePurchases() }
+        } label: {
+            Text("購入を復元する").font(.body)
                 .fixedSize(horizontal: false, vertical: true)
+                .frame(minHeight: 44)
+        }
+        .disabled(proStore.isProcessingPurchase)
+        .accessibilityIdentifier("pro.restore")
+    }
+}
+
+struct ProPurchaseStatusView: View {
+    @Environment(ProStore.self) private var proStore
+
+    var body: some View {
+        if proStore.operationState != .idle {
+            ProgressView(proStore.operationState == .purchasing ? "購入手続き中" : "購入を復元中")
+                .accessibilityIdentifier("pro.processing")
+        } else if let feedback = proStore.purchaseFeedback {
+            Text(feedback.message)
+                .font(.body)
+                .foregroundStyle(feedback.isError ? Color.red : Color.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityIdentifier("pro.purchaseFeedback")
         }
     }
 }
