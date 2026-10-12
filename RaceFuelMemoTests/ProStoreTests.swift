@@ -496,6 +496,70 @@ final class ProStoreTests: XCTestCase {
         XCTAssertTrue(store.isPro)
     }
 
+    func testThrownPurchaseAfterConcurrentGrantReportsConfirmedPro() async throws {
+        let client = MockProClient()
+        defer { client.purchaseHandler = nil }
+        let store = try await purchasableStore(client)
+        client.purchaseHandler = { _ in
+            client.entitlements = [self.verified()]
+            await store.refreshEntitlements()
+            throw URLError(.networkConnectionLost)
+        }
+        await store.purchase()
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+        XCTAssertEqual(store.operationState, .idle)
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+    }
+
+    func testOtherPurchaseResultsRespectIndependentVerifiedEntitlementWithoutFinishingUnverifiedResult() async throws {
+        let client = MockProClient()
+        defer { client.purchaseHandler = nil }
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        for result in [
+            ProPurchaseResult.userCancelled, .pending,
+            .success(ProTransactionUpdate(result: .unverified(productID: ProProductID.lifetime),
+                                          finish: { await finishes.record() }))
+        ] {
+            client.entitlements = []
+            await store.refreshEntitlements()
+            client.purchaseHandler = { _ in
+                client.entitlements = [self.verified()]
+                return result
+            }
+            await store.purchase()
+            XCTAssertTrue(store.isPro)
+            XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+        }
+        let count = await finishes.count
+        XCTAssertEqual(count, 0)
+        client.entitlements = []
+        await store.refreshEntitlements()
+        XCTAssertNil(store.purchaseFeedback)
+    }
+
+    func testRestoreFailureAndCancellationAfterConcurrentGrantReportConfirmedPro() async {
+        for error in [URLError(.networkConnectionLost) as Error, StoreKitError.userCancelled] {
+            let client = MockProClient()
+            defer { client.syncHandler = nil }
+            let store = ProStore(client: client)
+            await store.start()
+            client.syncHandler = {
+                client.entitlements = [self.verified()]
+                await store.refreshEntitlements()
+                throw error
+            }
+            await store.restorePurchases()
+            XCTAssertTrue(store.isPro)
+            XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+            XCTAssertEqual(store.operationState, .idle)
+            await store.refreshEntitlements()
+            XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+        }
+    }
+
     private func assertOperationWaitsForWinningSnapshot(
         store: ProStore, client: MockProClient, restoring: Bool
     ) async throws {
