@@ -170,8 +170,13 @@ final class ProStore {
     }
 
     private func apply(_ snapshot: ProEntitlementSnapshot) {
+        let becamePurchased = snapshot.purchased && entitlementState != .purchased
         entitlementState = snapshot.purchased ? .purchased : .notPurchased
-        if snapshot.purchased && purchaseFeedback == .pending { purchaseFeedback = .purchased }
+        if snapshot.purchased && purchaseFeedback == .pending {
+            purchaseFeedback = .purchased
+        } else if becamePurchased {
+            purchaseFeedback = nil
+        }
         if !snapshot.purchased && (purchaseFeedback == .purchased || purchaseFeedback == .restored) {
             purchaseFeedback = nil
         }

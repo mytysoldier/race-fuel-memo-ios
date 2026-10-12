@@ -461,6 +461,41 @@ final class ProStoreTests: XCTestCase {
         XCTAssertTrue(store.isPro)
     }
 
+    func testRefreshClearsOldNoPurchaseAndVerificationFeedbackWhenProBecomesActive() async {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        for entitlements in [[], [ProVerificationResult.unverified(productID: ProProductID.lifetime)]] {
+            client.entitlements = entitlements
+            await store.restorePurchases()
+            XCTAssertEqual(store.purchaseFeedback, entitlements.isEmpty ? .nothingToRestore : .verificationFailed)
+            client.entitlements = [verified()]
+            await store.refreshEntitlements()
+            XCTAssertTrue(store.isPro)
+            XCTAssertNil(store.purchaseFeedback)
+        }
+        await store.restorePurchases()
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+    }
+
+    func testUpdateClearsOldFailureFeedbackButKeepsRealRestoreErrorForExistingOwner() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        client.syncHandler = { throw URLError(.notConnectedToInternet) }
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .restoreFailed)
+        client.entitlements = [verified()]
+        client.send(verified())
+        try await eventually { store.isPro }
+        XCTAssertNil(store.purchaseFeedback)
+        await store.restorePurchases()
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseFeedback, .restoreFailed)
+        XCTAssertTrue(store.isPro)
+    }
+
     private func assertOperationWaitsForWinningSnapshot(
         store: ProStore, client: MockProClient, restoring: Bool
     ) async throws {
