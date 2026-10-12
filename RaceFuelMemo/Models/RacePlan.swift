@@ -410,6 +410,7 @@ struct RacePlanBasicEditCleanup {
             && candidate.distanceKm < original.distanceKm - 0.000_001
         let originalTarget = original.targetHours * 3_600 + original.targetMinutes * 60
         let candidateTarget = candidate.targetHours * 3_600 + candidate.targetMinutes * 60
+        let candidateFuelingTarget = candidate.activeTargetSeconds
         let targetShortened = candidateTarget > 0 && candidateTarget < originalTarget
 
         // A finish follows the basic distance automatically. A regular point
@@ -427,7 +428,7 @@ struct RacePlanBasicEditCleanup {
                 return removedCheckpointIDs.contains(checkpointID)
             }
             return (distanceShortened && event.distanceKm.map { $0 > candidate.distanceKm } == true)
-                || (targetShortened && event.elapsedSeconds.map { $0 > candidateTarget } == true)
+                || (targetShortened && event.elapsedSeconds.map { $0 > candidateFuelingTarget } == true)
         }
     }
 

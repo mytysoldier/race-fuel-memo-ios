@@ -160,6 +160,38 @@ import Testing
     #expect(original.checkpoints[0].plannedElapsedSeconds == 3_000)
 }
 
+@Test func shorterBasicTargetKeepsTimedFuelWithinSelectedPaceTarget() {
+    var original = makeStoreRacePlan(name: "選択中のペースプラン")
+    original.distanceKm = 10
+    original.targetHours = 1
+    original.targetMinutes = 0
+    let selected = RacePacePlan(order: 0, name: "ゆっくり", targetSeconds: 3_300)
+    original.pacePlans = [selected]
+    original.selectedPacePlanID = selected.id
+    let checkpoint = RaceCheckpoint(order: 0, name: "中間地点", distanceKm: 5,
+                                    plannedElapsedSeconds: 3_000)
+    original.checkpoints = [checkpoint]
+    let timedFuel = RaceFuelingEvent(order: 0, name: "補給", quantity: 1,
+                                      elapsedSeconds: 3_000)
+    original.fuelingEvents = [timedFuel]
+
+    var candidate = original
+    candidate.targetHours = 0
+    candidate.targetMinutes = 40
+    candidate.normalizePacePlans()
+    #expect(candidate.activeTargetSeconds == 3_300)
+    #expect(RaceCheckpointValidator.error(for: candidate) != nil)
+
+    let cleanup = RacePlanBasicEditCleanup(original: original, candidate: candidate)
+    #expect(cleanup.clearedCheckpointTimes.map(\.id) == [checkpoint.id])
+    #expect(cleanup.removedFuelingEvents.isEmpty)
+    let cleaned = cleanup.applying(to: candidate)
+    #expect(cleaned.checkpoints[0].plannedElapsedSeconds == nil)
+    #expect(cleaned.fuelingEvents.map(\.id) == [timedFuel.id])
+    #expect(RaceCheckpointValidator.error(for: cleaned) == nil)
+    #expect(RaceFuelingPlanCalculator.validationError(for: cleaned) == nil)
+}
+
 private func makeStoreRacePlan(name: String) -> RacePlan {
     RacePlan(
         name: name,
