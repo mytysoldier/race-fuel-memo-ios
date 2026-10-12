@@ -35,14 +35,43 @@ struct ProTransactionUpdate: Sendable {
     let finish: @Sendable () async -> Void
 }
 
+enum ProPurchaseResult: Sendable {
+    case success(ProTransactionUpdate)
+    case userCancelled
+    case pending
+}
+
+private enum ProClientError: Error {
+    case unexpectedPurchaseResult
+}
+
 @MainActor
 protocol ProStoreKitClient {
     func fetchProduct() async throws -> Product?
     func currentEntitlements() async -> [ProVerificationResult]
     func updates() -> AsyncStream<ProTransactionUpdate>
+    func purchase(_ product: Product) async throws -> ProPurchaseResult
+    func sync() async throws
 }
 
 struct StoreKitProClient: ProStoreKitClient {
+    func purchase(_ product: Product) async throws -> ProPurchaseResult {
+        switch try await product.purchase() {
+        case .success(let result):
+            return .success(Self.update(result))
+        case .userCancelled:
+            return .userCancelled
+        case .pending:
+            return .pending
+        @unknown default:
+            throw ProClientError.unexpectedPurchaseResult
+        }
+    }
+
+    func sync() async throws {
+        try await AppStore.sync()
+    }
+
     func fetchProduct() async throws -> Product? {
         try await Product.products(for: [ProProductID.lifetime]).first
     }
@@ -61,19 +90,20 @@ struct StoreKitProClient: ProStoreKitClient {
             let task = Task {
                 for await result in Transaction.updates {
                     guard !Task.isCancelled else { break }
-                    let mapped = Self.map(result)
-                    switch result {
-                    case .verified(let transaction):
-                        continuation.yield(ProTransactionUpdate(result: mapped) {
-                            await transaction.finish()
-                        })
-                    case .unverified:
-                        continuation.yield(ProTransactionUpdate(result: mapped, finish: {}))
-                    }
+                    continuation.yield(Self.update(result))
                 }
                 continuation.finish()
             }
             continuation.onTermination = { _ in task.cancel() }
+        }
+    }
+
+    private static func update(_ result: VerificationResult<Transaction>) -> ProTransactionUpdate {
+        switch result {
+        case .verified(let transaction):
+            ProTransactionUpdate(result: map(result)) { await transaction.finish() }
+        case .unverified:
+            ProTransactionUpdate(result: map(result), finish: {})
         }
     }
 

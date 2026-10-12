@@ -1,10 +1,19 @@
 import StoreKit
+import StoreKitTest
 import XCTest
 
 @testable import RaceFuelMemo
 
 @MainActor
 final class ProStoreTests: XCTestCase {
+    private var localSession: SKTestSession?
+
+    override func tearDown() {
+        localSession?.clearTransactions()
+        localSession = nil
+        super.tearDown()
+    }
+
     private func verified(
         productID: String = ProProductID.lifetime, nonConsumable: Bool = true,
         revoked: Date? = nil, expires: Date? = nil, upgraded: Bool = false
@@ -234,6 +243,414 @@ final class ProStoreTests: XCTestCase {
         try await eventually { client.listenerCancelled }
     }
 
+    func testPurchaseResultGrantsVerifiedProAndFinishesWithoutAnUpdateEvent() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in
+            client.entitlements = [self.verified()]
+            return .success(ProTransactionUpdate(result: self.verified(), finish: { await finishes.record() }))
+        }
+        await store.purchase()
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.purchaseFeedback, .purchased)
+        XCTAssertEqual(store.operationState, .idle)
+        let count = await finishes.count
+        XCTAssertEqual(count, 1)
+        await store.purchase()
+        XCTAssertEqual(client.purchaseCalls, 1)
+    }
+
+    func testPurchaseRejectsInvalidResultsWithoutFinishing() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        for result in [
+            ProVerificationResult.unverified(productID: ProProductID.lifetime),
+            verified(productID: "other.product"), verified(nonConsumable: false),
+            verified(revoked: Date()), verified(expires: .distantPast), verified(upgraded: true)
+        ] {
+            client.purchaseHandler = { _ in
+                .success(ProTransactionUpdate(result: result, finish: { await finishes.record() }))
+            }
+            await store.purchase()
+            XCTAssertFalse(store.isPro)
+            XCTAssertEqual(store.purchaseFeedback, .verificationFailed)
+            XCTAssertEqual(store.operationState, .idle)
+        }
+        let count = await finishes.count
+        XCTAssertEqual(count, 0)
+    }
+
+    func testPurchaseRequiresCurrentEntitlementBeforeFinishing() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in
+            .success(ProTransactionUpdate(result: self.verified(), finish: { await finishes.record() }))
+        }
+        await store.purchase()
+        XCTAssertFalse(store.isPro)
+        XCTAssertEqual(store.purchaseFeedback, .verificationFailed)
+        let count = await finishes.count
+        XCTAssertEqual(count, 0)
+    }
+
+    func testPendingCancellationAndFailureAllowRetryWithoutGrantingPro() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        client.purchaseHandler = { _ in .pending }
+        await store.purchase()
+        XCTAssertEqual(store.purchaseFeedback, .pending)
+        XCTAssertFalse(store.isPro)
+        XCTAssertTrue(store.canPurchase)
+        client.purchaseHandler = { _ in .userCancelled }
+        await store.purchase()
+        XCTAssertEqual(store.purchaseFeedback, .cancelled)
+        XCTAssertFalse(store.purchaseFeedback?.isError ?? true)
+        client.purchaseHandler = { _ in throw StoreKitError.userCancelled }
+        await store.purchase()
+        XCTAssertEqual(store.purchaseFeedback, .cancelled)
+        client.purchaseHandler = { _ in throw URLError(.notConnectedToInternet) }
+        await store.purchase()
+        XCTAssertEqual(store.purchaseFeedback, .purchaseFailed)
+        XCTAssertFalse(store.isPro)
+        XCTAssertEqual(store.operationState, .idle)
+        XCTAssertTrue(store.canPurchase)
+    }
+
+    func testPurchaseAndRestoreAreMutuallyExclusiveAndCallerCancellationDoesNotLosePurchase() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        var response: CheckedContinuation<ProPurchaseResult, Never>?
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in await withCheckedContinuation { response = $0 } }
+        let operation = Task { await store.purchase() }
+        try await eventually { response != nil }
+        XCTAssertEqual(store.operationState, .purchasing)
+        XCTAssertFalse(store.canPurchase)
+        await store.purchase()
+        await store.restorePurchases()
+        XCTAssertEqual(client.purchaseCalls, 1)
+        XCTAssertEqual(client.syncCalls, 0)
+        operation.cancel()
+        client.entitlements = [verified()]
+        response?.resume(returning: .success(ProTransactionUpdate(result: verified(), finish: { await finishes.record() })))
+        await operation.value
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.operationState, .idle)
+        let count = await finishes.count
+        XCTAssertEqual(count, 1)
+    }
+
+    func testOlderQueryCannotOverwritePurchaseResult() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        var response: CheckedContinuation<[ProVerificationResult], Never>?
+        client.entitlementsHandler = { await withCheckedContinuation { response = $0 } }
+        let oldQuery = Task { await store.refreshEntitlements() }
+        try await eventually { response != nil }
+        client.entitlementsHandler = nil
+        client.entitlements = [verified()]
+        client.purchaseHandler = { _ in .success(ProTransactionUpdate(result: self.verified(), finish: {})) }
+        await store.purchase()
+        response?.resume(returning: [])
+        await oldQuery.value
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testRestoreWorksWithoutProductAndDistinguishesNoPurchaseAndUnverifiedPurchase() async {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .nothingToRestore)
+        client.entitlements = [.unverified(productID: ProProductID.lifetime)]
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .verificationFailed)
+        XCTAssertFalse(store.isPro)
+        client.entitlements = [verified()]
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(client.syncCalls, 3)
+        XCTAssertEqual(client.purchaseCalls, 0)
+    }
+
+    func testRestoreFailurePreservesVerifiedOfflinePurchaseAndCancellationIsNeutral() async {
+        let client = MockProClient()
+        client.entitlements = [verified()]
+        let store = ProStore(client: client)
+        await store.start()
+        client.syncHandler = { throw URLError(.notConnectedToInternet) }
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .restoreFailed)
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.operationState, .idle)
+        client.syncHandler = { throw StoreKitError.userCancelled }
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .cancelled)
+        XCTAssertFalse(store.purchaseFeedback?.isError ?? true)
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testRestoreExcludesConcurrentPurchaseAndRestore() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        var response: CheckedContinuation<Void, Never>?
+        client.syncHandler = { await withCheckedContinuation { response = $0 } }
+        let operation = Task { await store.restorePurchases() }
+        try await eventually { response != nil }
+        XCTAssertEqual(store.operationState, .restoring)
+        await store.purchase()
+        await store.restorePurchases()
+        XCTAssertEqual(client.syncCalls, 1)
+        XCTAssertEqual(client.purchaseCalls, 0)
+        response?.resume()
+        await operation.value
+        XCTAssertEqual(store.operationState, .idle)
+    }
+
+    func testMissingProductOrCheckingEntitlementCannotPurchase() async {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.purchase()
+        await store.start()
+        await store.purchase()
+        XCTAssertEqual(client.purchaseCalls, 0)
+        XCTAssertNil(store.purchaseFeedback)
+    }
+
+    func testPurchaseWaitsForSupersedingEntitlementRefreshBeforeReportingAndFinishing() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in .success(ProTransactionUpdate(result: self.verified(), finish: { await finishes.record() })) }
+        try await assertOperationWaitsForWinningSnapshot(store: store, client: client, restoring: false)
+        XCTAssertEqual(store.purchaseFeedback, .purchased)
+        let count = await finishes.count
+        XCTAssertEqual(count, 1)
+    }
+
+    func testRestoreWaitsForSupersedingEntitlementRefreshBeforeReporting() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        try await assertOperationWaitsForWinningSnapshot(store: store, client: client, restoring: true)
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+    }
+
+    func testOperationRetriesWhenSupersedingRefreshIsCancelled() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        var queries: [CheckedContinuation<[ProVerificationResult], Never>] = []
+        client.entitlementsHandler = { await withCheckedContinuation { queries.append($0) } }
+        let operation = Task { await store.restorePurchases() }
+        try await eventually { queries.count == 1 }
+        let foreground = Task { await store.refreshEntitlements() }
+        try await eventually { queries.count == 2 }
+        foreground.cancel()
+        queries[0].resume(returning: [])
+        queries[1].resume(returning: [])
+        await foreground.value
+        try await eventually { queries.count == 3 }
+        queries[2].resume(returning: [verified()])
+        await operation.value
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testRefreshClearsOldNoPurchaseAndVerificationFeedbackWhenProBecomesActive() async {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        for entitlements in [[], [ProVerificationResult.unverified(productID: ProProductID.lifetime)]] {
+            client.entitlements = entitlements
+            await store.restorePurchases()
+            XCTAssertEqual(store.purchaseFeedback, entitlements.isEmpty ? .nothingToRestore : .verificationFailed)
+            client.entitlements = [verified()]
+            await store.refreshEntitlements()
+            XCTAssertTrue(store.isPro)
+            XCTAssertNil(store.purchaseFeedback)
+        }
+        await store.restorePurchases()
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+    }
+
+    func testUpdateClearsOldFailureFeedbackButKeepsRealRestoreErrorForExistingOwner() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        client.syncHandler = { throw URLError(.notConnectedToInternet) }
+        await store.restorePurchases()
+        XCTAssertEqual(store.purchaseFeedback, .restoreFailed)
+        client.entitlements = [verified()]
+        client.send(verified())
+        try await eventually { store.isPro }
+        XCTAssertNil(store.purchaseFeedback)
+        await store.restorePurchases()
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseFeedback, .restoreFailed)
+        XCTAssertTrue(store.isPro)
+    }
+
+    func testThrownPurchaseAfterConcurrentGrantReportsConfirmedPro() async throws {
+        let client = MockProClient()
+        defer { client.purchaseHandler = nil }
+        let store = try await purchasableStore(client)
+        client.purchaseHandler = { _ in
+            client.entitlements = [self.verified()]
+            await store.refreshEntitlements()
+            throw URLError(.networkConnectionLost)
+        }
+        await store.purchase()
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+        XCTAssertEqual(store.operationState, .idle)
+        await store.refreshEntitlements()
+        XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+    }
+
+    func testOtherPurchaseResultsRespectIndependentVerifiedEntitlementWithoutFinishingUnverifiedResult() async throws {
+        let client = MockProClient()
+        defer { client.purchaseHandler = nil }
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        for result in [
+            ProPurchaseResult.userCancelled, .pending,
+            .success(ProTransactionUpdate(result: .unverified(productID: ProProductID.lifetime),
+                                          finish: { await finishes.record() }))
+        ] {
+            client.entitlements = []
+            await store.refreshEntitlements()
+            client.purchaseHandler = { _ in
+                client.entitlements = [self.verified()]
+                return result
+            }
+            await store.purchase()
+            XCTAssertTrue(store.isPro)
+            XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+        }
+        let count = await finishes.count
+        XCTAssertEqual(count, 0)
+        client.entitlements = []
+        await store.refreshEntitlements()
+        XCTAssertNil(store.purchaseFeedback)
+    }
+
+    func testRestoreFailureAndCancellationAfterConcurrentGrantReportConfirmedPro() async {
+        for error in [URLError(.networkConnectionLost) as Error, StoreKitError.userCancelled] {
+            let client = MockProClient()
+            defer { client.syncHandler = nil }
+            let store = ProStore(client: client)
+            await store.start()
+            client.syncHandler = {
+                client.entitlements = [self.verified()]
+                await store.refreshEntitlements()
+                throw error
+            }
+            await store.restorePurchases()
+            XCTAssertTrue(store.isPro)
+            XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+            XCTAssertEqual(store.operationState, .idle)
+            await store.refreshEntitlements()
+            XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
+        }
+    }
+
+    func testPurchaseLatestRevocationCannotPublishOlderSuccessOrFinishIt() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in .success(ProTransactionUpdate(result: self.verified(), finish: { await finishes.record() })) }
+        try await assertOperationWaitsForWinningSnapshot(
+            store: store, client: client, restoring: false,
+            previousSnapshot: [verified()], winningPurchase: false)
+        XCTAssertEqual(store.purchaseFeedback, .verificationFailed)
+        let count = await finishes.count
+        XCTAssertEqual(count, 0)
+    }
+
+    func testRestoreLatestRevocationCannotPublishOlderSuccess() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        try await assertOperationWaitsForWinningSnapshot(
+            store: store, client: client, restoring: true,
+            previousSnapshot: [verified()], winningPurchase: false)
+        XCTAssertEqual(store.purchaseFeedback, .nothingToRestore)
+    }
+
+    func testRefundDuringPurchaseFinishingCannotRestoreSuccessFeedback() async throws {
+        let client = MockProClient()
+        defer { client.purchaseHandler = nil }
+        let store = try await purchasableStore(client)
+        let gate = FinishGate()
+        defer { gate.resume() }
+        client.purchaseHandler = { _ in
+            client.entitlements = [self.verified()]
+            return .success(ProTransactionUpdate(result: self.verified(), finish: { await gate.finish() }))
+        }
+        let operation = Task { await store.purchase() }
+        try await eventually { gate.continuation != nil }
+        XCTAssertEqual(store.purchaseFeedback, .purchased)
+        client.entitlements = [verified(revoked: Date())]
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.isPro)
+        XCTAssertNil(store.purchaseFeedback)
+        gate.resume()
+        await operation.value
+        XCTAssertFalse(store.isPro)
+        XCTAssertNil(store.purchaseFeedback)
+        XCTAssertEqual(store.operationState, .idle)
+    }
+
+    private func assertOperationWaitsForWinningSnapshot(
+        store: ProStore, client: MockProClient, restoring: Bool,
+        previousSnapshot: [ProVerificationResult] = [], winningPurchase: Bool = true
+    ) async throws {
+        var queries: [CheckedContinuation<[ProVerificationResult], Never>] = []
+        client.entitlementsHandler = { await withCheckedContinuation { queries.append($0) } }
+        let prematureCompletion = expectation(description: "Do not decide from an ignored snapshot")
+        prematureCompletion.isInverted = true
+        let completion = EarlyCompletionProbe(prematureCompletion)
+        let operation = Task {
+            if restoring { await store.restorePurchases() } else { await store.purchase() }
+            completion.record()
+        }
+        try await eventually { queries.count == 1 }
+        let foreground = Task { await store.refreshEntitlements() }
+        try await eventually { queries.count == 2 }
+        queries[0].resume(returning: previousSnapshot)
+        await fulfillment(of: [prematureCompletion], timeout: 0.1)
+        completion.isObserving = false
+        XCTAssertTrue(store.isProcessingPurchase)
+        XCTAssertNil(store.purchaseFeedback)
+        queries[1].resume(returning: [winningPurchase ? verified() : verified(revoked: Date())])
+        await foreground.value
+        await operation.value
+        XCTAssertEqual(store.isPro, winningPurchase)
+        XCTAssertEqual(store.operationState, .idle)
+    }
+
+    private func purchasableStore(_ client: MockProClient) async throws -> ProStore {
+        let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "RunningRaceMate", withExtension: "storekit"))
+        let session = try SKTestSession(contentsOf: url)
+        session.resetToDefaultState()
+        session.disableDialogs = true
+        session.clearTransactions()
+        localSession = session
+        let fetched = try await StoreKitProClient().fetchProduct()
+        let product = try XCTUnwrap(fetched)
+        client.fetchHandler = { product }
+        let store = ProStore(client: client)
+        await store.start()
+        XCTAssertTrue(store.canPurchase)
+        return store
+    }
+
     private func eventually(_ predicate: () -> Bool) async throws {
         let deadline = Date().addingTimeInterval(3)
         while !predicate(), Date() < deadline { try await Task.sleep(for: .milliseconds(10)) }
@@ -252,9 +669,23 @@ private final class MockProClient: ProStoreKitClient {
     var subscriptions = 0
     var entitlementQueries = 0
     var listenerCancelled = false
+    var purchaseCalls = 0
+    var syncCalls = 0
+    var purchaseHandler: ((Product) async throws -> ProPurchaseResult)?
+    var syncHandler: (() async throws -> Void)?
     private let pair = AsyncStream<ProTransactionUpdate>.makeStream()
 
     func fetchProduct() async throws -> Product? { try await fetchHandler?() }
+
+    func purchase(_ product: Product) async throws -> ProPurchaseResult {
+        purchaseCalls += 1
+        return try await purchaseHandler?(product) ?? .userCancelled
+    }
+
+    func sync() async throws {
+        syncCalls += 1
+        try await syncHandler?()
+    }
 
     func currentEntitlements() async -> [ProVerificationResult] {
         entitlementQueries += 1
@@ -278,4 +709,30 @@ private final class MockProClient: ProStoreKitClient {
 private actor FinishProbe {
     private(set) var count = 0
     func record() { count += 1 }
+}
+
+@MainActor
+private final class EarlyCompletionProbe {
+    let expectation: XCTestExpectation
+    var isObserving = true
+
+    init(_ expectation: XCTestExpectation) { self.expectation = expectation }
+
+    func record() {
+        if isObserving { expectation.fulfill() }
+    }
+}
+
+@MainActor
+private final class FinishGate {
+    var continuation: CheckedContinuation<Void, Never>?
+
+    func finish() async {
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func resume() {
+        continuation?.resume()
+        continuation = nil
+    }
 }

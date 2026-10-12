@@ -342,4 +342,36 @@ final class RacePreparationUITests: XCTestCase {
             tap(app.buttons["キャンセル"])
         }
     }
+
+    func testPaywallRestoresWithoutProductPriceAndUnlocksProEntry() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launchArguments.append("--restore-pro-ui-testing")
+        app.launch()
+        tap(app.buttons["pro.information"])
+        XCTAssertTrue(app.staticTexts["paywall.priceUnavailable"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.buttons["paywall.purchase"].isEnabled)
+        tap(app.buttons["pro.restore"])
+        XCTAssertTrue(app.staticTexts["pro.purchaseFeedback"].waitForExistence(timeout: 10))
+        XCTAssertEqual(app.staticTexts["pro.purchaseFeedback"].label, "購入を復元しました。Proを利用できます。")
+        XCTAssertFalse(app.buttons["paywall.purchase"].exists)
+        tap(app.buttons["paywall.close"])
+        XCTAssertTrue(app.buttons["pro.information"].label.contains("Pro 解放済み"))
+        tap(app.buttons["races.add"])
+        tap(app.buttons["pro.planReuse"])
+        XCTAssertTrue(app.navigationBars["計画の設定を再利用"].waitForExistence(timeout: 10))
+        XCTAssertFalse(app.navigationBars["Proのご案内"].exists)
+    }
+
+    func testSettingsRestoreReportsNoPurchaseAndKeepsFreeCreationAvailable() {
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launch()
+        tap(app.buttons["races.settings"])
+        tap(app.buttons["pro.restore"])
+        XCTAssertTrue(app.staticTexts["pro.purchaseFeedback"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.staticTexts["pro.purchaseFeedback"].label.contains("購入が見つかりませんでした"))
+        XCTAssertTrue(app.buttons["pro.restore"].isEnabled)
+        tap(app.buttons["完了"])
+        tap(app.buttons["races.add"])
+        XCTAssertTrue(app.textFields["creation.name"].waitForExistence(timeout: 10))
+    }
 }
