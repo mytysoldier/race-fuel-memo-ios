@@ -396,3 +396,61 @@ extension RacePlan {
         }
     }
 }
+
+/// An explicit cleanup for advanced data invalidated by free basic edits.
+/// Nothing changes in the saved race until the user confirms and saves.
+struct RacePlanBasicEditCleanup {
+    let removedCheckpoints: [RaceCheckpoint]
+    let clearedCheckpointTimes: [RaceCheckpoint]
+    let removedFuelingEvents: [RaceFuelingEvent]
+
+    init(original: RacePlan, candidate: RacePlan) {
+        let distanceShortened = original.distanceKm.isFinite && candidate.distanceKm.isFinite
+            && (1...200).contains(candidate.distanceKm)
+            && candidate.distanceKm < original.distanceKm - 0.000_001
+        let originalTarget = original.targetHours * 3_600 + original.targetMinutes * 60
+        let candidateTarget = candidate.targetHours * 3_600 + candidate.targetMinutes * 60
+        let candidateFuelingTarget = candidate.activeTargetSeconds
+        let targetShortened = candidateTarget > 0 && candidateTarget < originalTarget
+
+        // A finish follows the basic distance automatically. A regular point
+        // at the new finish must be removed because only a finish can sit there.
+        removedCheckpoints = distanceShortened ? candidate.checkpoints.filter {
+            $0.kind != .finish && $0.distanceKm >= candidate.distanceKm - 0.000_001
+        } : []
+        let removedCheckpointIDs = Set(removedCheckpoints.map(\.id))
+        clearedCheckpointTimes = targetShortened ? candidate.checkpoints.filter {
+            $0.kind != .finish && !removedCheckpointIDs.contains($0.id)
+                && $0.plannedElapsedSeconds.map { $0 >= candidateTarget } == true
+        } : []
+        removedFuelingEvents = candidate.fuelingEvents.filter { event in
+            if let checkpointID = event.checkpointID {
+                return removedCheckpointIDs.contains(checkpointID)
+            }
+            return (distanceShortened && event.distanceKm.map { $0 > candidate.distanceKm } == true)
+                || (targetShortened && event.elapsedSeconds.map { $0 > candidateFuelingTarget } == true)
+        }
+    }
+
+    var isEmpty: Bool {
+        removedCheckpoints.isEmpty && clearedCheckpointTimes.isEmpty && removedFuelingEvents.isEmpty
+    }
+
+    func applying(to candidate: RacePlan) -> RacePlan {
+        var updated = candidate
+        let removedCheckpointIDs = Set(removedCheckpoints.map(\.id))
+        let clearedTimeIDs = Set(clearedCheckpointTimes.map(\.id))
+        let removedFuelingIDs = Set(removedFuelingEvents.map(\.id))
+        updated.checkpoints.removeAll { removedCheckpointIDs.contains($0.id) }
+        for index in updated.checkpoints.indices {
+            updated.checkpoints[index].order = index
+            if clearedTimeIDs.contains(updated.checkpoints[index].id) {
+                updated.checkpoints[index].plannedElapsedSeconds = nil
+            }
+        }
+        updated.fuelingEvents.removeAll { removedFuelingIDs.contains($0.id) }
+        for index in updated.fuelingEvents.indices { updated.fuelingEvents[index].order = index }
+        updated.normalizePacePlans()
+        return updated
+    }
+}

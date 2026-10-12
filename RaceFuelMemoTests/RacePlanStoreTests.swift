@@ -86,6 +86,112 @@ import Testing
     #expect(storage.racePlans == [original])
 }
 
+@Test func shorterBasicDistanceCanExplicitlyRemoveOnlyOutOfCourseAdvancedData() {
+    var original = makeStoreRacePlan(name: "距離変更テスト")
+    original.distanceKm = 10
+    let kept = RaceCheckpoint(order: 0, name: "残す地点", distanceKm: 4)
+    let removed = RaceCheckpoint(order: 1, name: "範囲外の地点", distanceKm: 8)
+    let finish = RaceCheckpoint(order: 2, name: "ゴール", distanceKm: 10, kind: .finish)
+    original.checkpoints = [kept, removed, finish]
+    let keptFuel = RaceFuelingEvent(order: 0, name: "残す補給", quantity: 1, distanceKm: 3)
+    let linkedFuel = RaceFuelingEvent(order: 1, name: "地点連動の補給", quantity: 1,
+                                      checkpointID: removed.id)
+    let distantFuel = RaceFuelingEvent(order: 2, name: "範囲外の補給", quantity: 1, distanceKm: 9)
+    original.fuelingEvents = [keptFuel, linkedFuel, distantFuel]
+    let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [original]))
+
+    var candidate = original
+    candidate.distanceKm = 5
+    candidate.normalizeFinishCheckpoints()
+    candidate.normalizePacePlans()
+    #expect(RaceCheckpointValidator.error(for: candidate) != nil)
+    #expect(!store.updateRacePlan(candidate))
+    #expect(store.racePlans == [original])
+
+    let cleanup = RacePlanBasicEditCleanup(original: original, candidate: candidate)
+    #expect(cleanup.removedCheckpoints.map(\.id) == [removed.id])
+    #expect(Set(cleanup.removedFuelingEvents.map(\.id)) == [linkedFuel.id, distantFuel.id])
+    let cleaned = cleanup.applying(to: candidate)
+    #expect(cleaned.checkpoints.map(\.id) == [kept.id, finish.id])
+    #expect(cleaned.checkpoints.last?.distanceKm == 5)
+    #expect(cleaned.fuelingEvents.map(\.id) == [keptFuel.id])
+    #expect(RaceCheckpointValidator.error(for: cleaned) == nil)
+    #expect(store.updateRacePlan(cleaned))
+    #expect(store.racePlans.first?.distanceKm == 5)
+    #expect(original.checkpoints.count == 3)
+
+    var longer = original
+    longer.distanceKm = 12
+    #expect(RacePlanBasicEditCleanup(original: original, candidate: longer).isEmpty)
+}
+
+@Test func shorterBasicTargetCanClearManualTimesWithoutRemovingSavedCheckpoint() {
+    var original = makeStoreRacePlan(name: "目標タイム変更テスト")
+    original.distanceKm = 10
+    let checkpoint = RaceCheckpoint(order: 0, name: "残す地点", distanceKm: 4,
+                                    plannedElapsedSeconds: 3_000)
+    original.checkpoints = [checkpoint]
+    let keptFuel = RaceFuelingEvent(order: 0, name: "残す補給", quantity: 1,
+                                     elapsedSeconds: 1_200)
+    let lateFuel = RaceFuelingEvent(order: 1, name: "目標超過の補給", quantity: 1,
+                                     elapsedSeconds: 3_600)
+    original.fuelingEvents = [keptFuel, lateFuel]
+    let store = RacePlanStore(storage: InMemoryRacePlanStorage(racePlans: [original]))
+
+    var candidate = original
+    candidate.targetHours = 0
+    candidate.targetMinutes = 40
+    candidate.normalizeFinishCheckpoints()
+    candidate.normalizePacePlans()
+    #expect(RaceCheckpointValidator.error(for: candidate) != nil)
+    #expect(store.racePlans == [original])
+
+    let cleanup = RacePlanBasicEditCleanup(original: original, candidate: candidate)
+    #expect(cleanup.removedCheckpoints.isEmpty)
+    #expect(cleanup.clearedCheckpointTimes.map(\.id) == [checkpoint.id])
+    #expect(cleanup.removedFuelingEvents.map(\.id) == [lateFuel.id])
+    let cleaned = cleanup.applying(to: candidate)
+    #expect(cleaned.checkpoints.map(\.id) == [checkpoint.id])
+    #expect(cleaned.checkpoints[0].plannedElapsedSeconds == nil)
+    #expect(cleaned.fuelingEvents.map(\.id) == [keptFuel.id])
+    #expect(RaceCheckpointValidator.error(for: cleaned) == nil)
+    #expect(store.updateRacePlan(cleaned))
+    #expect(store.racePlans.first?.targetMinutes == 40)
+    #expect(original.checkpoints[0].plannedElapsedSeconds == 3_000)
+}
+
+@Test func shorterBasicTargetKeepsTimedFuelWithinSelectedPaceTarget() {
+    var original = makeStoreRacePlan(name: "選択中のペースプラン")
+    original.distanceKm = 10
+    original.targetHours = 1
+    original.targetMinutes = 0
+    let selected = RacePacePlan(order: 0, name: "ゆっくり", targetSeconds: 3_300)
+    original.pacePlans = [selected]
+    original.selectedPacePlanID = selected.id
+    let checkpoint = RaceCheckpoint(order: 0, name: "中間地点", distanceKm: 5,
+                                    plannedElapsedSeconds: 3_000)
+    original.checkpoints = [checkpoint]
+    let timedFuel = RaceFuelingEvent(order: 0, name: "補給", quantity: 1,
+                                      elapsedSeconds: 3_000)
+    original.fuelingEvents = [timedFuel]
+
+    var candidate = original
+    candidate.targetHours = 0
+    candidate.targetMinutes = 40
+    candidate.normalizePacePlans()
+    #expect(candidate.activeTargetSeconds == 3_300)
+    #expect(RaceCheckpointValidator.error(for: candidate) != nil)
+
+    let cleanup = RacePlanBasicEditCleanup(original: original, candidate: candidate)
+    #expect(cleanup.clearedCheckpointTimes.map(\.id) == [checkpoint.id])
+    #expect(cleanup.removedFuelingEvents.isEmpty)
+    let cleaned = cleanup.applying(to: candidate)
+    #expect(cleaned.checkpoints[0].plannedElapsedSeconds == nil)
+    #expect(cleaned.fuelingEvents.map(\.id) == [timedFuel.id])
+    #expect(RaceCheckpointValidator.error(for: cleaned) == nil)
+    #expect(RaceFuelingPlanCalculator.validationError(for: cleaned) == nil)
+}
+
 private func makeStoreRacePlan(name: String) -> RacePlan {
     RacePlan(
         name: name,

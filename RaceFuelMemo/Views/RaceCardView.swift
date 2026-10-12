@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct RaceCardView: View {
+    @Environment(ProStore.self) private var proStore
     let racePlan: RacePlan
     @State private var pacePlanID: UUID?
     @State private var audience = RaceCardAudience.runner
@@ -133,10 +134,12 @@ struct RaceCardView: View {
         )) {
             Button("OK", role: .cancel) { actionError = nil }
         } message: { Text(actionError ?? "") }
+        .proProtected(.raceCard)
     }
 
     @MainActor
     private func generate() async {
+        guard proStore.canUse(.raceCard) else { return }
         let token = UUID()
         generationID = token
         output?.removeTemporaryFiles()
@@ -151,7 +154,10 @@ struct RaceCardView: View {
         do {
             let renderer = try RaceCardRenderer(document: document.get(), format: format)
             let result = try await renderer.exportForSharing()
-            guard generationID == token, !Task.isCancelled else { return }
+            guard generationID == token, !Task.isCancelled, proStore.canUse(.raceCard) else {
+                result.removeTemporaryFiles()
+                return
+            }
             output = result
         } catch is CancellationError {
             // A different selection or closing this screen cancels the obsolete output.

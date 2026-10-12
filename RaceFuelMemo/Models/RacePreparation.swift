@@ -17,10 +17,10 @@ enum RacePreparationStep: String, CaseIterable, Codable, Identifiable {
         switch self {
         case .basic: "大会名・開催日・スタート・距離を入力しましょう。"
         case .pace: "目標タイムを決めましょう。基本の均等ペースだけでも作成できます。"
-        case .checkpoints: "関門・給水所があれば追加しましょう。未設定でも5kmごとの通過時間を表示します。"
+        case .checkpoints: "Proでは関門・給水所を追加できます。未設定でも5kmごとの通過時間を無料で表示します。"
         case .fueling: "携行するジェル、または詳細な補給・給水を設定しましょう。"
         case .checklist: "必須の持ち物を確認しましょう。チェックは保存後も変更できます。"
-        case .output: "注意項目を確認し、計画を保存してRace Cardへ進みましょう。注意が残っていても保存できます。"
+        case .output: "計画を保存しましょう。Proでは準備状況の確認とRace Card出力も利用できます。注意が残っていても保存できます。"
         }
     }
 }
@@ -154,4 +154,7 @@ struct RaceCreationDraft: Codable, Equatable {
     var checklistNotificationsEnabled: Bool
     var step: RacePreparationStep
     var isGuided: Bool
+    /// Persist the advanced edit marker across relaunch, without altering input.
+    /// Older drafts have no marker and remain readable.
+    var editedProFeature: ProFeature? = nil
 }

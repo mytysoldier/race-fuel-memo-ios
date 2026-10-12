@@ -2,8 +2,8 @@ import SwiftUI
 
 struct RaceCreatePlaceholderView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
-    @Environment(ChecklistTemplateStore.self) private var checklistTemplateStore
     @Environment(RaceCreationDraftStore.self) private var draftStore
+    @Environment(ProStore.self) private var proStore
     @Environment(\.dismiss) private var dismiss
 
     @State private var raceName = ""
@@ -29,6 +29,9 @@ struct RaceCreatePlaceholderView: View {
     @State private var isShowingFuelingEditor = false
     @State private var isShowingChecklistEditor = false
     @State private var isShowingReuse = false
+    @State private var isShowingPreview = false
+    @State private var editedProFeature: ProFeature?
+    @State private var paywallFeature: ProFeature?
     @State private var step = RacePreparationStep.basic
     @State private var isGuided = true
     @State private var savedPlan: RacePlan?
@@ -59,6 +62,7 @@ struct RaceCreatePlaceholderView: View {
             _draftRacePlanID = State(initialValue: draft.id)
             _step = State(initialValue: draft.step)
             _isGuided = State(initialValue: draft.isGuided)
+            _editedProFeature = State(initialValue: draft.editedProFeature)
         }
         guard let plan = initialPlan else { return }
         _raceName = State(initialValue: plan.name)
@@ -208,6 +212,8 @@ struct RaceCreatePlaceholderView: View {
         }
         .sheet(isPresented: $isShowingCheckpointEditor) {
             RaceCheckpointEditorView(racePlan: draftRacePlan) {
+                guard proStore.canUse(.checkpoints) else { return }
+                editedProFeature = .checkpoints
                 checkpoints = $0
                 normalizeDraftPacePlans()
             }
@@ -215,6 +221,8 @@ struct RaceCreatePlaceholderView: View {
         .sheet(isPresented: $isShowingPacePlanEditor) {
             NavigationStack {
                 RacePacePlansEditorView(racePlan: draftRacePlan) { plans, selected in
+                    guard proStore.canUse(.paceStrategies) else { return }
+                    editedProFeature = .paceStrategies
                     pacePlans = plans
                     selectedPacePlanID = selected
                 }
@@ -222,12 +230,16 @@ struct RaceCreatePlaceholderView: View {
         }
         .sheet(isPresented: $isShowingFuelingEditor) {
             RaceFuelingPlanEditorView(racePlan: draftRacePlan) {
+                guard proStore.canUse(.fuelingPlan) else { return }
+                editedProFeature = .fuelingPlan
                 fuelingEvents = $0
                 gels = []
             }
         }
         .sheet(isPresented: $isShowingChecklistEditor) {
             RaceChecklistEditorView(racePlan: draftRacePlan) { items, notificationsEnabled in
+                guard proStore.canUse(.customChecklist) else { return false }
+                editedProFeature = .customChecklist
                 checklistItems = items
                 checklistNotificationsEnabled = notificationsEnabled
                 return true
@@ -235,10 +247,23 @@ struct RaceCreatePlaceholderView: View {
         }
         .sheet(isPresented: $isShowingReuse) {
             RacePlanReuseView(destination: draftRacePlan) { updated in
+                guard proStore.canUse(.planReuse) else { return false }
+                editedProFeature = .planReuse
                 applyReusableSettings(updated)
                 return true
             }
         }
+        .sheet(isPresented: $isShowingPreview) {
+            NavigationStack {
+                RaceCardView(racePlan: draftRacePlan)
+                    .toolbar {
+                        ToolbarItem(placement: .confirmationAction) {
+                            Button("閉じる") { isShowingPreview = false }
+                        }
+                    }
+            }
+        }
+        .sheet(item: $paywallFeature) { ProPaywallView(feature: $0) }
         .sheet(item: $savedPlan, onDismiss: { dismiss() }) { plan in
             NavigationStack {
                 RaceCardView(racePlan: plan)
@@ -274,7 +299,7 @@ struct RaceCreatePlaceholderView: View {
             selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents,
             checklistItems: checklistItems,
             checklistNotificationsEnabled: checklistNotificationsEnabled,
-            step: step, isGuided: isGuided)
+            step: step, isGuided: isGuided, editedProFeature: editedProFeature)
     }
 
     private var reuseSection: some View {
@@ -283,7 +308,7 @@ struct RaceCreatePlaceholderView: View {
                 Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。")
                     .foregroundStyle(.secondary)
             }
-            Button("テンプレート・保存済みレースから設定を再利用") {
+            ProFeatureButton(feature: .planReuse, title: "テンプレート・保存済みレースから設定を再利用") {
                 isShowingReuse = true
             }
         }
@@ -361,7 +386,9 @@ struct RaceCreatePlaceholderView: View {
         formSection("ペース戦略・Pro対象") {
             Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
                 .foregroundStyle(.secondary)
-            Button("A・B・Cプランを設定") { isShowingPacePlanEditor = true }
+            ProFeatureButton(feature: .paceStrategies, title: "A・B・Cプランを設定") {
+                isShowingPacePlanEditor = true
+            }
             if let error = RacePacePlanCalculator.validationError(for: draftRacePlan) {
                 validationMessage(error)
             }
@@ -397,10 +424,8 @@ struct RaceCreatePlaceholderView: View {
             Divider()
             Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
                 .foregroundStyle(.secondary)
-            Button {
+            ProFeatureButton(feature: .fuelingPlan, title: "補給・給水プランを設定", systemImage: "drop.fill") {
                 isShowingFuelingEditor = true
-            } label: {
-                Label("補給・給水プランを設定", systemImage: "drop.fill")
             }
             if let error = RaceFuelingPlanCalculator.validationError(for: draftRacePlan) {
                 validationMessage(error)
@@ -412,10 +437,8 @@ struct RaceCreatePlaceholderView: View {
         formSection("チェックポイント") {
             Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
                 .foregroundStyle(.secondary)
-            Button {
+            ProFeatureButton(feature: .checkpoints, title: "地点を編集", systemImage: "mappin.and.ellipse") {
                 isShowingCheckpointEditor = true
-            } label: {
-                Label("地点を編集", systemImage: "mappin.and.ellipse")
             }
             if let validationError = RaceCheckpointValidator.error(for: draftRacePlan) {
                 validationMessage(validationError)
@@ -427,17 +450,8 @@ struct RaceCreatePlaceholderView: View {
         formSection("チェックリスト") {
             Text("\(checklistItems.count)項目を設定済み")
                 .foregroundStyle(.secondary)
-            Menu("テンプレートを適用") {
-                ForEach(checklistTemplateStore.templates) { template in
-                    Button(template.name) {
-                        checklistItems = template.checklistItems()
-                    }
-                }
-            }
-            Button {
+            ProFeatureButton(feature: .customChecklist, title: "項目・期限・テンプレートを編集", systemImage: "checklist") {
                 isShowingChecklistEditor = true
-            } label: {
-                Label("項目と期限を編集", systemImage: "checklist")
             }
             ForEach($checklistItems) { $item in
                 Toggle(item.title, isOn: $item.isChecked)
@@ -461,8 +475,8 @@ struct RaceCreatePlaceholderView: View {
     private var outputSection: some View {
         formSection("確認・出力") {
             RacePreparationView(plan: draftRacePlan) { select($0) }
-            NavigationLink("保存前にRace Cardを確認") {
-                RaceCardView(racePlan: draftRacePlan)
+            ProFeatureButton(feature: .raceCard, title: "保存前にRace Cardを確認") {
+                isShowingPreview = true
             }
             .disabled(!canSave)
             .accessibilityIdentifier("creation.preview")
@@ -572,6 +586,10 @@ struct RaceCreatePlaceholderView: View {
     }
 
     private func saveRacePlan() {
+        if let feature = editedProFeature, !proStore.canUse(feature) {
+            paywallFeature = feature
+            return
+        }
         guard canSave else {
             return
         }
@@ -582,7 +600,11 @@ struct RaceCreatePlaceholderView: View {
         if saved {
             didSave = true
             if !isDuplicate { draftStore.clear(savedID: racePlan.id) }
-            savedPlan = racePlan
+            if proStore.canUse(.raceCard) {
+                savedPlan = racePlan
+            } else {
+                dismiss()
+            }
         }
     }
 }
@@ -599,6 +621,7 @@ private struct GelDraft: Identifiable {
     .environment(RacePlanStore(storage: EmptyRacePlanStorage()))
     .environment(RaceFuelingPresetStore())
     .environment(ChecklistTemplateStore())
+    .environment(ProStore())
     .environment(RacePlanTemplateStore())
     .environment(RaceCreationDraftStore())
 }

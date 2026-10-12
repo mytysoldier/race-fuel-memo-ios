@@ -1,4 +1,5 @@
 import SwiftUI
+import StoreKit
 import UserNotifications
 
 final class RaceFuelMemoAppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDelegate {
@@ -34,6 +35,8 @@ struct RaceFuelMemoApp: App {
         #if DEBUG
         let defaults: UserDefaults
         if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            _proStore = State(initialValue: ProStore(client: ProUITestClient(
+                purchased: ProcessInfo.processInfo.arguments.contains("--pro-ui-testing"))))
             let suite = "com.mytysoldier.RaceFuelMemo.UITests"
             defaults = UserDefaults(suiteName: suite)!
             if ProcessInfo.processInfo.arguments.contains("--reset-ui-testing") {
@@ -47,6 +50,35 @@ struct RaceFuelMemoApp: App {
                     checkpoints: [RaceCheckpoint(order: 0, name: "Late cutoff", distanceKm: 10,
                         cutoffTime: start.addingTimeInterval(1800), kind: .cutoff)])
                 try? UserDefaultsRacePlanStorage(userDefaults: defaults).saveRacePlans([fixture])
+            }
+            if ProcessInfo.processInfo.arguments.contains("--checkpoint-cleanup-fixture") {
+                let start = Date().addingTimeInterval(86_400)
+                let distant = RaceCheckpoint(order: 1, name: "Remove at 8km", distanceKm: 8)
+                let fixture = RacePlan(name: "Shorten race", raceDate: start, startTime: start,
+                    distanceKm: 10, targetHours: 1, targetMinutes: 0, gelCount: 0,
+                    checkpoints: [RaceCheckpoint(order: 0, name: "Keep at 4km", distanceKm: 4), distant],
+                    fuelingEvents: [RaceFuelingEvent(order: 0, name: "Linked fuel", quantity: 1,
+                                                     checkpointID: distant.id)])
+                try? UserDefaultsRacePlanStorage(userDefaults: defaults).saveRacePlans([fixture])
+            }
+            if ProcessInfo.processInfo.arguments.contains("--target-cleanup-fixture") {
+                let start = Date().addingTimeInterval(86_400)
+                let fixture = RacePlan(name: "Shorten target", raceDate: start, startTime: start,
+                    distanceKm: 10, targetHours: 0, targetMinutes: 50, gelCount: 0,
+                    checkpoints: [RaceCheckpoint(order: 0, name: "Keep timed point", distanceKm: 4,
+                                                 plannedElapsedSeconds: 1_800)],
+                    fuelingEvents: [RaceFuelingEvent(order: 0, name: "Late timed fuel", quantity: 1,
+                                                     elapsedSeconds: 2_400)])
+                try? UserDefaultsRacePlanStorage(userDefaults: defaults).saveRacePlans([fixture])
+            }
+            if ProcessInfo.processInfo.arguments.contains("--checklist-template-fixture") {
+                let store = ChecklistTemplateStore(defaults: defaults)
+                if !store.templates.contains(where: { $0.name == "Saved checklist" }) {
+                    _ = store.save(name: "Saved checklist", items: [
+                        ChecklistItem(title: "Saved gear"),
+                        ChecklistItem(title: "Saved deadline", isRequired: true, dueTiming: .dayBefore)
+                    ])
+                }
             }
         } else {
             defaults = .standard
@@ -91,9 +123,25 @@ struct RaceFuelMemoApp: App {
         #if DEBUG
         // Unit tests configure their own SKTestSession before starting their Store.
         // Avoid a second listener and requests against the pre-test StoreKit environment.
-        return ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
+        return ProcessInfo.processInfo.arguments.contains("--ui-testing")
+            || ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil
         #else
         return true
         #endif
     }
 }
+
+#if DEBUG
+/// Deterministic UI fixtures, never compiled into the distributed app. Production
+/// always uses StoreKit verification, not launch arguments or stored flags.
+@MainActor
+private struct ProUITestClient: ProStoreKitClient {
+    let purchased: Bool
+    func fetchProduct() async throws -> Product? { nil }
+    func currentEntitlements() async -> [ProVerificationResult] {
+        purchased ? [.verified(ProEntitlement(productID: ProProductID.lifetime,
+            isNonConsumable: true, revocationDate: nil, expirationDate: nil, isUpgraded: false))] : []
+    }
+    func updates() -> AsyncStream<ProTransactionUpdate> { AsyncStream { $0.finish() } }
+}
+#endif

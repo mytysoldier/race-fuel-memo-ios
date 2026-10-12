@@ -98,6 +98,27 @@ final class RacePreparationTests: XCTestCase {
         XCTAssertNil(RaceCreationDraftStore(defaults: defaults).draft)
     }
 
+    func testAdvancedEditMarkerSurvivesDraftRelaunch() {
+        let suite = "RacePreparationTests.\(UUID())"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        var input = draft()
+        input.editedProFeature = .checkpoints
+        RaceCreationDraftStore(defaults: defaults).save(input)
+        let restored = RaceCreationDraftStore(defaults: defaults)
+        XCTAssertEqual(restored.draft, input)
+        XCTAssertEqual(restored.draft?.editedProFeature, .checkpoints)
+    }
+
+    func testOlderDraftWithoutProMarkerStillDecodes() throws {
+        let input = draft()
+        let data = try JSONEncoder().encode(input)
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        object.removeValue(forKey: "editedProFeature")
+        let legacy = try JSONSerialization.data(withJSONObject: object)
+        XCTAssertEqual(try JSONDecoder().decode(RaceCreationDraft.self, from: legacy), input)
+    }
+
     func testCorruptDraftIsNotOverwrittenOrCleared() {
         let suite = "RacePreparationTests.\(UUID())"
         let defaults = UserDefaults(suiteName: suite)!

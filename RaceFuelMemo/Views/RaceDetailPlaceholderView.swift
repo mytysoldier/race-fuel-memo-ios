@@ -3,6 +3,8 @@ import SwiftUI
 struct RaceDetailView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(RacePlanTemplateStore.self) private var templateStore
+    @Environment(ProStore.self) private var proStore
+    @State private var paywallFeature: ProFeature?
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
     @State private var isShowingChecklistEditor = false
@@ -82,7 +84,7 @@ struct RaceDetailView: View {
                     Text("基本の均等ペース")
                         .foregroundStyle(.secondary)
                 } else {
-                    Picker("使用するプラン", selection: Binding(
+                    Picker("使用するプラン · Pro", selection: Binding(
                         get: { currentRacePlan.selectedPacePlanID },
                         set: { selectPacePlan($0) }
                     )) {
@@ -92,7 +94,7 @@ struct RaceDetailView: View {
                     }
                     LabeledContent("選択中の目標", value:
                         RacePlanCalculator.formatDuration(currentRacePlan.activeTargetSeconds))
-                    Button("A・B・Cプランを比較") {
+                    ProFeatureButton(feature: .paceStrategies, title: "A・B・Cプランを比較") {
                         isShowingPaceComparison = true
                     }
                 }
@@ -232,10 +234,8 @@ struct RaceDetailView: View {
                         .foregroundStyle(.secondary)
                     }
                 }
-                Button {
+                ProFeatureButton(feature: .customChecklist, title: "チェックリストを編集", systemImage: "checklist") {
                     isShowingChecklistEditor = true
-                } label: {
-                    Label("チェックリストを編集", systemImage: "checklist")
                 }
                 if currentRacePlan.checklistNotificationsEnabled {
                     Label("必須項目の期限通知はオン", systemImage: "bell.fill")
@@ -250,24 +250,20 @@ struct RaceDetailView: View {
             }
 
             Section("Race Card") {
-                NavigationLink {
-                    RaceCardView(racePlan: currentRacePlan)
-                } label: {
-                    Label("画像・PDF・ペースバンド出力", systemImage: "square.and.arrow.up")
+                ProFeatureButton(feature: .raceCard, title: "画像・PDF・ペースバンド出力", systemImage: "square.and.arrow.up") {
+                    isShowingPreparationOutput = true
                 }
             }
 
             Section("計画を再利用") {
-                Button {
+                ProFeatureButton(feature: .planReuse, title: "この計画を複製", systemImage: "doc.on.doc") {
                     duplicateDraft = currentRacePlan.duplicated()
-                } label: {
-                    Label("この計画を複製", systemImage: "doc.on.doc")
                 }
-                Button("テンプレートとして保存") {
+                ProFeatureButton(feature: .planReuse, title: "テンプレートとして保存") {
                     templateName = ""
                     isShowingSaveTemplate = true
                 }
-                Button("テンプレート・別のレースから設定を適用") {
+                ProFeatureButton(feature: .planReuse, title: "テンプレート・別のレースから設定を適用") {
                     isShowingReuse = true
                 }
             }
@@ -338,10 +334,11 @@ struct RaceDetailView: View {
                         }
                     }
             }
+            .proProtected(.planReuse)
         }
         .sheet(isPresented: $isShowingReuse) {
             RacePlanReuseView(destination: currentRacePlan) { updated in
-                guard racePlanStore.updateRacePlan(updated) else { return false }
+                guard proStore.canUse(.planReuse), racePlanStore.updateRacePlan(updated) else { return false }
                 rescheduleRemindersIfNeeded(for: updated)
                 return true
             }
@@ -349,6 +346,7 @@ struct RaceDetailView: View {
         .alert("計画テンプレートを保存", isPresented: $isShowingSaveTemplate) {
             TextField("テンプレート名", text: $templateName)
             Button("保存") {
+                guard proStore.canUse(.planReuse) else { paywallFeature = .planReuse; return }
                 let saved = templateStore.save(name: templateName, source: currentRacePlan)
                 templateMessage = saved ? "テンプレートを保存しました。" :
                     (templateStore.error ?? "保存できませんでした。名前と計画の設定を確認してください。")
@@ -365,6 +363,7 @@ struct RaceDetailView: View {
         }
         .sheet(isPresented: $isShowingChecklistEditor) {
             RaceChecklistEditorView(racePlan: currentRacePlan) { items, notificationsEnabled in
+                guard proStore.canUse(.customChecklist) else { return false }
                 var updated = currentRacePlan
                 updated.checklistItems = items
                 updated.checklistNotificationsEnabled = notificationsEnabled
@@ -381,6 +380,7 @@ struct RaceDetailView: View {
                     }
             }
         }
+        .sheet(item: $paywallFeature) { ProPaywallView(feature: $0) }
         .alert("ペースプランを変更できません", isPresented: $isShowingPacePlanSelectionError) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -475,6 +475,7 @@ struct RaceDetailView: View {
     }
 
     private func selectPacePlan(_ id: UUID?) {
+        guard proStore.canUse(.paceStrategies) else { paywallFeature = .paceStrategies; return }
         guard let id, currentRacePlan.pacePlans.contains(where: { $0.id == id }) else { return }
         var updated = currentRacePlan
         updated.selectedPacePlanID = id
@@ -685,6 +686,9 @@ struct RaceDetailView: View {
 
 private struct RacePlanEditView: View {
     @Environment(RacePlanStore.self) private var racePlanStore
+    @Environment(ProStore.self) private var proStore
+    @State private var editedProFeature: ProFeature?
+    @State private var paywallFeature: ProFeature?
     @Environment(\.dismiss) private var dismiss
 
     let racePlan: RacePlan
@@ -709,6 +713,7 @@ private struct RacePlanEditView: View {
     @State private var isShowingPacePlanEditor = false
     @State private var isShowingFuelingEditor = false
     @State private var isShowingSaveError = false
+    @State private var isShowingBasicEditCleanupConfirmation = false
     @State private var didOpenInitialStep = false
 
     init(racePlan: RacePlan, initialStep: RacePreparationStep = .basic, onSaved: @escaping (RacePlan) -> Void) {
@@ -737,6 +742,7 @@ private struct RacePlanEditView: View {
             VStack(spacing: 20) {
                 formSection("基本情報") {
                     TextField("レース名", text: $raceName)
+                        .accessibilityIdentifier("planEditor.name")
                         .textFieldStyle(.roundedBorder)
                     DatePicker("開催日", selection: $raceDate, displayedComponents: .date)
                     DatePicker("スタート時刻", selection: $startTime, displayedComponents: .hourAndMinute)
@@ -802,10 +808,8 @@ private struct RacePlanEditView: View {
                 Divider()
                 Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
                     .foregroundStyle(.secondary)
-                Button {
+                ProFeatureButton(feature: .fuelingPlan, title: "補給・給水プランを設定", systemImage: "drop.fill") {
                     isShowingFuelingEditor = true
-                } label: {
-                    Label("補給・給水プランを設定", systemImage: "drop.fill")
                 }
                 if let error = RaceFuelingPlanCalculator.validationError(for: workingRacePlan) {
                     Label(error, systemImage: "exclamationmark.circle")
@@ -817,10 +821,8 @@ private struct RacePlanEditView: View {
             formSection("チェックポイント") {
                 Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
                     .foregroundStyle(.secondary)
-                Button {
+                ProFeatureButton(feature: .checkpoints, title: "地点を編集", systemImage: "mappin.and.ellipse") {
                     isShowingCheckpointEditor = true
-                } label: {
-                    Label("地点を編集", systemImage: "mappin.and.ellipse")
                 }
                 if let error = RaceCheckpointValidator.error(for: workingRacePlan) {
                     Label(error, systemImage: "exclamationmark.circle")
@@ -829,13 +831,31 @@ private struct RacePlanEditView: View {
                 }
             }
 
+            if !proStore.canUse(.checkpoints), !basicEditCleanup.isEmpty {
+                formSection("基本情報の変更に伴う整理") {
+                    Text("新しい距離・目標タイムに合わない保存済みデータがあります。対象を確認して整理できます。")
+                        .foregroundStyle(.secondary)
+                    if !basicEditCleanup.removedCheckpoints.isEmpty {
+                        Text("削除する地点: \(basicEditCleanup.removedCheckpoints.map(\.name).joined(separator: "、"))")
+                    }
+                    if !basicEditCleanup.clearedCheckpointTimes.isEmpty {
+                        Text("手動通過時刻を解除する地点: \(basicEditCleanup.clearedCheckpointTimes.map(\.name).joined(separator: "、"))")
+                    }
+                    if !basicEditCleanup.removedFuelingEvents.isEmpty {
+                        Text("削除する補給予定: \(basicEditCleanup.removedFuelingEvents.map(\.name).joined(separator: "、"))")
+                    }
+                    Button("合わないデータを整理", role: .destructive) {
+                        isShowingBasicEditCleanupConfirmation = true
+                    }
+                    .accessibilityIdentifier("planEditor.cleanupInvalidAdvancedData")
+                }
+            }
+
             formSection("ペース戦略") {
                 Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
                     .foregroundStyle(.secondary)
-                Button {
+                ProFeatureButton(feature: .paceStrategies, title: "A・B・Cプランを設定", systemImage: "figure.run") {
                     isShowingPacePlanEditor = true
-                } label: {
-                    Label("A・B・Cプランを設定", systemImage: "figure.run")
                 }
                 if let error = RacePacePlanCalculator.validationError(for: workingRacePlan) {
                     Label(error, systemImage: "exclamationmark.circle")
@@ -873,6 +893,8 @@ private struct RacePlanEditView: View {
         .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $isShowingCheckpointEditor) {
             RaceCheckpointEditorView(racePlan: workingRacePlan) {
+                guard proStore.canUse(.checkpoints) else { return }
+                editedProFeature = .checkpoints
                 checkpoints = $0
                 var normalized = workingRacePlan
                 normalized.normalizePacePlans()
@@ -882,6 +904,8 @@ private struct RacePlanEditView: View {
         .sheet(isPresented: $isShowingPacePlanEditor) {
             NavigationStack {
                 RacePacePlansEditorView(racePlan: workingRacePlan) { plans, selected in
+                    guard proStore.canUse(.paceStrategies) else { return }
+                    editedProFeature = .paceStrategies
                     pacePlans = plans
                     selectedPacePlanID = selected
                 }
@@ -889,6 +913,8 @@ private struct RacePlanEditView: View {
         }
         .sheet(isPresented: $isShowingFuelingEditor) {
             RaceFuelingPlanEditorView(racePlan: workingRacePlan) {
+                guard proStore.canUse(.fuelingPlan) else { return }
+                editedProFeature = .fuelingPlan
                 fuelingEvents = $0
                 gels = []
             }
@@ -898,6 +924,20 @@ private struct RacePlanEditView: View {
         } message: {
             Text(racePlanStore.storageError ?? racePlanStore.validationError ?? "保存処理に失敗しました。")
         }
+        .alert("保存済みデータを整理しますか？", isPresented: $isShowingBasicEditCleanupConfirmation) {
+            Button("整理する", role: .destructive) {
+                let cleanup = basicEditCleanup
+                guard !cleanup.isEmpty else { return }
+                let cleaned = cleanup.applying(to: workingRacePlan)
+                checkpoints = cleaned.checkpoints
+                fuelingEvents = cleaned.fuelingEvents
+                pacePlans = cleaned.pacePlans
+            }
+            Button("キャンセル", role: .cancel) {}
+        } message: {
+            Text("表示された地点・補給予定の削除と手動通過時刻の解除を行います。保存するまではレースに反映されません。")
+        }
+        .sheet(item: $paywallFeature) { ProPaywallView(feature: $0) }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("キャンセル", action: dismiss.callAsFunction)
@@ -905,6 +945,7 @@ private struct RacePlanEditView: View {
             }
             ToolbarItem(placement: .confirmationAction) {
                 Button("保存", action: save)
+                    .accessibilityIdentifier("planEditor.save")
                     .disabled(trimmedRaceName.isEmpty || !hasValidTargetTime
                               || RaceCheckpointValidator.error(for: workingRacePlan) != nil)
             }
@@ -929,6 +970,10 @@ private struct RacePlanEditView: View {
 
     private var hasValidTargetTime: Bool {
         targetHours > 0 || targetMinutes > 0
+    }
+
+    private var basicEditCleanup: RacePlanBasicEditCleanup {
+        RacePlanBasicEditCleanup(original: racePlan, candidate: workingRacePlan)
     }
 
     private var workingRacePlan: RacePlan {
@@ -964,6 +1009,10 @@ private struct RacePlanEditView: View {
     }
 
     private func save() {
+        if let feature = editedProFeature, !proStore.canUse(feature) {
+            paywallFeature = feature
+            return
+        }
         guard !trimmedRaceName.isEmpty, hasValidTargetTime else {
             return
         }
@@ -1163,6 +1212,7 @@ private struct ReminderSettingsSheet: View {
     }
     .environment(RacePlanStore(storage: RaceDetailPreviewRacePlanStorage(racePlans: [racePlan])))
     .environment(ChecklistTemplateStore())
+    .environment(ProStore())
     .environment(RacePlanTemplateStore())
 }
 

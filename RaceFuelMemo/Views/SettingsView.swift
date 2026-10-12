@@ -5,7 +5,12 @@ struct SettingsView: View {
 
     var body: some View {
         Form {
+            Section("Pro") { ProInformationButton() }
             Section("再利用") {
+                NavigationLink("チェックリストテンプレートを管理") {
+                    ChecklistTemplatesView()
+                }
+                .accessibilityIdentifier("settings.checklistTemplates")
                 NavigationLink("計画テンプレートを管理") {
                     RacePlanTemplatesView()
                 }
@@ -140,4 +145,6 @@ private struct PrivacyPolicyView: View {
         SettingsView()
     }
     .environment(RacePlanTemplateStore())
+    .environment(ChecklistTemplateStore())
+    .environment(ProStore())
 }

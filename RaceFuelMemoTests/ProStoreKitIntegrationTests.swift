@@ -26,6 +26,7 @@ final class ProStoreKitIntegrationTests: XCTestCase {
             XCTAssertEqual(product.id, ProProductID.lifetime)
             XCTAssertEqual(product.type, .nonConsumable)
             XCTAssertFalse(product.displayPrice.isEmpty)
+            XCTAssertEqual(store.pricePresentation, .available(product.displayPrice))
             try await eventually("initial entitlement") { store.entitlementState == .notPurchased }
 
             // Same-device purchases return their result directly; the #46 purchase handler

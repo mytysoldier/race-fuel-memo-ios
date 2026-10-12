@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RaceCheckpointEditorView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(ProStore.self) private var proStore
     @State private var checkpoints: [RaceCheckpoint]
 
     let racePlan: RacePlan
@@ -63,6 +64,7 @@ struct RaceCheckpointEditorView: View {
                 ToolbarItem(placement: .topBarTrailing) { EditButton() }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("保存") {
+                        guard proStore.canUse(.checkpoints) else { return }
                         onSave(checkpoints)
                         dismiss()
                     }
@@ -70,6 +72,7 @@ struct RaceCheckpointEditorView: View {
                 }
             }
         }
+        .proProtected(.checkpoints)
     }
 
     private func checkpointRow(_ binding: Binding<RaceCheckpoint>) -> some View {

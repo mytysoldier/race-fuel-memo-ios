@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RacePlanReuseView: View {
+    @Environment(ProStore.self) private var proStore
     @Environment(RacePlanStore.self) private var racePlanStore
     @Environment(RacePlanTemplateStore.self) private var templateStore
     @Environment(\.dismiss) private var dismiss
@@ -71,6 +72,7 @@ struct RacePlanReuseView: View {
                 }
             }
         }
+        .proProtected(.planReuse)
     }
 
     private func sourceButton(_ template: RacePlanTemplate) -> some View {
@@ -90,6 +92,7 @@ struct RacePlanReuseView: View {
     }
 
     private func apply() {
+        guard proStore.canUse(.planReuse) else { return }
         guard let selectedTemplate else { return }
         do {
             let updated = try selectedTemplate.applying(to: destination, components: components)
@@ -102,6 +105,8 @@ struct RacePlanReuseView: View {
 }
 
 struct RacePlanTemplatesView: View {
+    @Environment(ProStore.self) private var proStore
+    @State private var showsPaywall = false
     @Environment(RacePlanTemplateStore.self) private var templateStore
     @State private var templateToRename: RacePlanTemplate?
     @State private var templateToDelete: RacePlanTemplate?
@@ -121,7 +126,7 @@ struct RacePlanTemplatesView: View {
                     Text(template.name).font(.headline)
                     Text("\(RacePlanCalculator.formatDistance(template.distanceKm))・ペース \(template.pacePlans.count)件・補給 \(template.fuelingEvents.count)件・持ち物 \(template.checklistItems.count)件")
                         .font(.subheadline).foregroundStyle(.secondary)
-                    Button("名称変更") {
+                    ProFeatureButton(feature: .planReuse, title: "名称変更") {
                         templateToRename = template
                         name = template.name
                         showsRename = true
@@ -145,6 +150,7 @@ struct RacePlanTemplatesView: View {
         .alert("テンプレートの名称変更", isPresented: $showsRename) {
             TextField("名前", text: $name)
             Button("保存") {
+                guard proStore.canUse(.planReuse) else { showsPaywall = true; return }
                 operationError = nil
                 if let template = templateToRename, !templateStore.rename(id: template.id, to: name) {
                     operationError = "名称を変更できません。空でない名前を入力してください。"
@@ -163,5 +169,6 @@ struct RacePlanTemplatesView: View {
         } message: {
             Text("保存済みレースには影響しません。")
         }
+        .sheet(isPresented: $showsPaywall) { ProPaywallView(feature: .planReuse) }
     }
 }
