@@ -157,13 +157,22 @@ final class ProStore {
 
     /// Purchase/restore feedback must use a snapshot that was actually applied.
     /// If a foreground/update query supersedes ours, wait for its accepted result.
-    private func refreshEntitlementsForOperation() async -> ProEntitlementSnapshot {
+    private func refreshEntitlementsForOperation(
+        feedback: (ProEntitlementSnapshot) -> ProPurchaseFeedback,
+        finishVerifiedPurchase: (@Sendable () async -> Void)? = nil
+    ) async {
         while true {
             await refreshEntitlements()
             while let refresh = latestEntitlementRefresh {
                 let snapshot = await refresh.task.value
                 guard refresh.revision == entitlementRevision else { continue }
-                if let snapshot { return snapshot }
+                if let snapshot {
+                    // Check the revision and publish without another suspension.
+                    // Callers must not write feedback from a returned stale snapshot.
+                    purchaseFeedback = feedback(snapshot)
+                    if snapshot.purchased { await finishVerifiedPurchase?() }
+                    return
+                }
                 // Retry if the caller of the winning query cancelled it.
                 break
             }
@@ -208,36 +217,34 @@ final class ProStore {
         do {
             switch try await client.purchase(product) {
             case .userCancelled:
-                let snapshot = await refreshEntitlementsForOperation()
-                purchaseFeedback = snapshot.purchased ? .entitlementConfirmed : .cancelled
+                await refreshEntitlementsForOperation {
+                    $0.purchased ? .entitlementConfirmed : .cancelled
+                }
             case .pending:
-                let snapshot = await refreshEntitlementsForOperation()
-                purchaseFeedback = snapshot.purchased ? .entitlementConfirmed : .pending
+                await refreshEntitlementsForOperation {
+                    $0.purchased ? .entitlementConfirmed : .pending
+                }
             case .success(let update):
                 guard case .verified(let entitlement) = update.result,
                       entitlement.isActive(at: Date()) else {
-                    let snapshot = await refreshEntitlementsForOperation()
-                    purchaseFeedback = snapshot.purchased ? .entitlementConfirmed : .verificationFailed
+                    await refreshEntitlementsForOperation {
+                        $0.purchased ? .entitlementConfirmed : .verificationFailed
+                    }
                     return
                 }
                 // Validate the returned transaction and the complete current
                 // entitlement set before claiming success or finishing it.
-                let snapshot = await refreshEntitlementsForOperation()
-                if snapshot.purchased {
-                    purchaseFeedback = .purchased
-                    await update.finish()
-                } else {
-                    purchaseFeedback = .verificationFailed
-                }
+                await refreshEntitlementsForOperation(feedback: {
+                    $0.purchased ? .purchased : .verificationFailed
+                }, finishVerifiedPurchase: update.finish)
             }
         } catch {
-            let snapshot = await refreshEntitlementsForOperation()
-            if snapshot.purchased {
-                purchaseFeedback = .entitlementConfirmed
-            } else if let storeKitError = error as? StoreKitError, case .userCancelled = storeKitError {
-                purchaseFeedback = .cancelled
-            } else {
-                purchaseFeedback = .purchaseFailed
+            await refreshEntitlementsForOperation { snapshot in
+                if snapshot.purchased { return .entitlementConfirmed }
+                if let storeKitError = error as? StoreKitError, case .userCancelled = storeKitError {
+                    return .cancelled
+                }
+                return .purchaseFailed
             }
         }
     }
@@ -246,17 +253,17 @@ final class ProStore {
         defer { operationState = .idle }
         do {
             try await client.sync()
-            let snapshot = await refreshEntitlementsForOperation()
-            purchaseFeedback = snapshot.purchased ? .restored
-                : (snapshot.hasUnverifiedProEntitlement ? .verificationFailed : .nothingToRestore)
+            await refreshEntitlementsForOperation {
+                $0.purchased ? .restored
+                    : ($0.hasUnverifiedProEntitlement ? .verificationFailed : .nothingToRestore)
+            }
         } catch {
-            let snapshot = await refreshEntitlementsForOperation()
-            if snapshot.purchased && !wasPro {
-                purchaseFeedback = .entitlementConfirmed
-            } else if let storeKitError = error as? StoreKitError, case .userCancelled = storeKitError {
-                purchaseFeedback = .cancelled
-            } else {
-                purchaseFeedback = .restoreFailed
+            await refreshEntitlementsForOperation { snapshot in
+                if snapshot.purchased && !wasPro { return .entitlementConfirmed }
+                if let storeKitError = error as? StoreKitError, case .userCancelled = storeKitError {
+                    return .cancelled
+                }
+                return .restoreFailed
             }
         }
     }

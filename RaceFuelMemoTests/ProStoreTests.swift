@@ -560,8 +560,56 @@ final class ProStoreTests: XCTestCase {
         }
     }
 
+    func testPurchaseLatestRevocationCannotPublishOlderSuccessOrFinishIt() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in .success(ProTransactionUpdate(result: self.verified(), finish: { await finishes.record() })) }
+        try await assertOperationWaitsForWinningSnapshot(
+            store: store, client: client, restoring: false,
+            previousSnapshot: [verified()], winningPurchase: false)
+        XCTAssertEqual(store.purchaseFeedback, .verificationFailed)
+        let count = await finishes.count
+        XCTAssertEqual(count, 0)
+    }
+
+    func testRestoreLatestRevocationCannotPublishOlderSuccess() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        try await assertOperationWaitsForWinningSnapshot(
+            store: store, client: client, restoring: true,
+            previousSnapshot: [verified()], winningPurchase: false)
+        XCTAssertEqual(store.purchaseFeedback, .nothingToRestore)
+    }
+
+    func testRefundDuringPurchaseFinishingCannotRestoreSuccessFeedback() async throws {
+        let client = MockProClient()
+        defer { client.purchaseHandler = nil }
+        let store = try await purchasableStore(client)
+        let gate = FinishGate()
+        defer { gate.resume() }
+        client.purchaseHandler = { _ in
+            client.entitlements = [self.verified()]
+            return .success(ProTransactionUpdate(result: self.verified(), finish: { await gate.finish() }))
+        }
+        let operation = Task { await store.purchase() }
+        try await eventually { gate.continuation != nil }
+        XCTAssertEqual(store.purchaseFeedback, .purchased)
+        client.entitlements = [verified(revoked: Date())]
+        await store.refreshEntitlements()
+        XCTAssertFalse(store.isPro)
+        XCTAssertNil(store.purchaseFeedback)
+        gate.resume()
+        await operation.value
+        XCTAssertFalse(store.isPro)
+        XCTAssertNil(store.purchaseFeedback)
+        XCTAssertEqual(store.operationState, .idle)
+    }
+
     private func assertOperationWaitsForWinningSnapshot(
-        store: ProStore, client: MockProClient, restoring: Bool
+        store: ProStore, client: MockProClient, restoring: Bool,
+        previousSnapshot: [ProVerificationResult] = [], winningPurchase: Bool = true
     ) async throws {
         var queries: [CheckedContinuation<[ProVerificationResult], Never>] = []
         client.entitlementsHandler = { await withCheckedContinuation { queries.append($0) } }
@@ -575,15 +623,15 @@ final class ProStoreTests: XCTestCase {
         try await eventually { queries.count == 1 }
         let foreground = Task { await store.refreshEntitlements() }
         try await eventually { queries.count == 2 }
-        queries[0].resume(returning: [])
+        queries[0].resume(returning: previousSnapshot)
         await fulfillment(of: [prematureCompletion], timeout: 0.1)
         completion.isObserving = false
         XCTAssertTrue(store.isProcessingPurchase)
         XCTAssertNil(store.purchaseFeedback)
-        queries[1].resume(returning: [verified()])
+        queries[1].resume(returning: [winningPurchase ? verified() : verified(revoked: Date())])
         await foreground.value
         await operation.value
-        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.isPro, winningPurchase)
         XCTAssertEqual(store.operationState, .idle)
     }
 
@@ -672,5 +720,19 @@ private final class EarlyCompletionProbe {
 
     func record() {
         if isObserving { expectation.fulfill() }
+    }
+}
+
+@MainActor
+private final class FinishGate {
+    var continuation: CheckedContinuation<Void, Never>?
+
+    func finish() async {
+        await withCheckedContinuation { continuation = $0 }
+    }
+
+    func resume() {
+        continuation?.resume()
+        continuation = nil
     }
 }
