@@ -421,6 +421,73 @@ final class ProStoreTests: XCTestCase {
         XCTAssertNil(store.purchaseFeedback)
     }
 
+    func testPurchaseWaitsForSupersedingEntitlementRefreshBeforeReportingAndFinishing() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        let finishes = FinishProbe()
+        client.purchaseHandler = { _ in .success(ProTransactionUpdate(result: self.verified(), finish: { await finishes.record() })) }
+        try await assertOperationWaitsForWinningSnapshot(store: store, client: client, restoring: false)
+        XCTAssertEqual(store.purchaseFeedback, .purchased)
+        let count = await finishes.count
+        XCTAssertEqual(count, 1)
+    }
+
+    func testRestoreWaitsForSupersedingEntitlementRefreshBeforeReporting() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        try await assertOperationWaitsForWinningSnapshot(store: store, client: client, restoring: true)
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+    }
+
+    func testOperationRetriesWhenSupersedingRefreshIsCancelled() async throws {
+        let client = MockProClient()
+        let store = ProStore(client: client)
+        await store.start()
+        var queries: [CheckedContinuation<[ProVerificationResult], Never>] = []
+        client.entitlementsHandler = { await withCheckedContinuation { queries.append($0) } }
+        let operation = Task { await store.restorePurchases() }
+        try await eventually { queries.count == 1 }
+        let foreground = Task { await store.refreshEntitlements() }
+        try await eventually { queries.count == 2 }
+        foreground.cancel()
+        queries[0].resume(returning: [])
+        queries[1].resume(returning: [])
+        await foreground.value
+        try await eventually { queries.count == 3 }
+        queries[2].resume(returning: [verified()])
+        await operation.value
+        XCTAssertEqual(store.purchaseFeedback, .restored)
+        XCTAssertTrue(store.isPro)
+    }
+
+    private func assertOperationWaitsForWinningSnapshot(
+        store: ProStore, client: MockProClient, restoring: Bool
+    ) async throws {
+        var queries: [CheckedContinuation<[ProVerificationResult], Never>] = []
+        client.entitlementsHandler = { await withCheckedContinuation { queries.append($0) } }
+        let prematureCompletion = expectation(description: "Do not decide from an ignored snapshot")
+        prematureCompletion.isInverted = true
+        let completion = EarlyCompletionProbe(prematureCompletion)
+        let operation = Task {
+            if restoring { await store.restorePurchases() } else { await store.purchase() }
+            completion.record()
+        }
+        try await eventually { queries.count == 1 }
+        let foreground = Task { await store.refreshEntitlements() }
+        try await eventually { queries.count == 2 }
+        queries[0].resume(returning: [])
+        await fulfillment(of: [prematureCompletion], timeout: 0.1)
+        completion.isObserving = false
+        XCTAssertTrue(store.isProcessingPurchase)
+        XCTAssertNil(store.purchaseFeedback)
+        queries[1].resume(returning: [verified()])
+        await foreground.value
+        await operation.value
+        XCTAssertTrue(store.isPro)
+        XCTAssertEqual(store.operationState, .idle)
+    }
+
     private func purchasableStore(_ client: MockProClient) async throws -> ProStore {
         let url = try XCTUnwrap(Bundle(for: Self.self).url(forResource: "RunningRaceMate", withExtension: "storekit"))
         let session = try SKTestSession(contentsOf: url)
@@ -495,4 +562,16 @@ private final class MockProClient: ProStoreKitClient {
 private actor FinishProbe {
     private(set) var count = 0
     func record() { count += 1 }
+}
+
+@MainActor
+private final class EarlyCompletionProbe {
+    let expectation: XCTestExpectation
+    var isObserving = true
+
+    init(_ expectation: XCTestExpectation) { self.expectation = expectation }
+
+    func record() {
+        if isObserving { expectation.fulfill() }
+    }
 }
