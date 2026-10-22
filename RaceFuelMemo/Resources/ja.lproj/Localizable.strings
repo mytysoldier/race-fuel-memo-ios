@@ -66,7 +66,7 @@
 "settings.row.version" = "バージョン";
 "settings.row.disclaimer" = "免責事項";
 "settings.row.privacy_policy" = "プライバシーポリシー";
-"settings.policy.summary" = "外部通信、ログイン、広告、課金、解析SDKは使用しません。";
+"settings.policy.summary" = "ログイン、広告、解析SDKは使用しません。追加機能Proは買い切りのアプリ内課金です。商品情報の取得・購入・復元・購入状況の確認にはAppleのStoreKitを使用します。";
 
 "settings.info.section.about" = "Running Race Mateについて";
 "settings.info.about" = "Running Race Mateは、レース前の目標タイム、補給、持ち物、メモをレースごとにまとめて確認するためのアプリです。";
@@ -87,8 +87,8 @@
 "settings.disclaimer.responsibility" = "レースへの参加、補給、体調管理に関する最終的な判断は利用者ご自身で行ってください。";
 
 "settings.privacy.section.collection" = "収集する情報";
-"settings.privacy.collection" = "本アプリは個人情報を収集しません。外部サーバーへの送信、ログイン、広告、課金、解析SDKも使用しません。";
+"settings.privacy.collection" = "開発者は本アプリに入力されたレースプランやメモなどを収集しません。ログイン、広告、解析SDKは使用しません。Proの購入・復元・購入状況の確認にはAppleのStoreKitを使用し、端末上で商品・取引情報を検証します。購入処理にはAppleとの通信が必要ですが、レースプランやメモを購入処理のために送信することはありません。開発者がクレジットカード番号などの決済情報を取得することはありません。";
 "settings.privacy.section.storage" = "端末内のデータ";
 "settings.privacy.storage" = "レースプラン、チェック状態、メモは端末に保存され、本アプリの外部サーバーへ送信されません。端末のバックアップを復元した場合、保存したレースプランやメモも新しい端末に復元されます。アプリを削除すると、端末上のデータが削除される場合があります。";
 "settings.privacy.section.third_party" = "第三者提供";
-"settings.privacy.third_party" = "本アプリはデータを第三者へ提供しません。";
+"settings.privacy.third_party" = "開発者は入力されたレースプランやメモなどを収集せず、第三者へ提供・販売しません。利用者がRace Cardを保存・共有・印刷した場合は、選択した保存先・共有先・プリンタへ出力内容が渡されます。";
