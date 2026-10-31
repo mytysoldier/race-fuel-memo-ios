@@ -269,12 +269,17 @@ struct RaceDetailView: View {
                 ProFeatureButton(feature: .planReuse, title: "この計画を複製", systemImage: "doc.on.doc") {
                     duplicateDraft = currentRacePlan.duplicated()
                 }
+                Text("この計画のペース・補給・持ち物を保存し、次のレースに使えます。")
+                    .font(.footnote).foregroundStyle(.secondary)
                 ProFeatureButton(feature: .planReuse, title: "テンプレートとして保存") {
-                    templateName = ""
+                    templateName = "\(currentRacePlan.name)の設定"
                     isShowingSaveTemplate = true
                 }
                 ProFeatureButton(feature: .planReuse, title: "テンプレート・別のレースから設定を適用") {
                     isShowingReuse = true
+                }
+                NavigationLink("保存したテンプレートを管理") {
+                    RacePlanTemplatesView()
                 }
             }
 

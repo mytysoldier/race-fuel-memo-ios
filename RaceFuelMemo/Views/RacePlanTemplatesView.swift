@@ -6,6 +6,7 @@ struct RacePlanReuseView: View {
     @Environment(RacePlanTemplateStore.self) private var templateStore
     @Environment(\.dismiss) private var dismiss
     @State private var selectedTemplate: RacePlanTemplate?
+    @State private var selectedSavedTemplateID: UUID?
     @State private var components = Set(RacePlanReuseComponent.allCases)
     @State private var error: String?
 
@@ -17,11 +18,11 @@ struct RacePlanReuseView: View {
             Form {
                 Section("保存済みテンプレート") {
                     if templateStore.availableTemplates.isEmpty {
-                        Text("レース詳細から計画をテンプレートとして保存できます。")
+                        Text("テンプレートはまだありません。レースを作成した後、レース詳細から保存できます。テンプレートを使わずに作成することもできます。")
                             .foregroundStyle(.secondary)
                     }
                     ForEach(templateStore.availableTemplates) { template in
-                        sourceButton(template)
+                        sourceButton(template, isSavedTemplate: true)
                     }
                     if let storageError = templateStore.error {
                         Text(storageError).foregroundStyle(.red)
@@ -31,15 +32,18 @@ struct RacePlanReuseView: View {
                     }
                 }
                 Section("保存済みレースから再利用") {
-                    ForEach(racePlanStore.racePlans.filter { $0.id != destination.id }) { plan in
+                    let sources = racePlanStore.racePlans.filter { $0.id != destination.id }
+                    if sources.isEmpty {
+                        Text("再利用できる保存済みレースはありません。")
+                            .foregroundStyle(.secondary)
+                    }
+                    ForEach(sources) { plan in
                         sourceButton(RacePlanTemplate(id: plan.id, name: plan.name, source: plan))
                     }
                 }
                 if let selectedTemplate {
                     Section {
                         Text("選択中：\(selectedTemplate.name)")
-                        Text("\(RacePlanCalculator.formatDistance(selectedTemplate.distanceKm))・基本目標 \(RacePlanCalculator.formatDuration(selectedTemplate.targetHours * 3_600 + selectedTemplate.targetMinutes * 60))")
-                            .foregroundStyle(.secondary)
                         ForEach(RacePlanReuseComponent.allCases) { component in
                             Toggle(component.title, isOn: Binding(
                                 get: { components.contains(component) },
@@ -54,6 +58,9 @@ struct RacePlanReuseView: View {
                         Text("適用する要素")
                     } footer: {
                         Text("選択した要素を置き換えます。大会名・日時・メモ・チェックポイントは引き継ぎません。チェック済み状態、固定日時の期限、通知オン状態も引き継ぎません。")
+                    }
+                    Section("内容の確認") {
+                        templatePreview(selectedTemplate)
                     }
                 }
                 if let error {
@@ -73,21 +80,77 @@ struct RacePlanReuseView: View {
             }
         }
         .proProtected(.planReuse)
+        .onChange(of: templateStore.templates) { _, templates in
+            guard let id = selectedSavedTemplateID else { return }
+            selectedTemplate = templates.first { $0.id == id }
+            if selectedTemplate == nil { selectedSavedTemplateID = nil }
+        }
     }
 
-    private func sourceButton(_ template: RacePlanTemplate) -> some View {
+    @ViewBuilder
+    private func templatePreview(_ template: RacePlanTemplate) -> some View {
+        if components.contains(.basics) {
+            LabeledContent("距離", value: RacePlanCalculator.formatDistance(template.distanceKm))
+            LabeledContent("基本目標", value: RacePlanCalculator.formatDuration(template.targetHours * 3_600 + template.targetMinutes * 60))
+        }
+        if components.contains(.pace) {
+            if template.pacePlans.isEmpty {
+                LabeledContent("ペース戦略", value: "未設定")
+            } else {
+                ForEach(template.pacePlans.sorted(by: { $0.order < $1.order })) { plan in
+                    LabeledContent(plan.name, value: "\(plan.strategy.title)・\(RacePlanCalculator.formatDuration(plan.targetSeconds))")
+                }
+            }
+        }
+        if components.contains(.fueling) {
+            if template.fuelingEvents.isEmpty && template.gelNames.isEmpty {
+                LabeledContent("補給", value: "未設定")
+            } else {
+                ForEach(template.fuelingEvents.sorted(by: { $0.order < $1.order })) { event in
+                    VStack(alignment: .leading) {
+                        LabeledContent(event.name, value: "\(event.quantity)個・\(event.kind.title)")
+                        if let distance = event.distanceKm {
+                            Text(RacePlanCalculator.formatDistance(distance)).font(.caption).foregroundStyle(.secondary)
+                        } else if let elapsed = event.elapsedSeconds {
+                            Text("スタートから\(RacePlanCalculator.formatDuration(elapsed))").font(.caption).foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                ForEach(Array(template.gelNames.enumerated()), id: \.offset) { _, name in
+                    Text("ジェル：\(name)")
+                }
+            }
+        }
+        if components.contains(.checklist) {
+            if template.checklistItems.isEmpty {
+                LabeledContent("持ち物", value: "未設定")
+            } else {
+                ForEach(Array(template.checklistItems.enumerated()), id: \.offset) { _, item in
+                    Text(item.title)
+                }
+            }
+        }
+    }
+
+    private func sourceButton(_ template: RacePlanTemplate, isSavedTemplate: Bool = false) -> some View {
         Button {
             selectedTemplate = template
+            selectedSavedTemplateID = isSavedTemplate ? template.id : nil
             error = nil
         } label: {
             HStack {
-                Text(template.name).foregroundStyle(.primary)
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(template.name).foregroundStyle(.primary)
+                    Text("\(RacePlanCalculator.formatDistance(template.distanceKm))・ペース\(template.pacePlans.count)件・補給\(template.fuelingEvents.count + template.gelNames.count)件・持ち物\(template.checklistItems.count)件")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
                 Spacer()
                 if selectedTemplate?.id == template.id {
                     Image(systemName: "checkmark").accessibilityLabel("選択中")
                 }
             }
         }
+        .accessibilityIdentifier(isSavedTemplate ? "reuse.template.\(template.id.uuidString)" : "reuse.race.\(template.id.uuidString)")
         .accessibilityAddTraits(selectedTemplate?.id == template.id ? .isSelected : [])
     }
 
