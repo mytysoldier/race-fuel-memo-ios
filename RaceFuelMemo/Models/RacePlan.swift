@@ -125,6 +125,33 @@ struct PreRaceActivity: Identifiable, Codable, Equatable {
     }
 }
 
+/// The offsets are editable examples, not race-specific recommendations.
+struct PreRaceActivitySuggestion: Identifiable, Equatable {
+    let id: String
+    let name: String
+    var minutesBeforeStart: Int
+    var isSelected = false
+
+    static var examples: [PreRaceActivitySuggestion] {
+        [
+            .init(id: "arrival", name: "会場到着", minutesBeforeStart: 120),
+            .init(id: "registration", name: "受付", minutesBeforeStart: 90),
+            .init(id: "baggage", name: "荷物預け", minutesBeforeStart: 60),
+            .init(id: "assembly", name: "整列", minutesBeforeStart: 30)
+        ]
+    }
+
+    func date(relativeTo start: Date) -> Date {
+        start.addingTimeInterval(-TimeInterval(minutesBeforeStart) * 60)
+    }
+
+    static func createSelected(_ suggestions: [Self], start: Date) -> [PreRaceActivity] {
+        suggestions.filter(\.isSelected).map {
+            PreRaceActivity(name: $0.name, date: $0.date(relativeTo: start))
+        }.chronologicallySorted
+    }
+}
+
 extension Array where Element == PreRaceActivity {
     var chronologicallySorted: [PreRaceActivity] {
         sorted { $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date < $1.date }

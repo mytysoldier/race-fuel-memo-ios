@@ -1264,6 +1264,7 @@ private struct PreRaceActivitiesEditor: View {
     @Environment(\.dismiss) private var dismiss
     @State private var activities: [PreRaceActivity]
     @State private var saveError = false
+    @State private var isShowingSuggestions = false
     let defaultDate: Date
     let onSave: ([PreRaceActivity]) -> Bool
 
@@ -1295,6 +1296,10 @@ private struct PreRaceActivitiesEditor: View {
                     }
                 }
                 Section {
+                    Button("スタート時刻から予定を作る", systemImage: "clock.arrow.circlepath") {
+                        isShowingSuggestions = true
+                    }
+                    .accessibilityIdentifier("activities.generate")
                     Button("予定を追加", systemImage: "plus") {
                         activities.append(PreRaceActivity(date: defaultDate))
                     }
@@ -1304,6 +1309,11 @@ private struct PreRaceActivitiesEditor: View {
                 }
                 if saveError { Section { Text("予定を保存できませんでした。")
                     .foregroundStyle(.red) } }
+            }
+            .sheet(isPresented: $isShowingSuggestions) {
+                PreRaceSuggestionsView(start: defaultDate, existingActivities: activities) { additions in
+                    activities.append(contentsOf: additions)
+                }
             }
             .navigationTitle("行動予定を編集")
             .navigationBarTitleDisplayMode(.inline)
@@ -1322,6 +1332,60 @@ private struct PreRaceActivitiesEditor: View {
                     }
                     .disabled(activities.contains { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
                     .accessibilityIdentifier("activities.save")
+                }
+            }
+        }
+    }
+}
+
+private struct PreRaceSuggestionsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var suggestions = PreRaceActivitySuggestion.examples
+    let start: Date
+    let existingActivities: [PreRaceActivity]
+    let onAdd: ([PreRaceActivity]) -> Void
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section {
+                    LabeledContent("スタート", value: start.formatted(date: .abbreviated, time: .shortened))
+                    Text("時刻は入力例です。大会の案内や移動時間を確認し、必要な項目と時間を選んでください。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                ForEach($suggestions) { $suggestion in
+                    Section {
+                        Toggle(suggestion.name, isOn: $suggestion.isSelected)
+                            .accessibilityIdentifier("activities.suggestion.\(suggestion.id)")
+                        if suggestion.isSelected {
+                            Stepper("スタートの\(suggestion.minutesBeforeStart)分前", value: $suggestion.minutesBeforeStart, in: 0...1_440, step: 5)
+                                .accessibilityIdentifier("activities.offset.\(suggestion.id)")
+                            LabeledContent("予定日時", value: suggestion.date(relativeTo: start).formatted(date: .abbreviated, time: .shortened))
+                            if existingActivities.contains(where: {
+                                $0.name.trimmingCharacters(in: .whitespacesAndNewlines) == suggestion.name
+                            }) {
+                                Label("同じ名前の予定があります。追加すると両方残ります。", systemImage: "exclamationmark.triangle")
+                                    .font(.footnote).foregroundStyle(.orange)
+                            }
+                        }
+                    }
+                }
+                Section {
+                    Text("追加後に編集画面で「保存」を押すと反映されます。通知は自動で設定されません。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("スタートから逆算")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("追加") {
+                        onAdd(PreRaceActivitySuggestion.createSelected(suggestions, start: start))
+                        dismiss()
+                    }
+                    .disabled(!suggestions.contains(where: \.isSelected))
+                    .accessibilityIdentifier("activities.confirmSuggestions")
                 }
             }
         }

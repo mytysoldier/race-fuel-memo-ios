@@ -367,6 +367,31 @@ final class RacePreparationUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["受付"].exists)
     }
 
+    func testGenerateActivitiesCanBeCancelledOrSaved() {
+        app.launchArguments.append("--preparation-fixture")
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launch()
+        tap(app.staticTexts["Warning race"])
+        tap(app.buttons["activities.edit"])
+        tap(app.buttons["activities.generate"])
+        XCTAssertTrue(app.navigationBars["スタートから逆算"].waitForExistence(timeout: 5))
+        tap(app.switches["activities.suggestion.arrival"])
+        tap(app.buttons["キャンセル"])
+        XCTAssertFalse(app.textFields["予定名"].exists)
+        tap(app.buttons["activities.generate"])
+        tap(app.switches["activities.suggestion.arrival"])
+        tap(app.buttons["activities.confirmSuggestions"])
+        XCTAssertTrue(app.textFields["予定名"].waitForExistence(timeout: 5))
+        tap(app.buttons["activities.save"])
+        XCTAssertTrue(app.staticTexts["会場到着"].waitForExistence(timeout: 5))
+        tap(app.buttons["activities.edit"])
+        tap(app.buttons["activities.generate"])
+        tap(app.switches["activities.suggestion.arrival"])
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "同じ名前の予定")).firstMatch.waitForExistence(timeout: 5))
+        tap(app.buttons["キャンセル"])
+        tap(app.buttons["キャンセル"])
+    }
+
     func testProCreationCanOpenAdvancedEditorsWithoutPaywall() {
         app.launch()
         tap(app.buttons["races.add"])
