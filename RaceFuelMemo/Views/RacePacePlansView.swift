@@ -342,7 +342,6 @@ struct RaceCourseElevationView: View {
                 if canRestoreSaved {
                     Section { Button("補正を元に戻す") { restoreOriginal() } }
                 }
-                if let message { Section { Text(message).foregroundStyle(.red) } }
             }
             .navigationTitle("GPX・標高")
             .toolbar {
@@ -364,6 +363,14 @@ struct RaceCourseElevationView: View {
                     draft.courseElevation = try GPXCourseParser.parse(Data(contentsOf: url))
                     message = nil
                 } catch { message = error.localizedDescription }
+            }
+            .alert("処理できません", isPresented: Binding(
+                get: { message != nil },
+                set: { if !$0 { message = nil } }
+            )) {
+                Button("OK", role: .cancel) { message = nil }
+            } message: {
+                Text(message ?? "")
             }
             .onAppear {
                 if let index = selectedIndex {
