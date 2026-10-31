@@ -17,6 +17,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     var pacePlans: [RacePacePlan]
     var selectedPacePlanID: UUID?
     var fuelingEvents: [RaceFuelingEvent]
+    var preRaceActivities: [PreRaceActivity]
     var courseElevation: CourseElevationProfile?
     var courseAdjustments: [CourseAdjustmentRecord]
 
@@ -36,7 +37,8 @@ struct RacePlan: Identifiable, Codable, Equatable {
         checkpoints: [RaceCheckpoint] = [],
         pacePlans: [RacePacePlan] = [],
         selectedPacePlanID: UUID? = nil,
-        fuelingEvents: [RaceFuelingEvent] = []
+        fuelingEvents: [RaceFuelingEvent] = [],
+        preRaceActivities: [PreRaceActivity] = []
     ) {
         self.id = id
         self.name = name
@@ -54,6 +56,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.pacePlans = pacePlans
         self.selectedPacePlanID = selectedPacePlanID
         self.fuelingEvents = fuelingEvents
+        self.preRaceActivities = preRaceActivities
         self.courseElevation = nil
         self.courseAdjustments = []
     }
@@ -61,7 +64,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
         case gelCount, gelNames, memo, checklistItems, checklistNotificationsEnabled, checkpoints, pacePlans
-        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustments
+        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustments, preRaceActivities
     }
 
     private enum LegacyCodingKeys: String, CodingKey { case courseAdjustment }
@@ -83,6 +86,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         pacePlans = try values.decodeIfPresent([RacePacePlan].self, forKey: .pacePlans) ?? []
         selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
         fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
+        preRaceActivities = try values.decodeIfPresent([PreRaceActivity].self, forKey: .preRaceActivities) ?? []
         courseElevation = try values.decodeIfPresent(CourseElevationProfile.self, forKey: .courseElevation)
         if let records = try values.decodeIfPresent([CourseAdjustmentRecord].self, forKey: .courseAdjustments) {
             courseAdjustments = records
@@ -101,6 +105,29 @@ struct RacePlan: Identifiable, Codable, Equatable {
         }
         normalizePacePlans()
         normalizeFuelingEvents()
+    }
+}
+
+/// Absolute dates belong to this race and are excluded from reusable templates.
+struct PreRaceActivity: Identifiable, Codable, Equatable {
+    let id: UUID
+    var name: String
+    var date: Date
+    var location: String
+    var note: String
+
+    init(id: UUID = UUID(), name: String = "", date: Date, location: String = "", note: String = "") {
+        self.id = id
+        self.name = name
+        self.date = date
+        self.location = location
+        self.note = note
+    }
+}
+
+extension Array where Element == PreRaceActivity {
+    var chronologicallySorted: [PreRaceActivity] {
+        sorted { $0.date == $1.date ? $0.id.uuidString < $1.id.uuidString : $0.date < $1.date }
     }
 }
 

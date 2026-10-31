@@ -8,6 +8,7 @@ struct RaceDetailView: View {
     @Environment(\.openURL) private var openURL
     @State private var isShowingReminderSettings = false
     @State private var isShowingChecklistEditor = false
+    @State private var isShowingActivitiesEditor = false
     @State private var duplicateDraft: RacePlan?
     @State private var isShowingReuse = false
     @State private var isShowingSaveTemplate = false
@@ -71,6 +72,26 @@ struct RaceDetailView: View {
                     "基本目標タイム",
                     value: formattedTargetTime
                 )
+            }
+
+            Section("レース前の行動予定") {
+                if currentRacePlan.preRaceActivities.isEmpty {
+                    Text("予定はまだありません。受付や移動などを記録できます。")
+                        .foregroundStyle(.secondary)
+                }
+                ForEach(currentRacePlan.preRaceActivities.chronologicallySorted) { activity in
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(activity.name).font(.headline)
+                        Text(activity.date.formatted(date: .abbreviated, time: .shortened))
+                            .foregroundStyle(.secondary)
+                        if !activity.location.isEmpty {
+                            Label(activity.location, systemImage: "mappin")
+                        }
+                        if !activity.note.isEmpty { Text(activity.note) }
+                    }
+                }
+                Button("行動予定を編集", systemImage: "calendar") { isShowingActivitiesEditor = true }
+                    .accessibilityIdentifier("activities.edit")
             }
 
             Section(String(localized: "race_detail.section.target_pace")) {
@@ -375,6 +396,14 @@ struct RaceDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(templateMessage)
+        }
+        .sheet(isPresented: $isShowingActivitiesEditor) {
+            PreRaceActivitiesEditor(activities: currentRacePlan.preRaceActivities,
+                                    defaultDate: currentRacePlan.startTime) { activities in
+                guard var updated = racePlanStore.racePlans.first(where: { $0.id == currentRacePlan.id }) else { return false }
+                updated.preRaceActivities = activities
+                return racePlanStore.updateRacePlan(updated)
+            }
         }
         .sheet(isPresented: $isShowingChecklistEditor) {
             RaceChecklistEditorView(racePlan: currentRacePlan) { items, notificationsEnabled in
@@ -1245,4 +1274,72 @@ private struct RaceDetailPreviewRacePlanStorage: RacePlanStorage {
     }
 
     func saveRacePlans(_ racePlans: [RacePlan]) {}
+}
+
+private struct PreRaceActivitiesEditor: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var activities: [PreRaceActivity]
+    @State private var saveError = false
+    let defaultDate: Date
+    let onSave: ([PreRaceActivity]) -> Bool
+
+    init(activities: [PreRaceActivity], defaultDate: Date, onSave: @escaping ([PreRaceActivity]) -> Bool) {
+        _activities = State(initialValue: activities.chronologicallySorted)
+        self.defaultDate = defaultDate
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                if activities.isEmpty {
+                    Section { Text("受付・移動・荷物預けなどの予定を追加できます。")
+                        .foregroundStyle(.secondary) }
+                }
+                ForEach($activities) { $activity in
+                    Section {
+                        TextField("予定名", text: $activity.name)
+                        DatePicker("日時", selection: $activity.date, displayedComponents: [.date, .hourAndMinute])
+                        TextField("場所（任意）", text: $activity.location)
+                        TextField("メモ（任意）", text: $activity.note, axis: .vertical)
+                        Button("この予定を削除", role: .destructive) {
+                            let id = activity.id
+                            activities.removeAll { $0.id == id }
+                        }
+                    } header: {
+                        Text(activity.name.isEmpty ? "新しい予定" : activity.name)
+                    }
+                }
+                Section {
+                    Button("予定を追加", systemImage: "plus") {
+                        activities.append(PreRaceActivity(date: defaultDate))
+                    }
+                    .accessibilityIdentifier("activities.add")
+                } footer: {
+                    Text("予定は日時順に表示します。レース日時を変更しても予定の日時は自動変更されず、通知も設定されません。")
+                }
+                if saveError { Section { Text("予定を保存できませんでした。")
+                    .foregroundStyle(.red) } }
+            }
+            .navigationTitle("行動予定を編集")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        let cleaned = activities.map { activity in
+                            var value = activity
+                            value.name = value.name.trimmingCharacters(in: .whitespacesAndNewlines)
+                            value.location = value.location.trimmingCharacters(in: .whitespacesAndNewlines)
+                            value.note = value.note.trimmingCharacters(in: .whitespacesAndNewlines)
+                            return value
+                        }.chronologicallySorted
+                        if onSave(cleaned) { dismiss() } else { saveError = true }
+                    }
+                    .disabled(activities.contains { $0.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+                    .accessibilityIdentifier("activities.save")
+                }
+            }
+        }
+    }
 }

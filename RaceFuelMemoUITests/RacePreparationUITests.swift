@@ -345,6 +345,28 @@ final class RacePreparationUITests: XCTestCase {
         XCTAssertNotEqual(app.textFields["creation.name"].value as? String, "Warning race")
     }
 
+    func testPreRaceActivitiesSaveAndCancel() {
+        app.launchArguments.append("--preparation-fixture")
+        app.launchArguments.removeAll { $0 == "--pro-ui-testing" }
+        app.launch()
+        tap(app.staticTexts["Warning race"])
+        tap(app.buttons["activities.edit"])
+        tap(app.buttons["activities.add"])
+        let name = app.textFields["予定名"].firstMatch
+        tap(name)
+        name.typeText("受付")
+        tap(app.buttons["activities.save"])
+        XCTAssertTrue(app.staticTexts["受付"].waitForExistence(timeout: 10))
+        tap(app.buttons["activities.edit"])
+        tap(app.buttons["この予定を削除"])
+        tap(app.buttons["キャンセル"])
+        XCTAssertTrue(app.staticTexts["受付"].exists)
+        tap(app.buttons["activities.edit"])
+        tap(app.buttons["この予定を削除"])
+        tap(app.buttons["activities.save"])
+        XCTAssertFalse(app.staticTexts["受付"].exists)
+    }
+
     func testProCreationCanOpenAdvancedEditorsWithoutPaywall() {
         app.launch()
         tap(app.buttons["races.add"])

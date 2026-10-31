@@ -142,6 +142,9 @@ extension RacePlan {
             pacePlans: copiedPace.plans, selectedPacePlanID: copiedPace.selectedID,
             fuelingEvents: fuelingEvents.map {
                 $0.freshCopy(checkpointID: $0.checkpointID.flatMap { checkpointIDs[$0] })
+            },
+            preRaceActivities: preRaceActivities.map {
+                PreRaceActivity(name: $0.name, date: $0.date, location: $0.location, note: $0.note)
             }
         )
         duplicate.courseElevation = courseElevation

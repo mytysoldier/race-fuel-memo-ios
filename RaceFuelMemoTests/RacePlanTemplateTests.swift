@@ -227,3 +227,43 @@ private func allReuseIDs(_ plan: RacePlan) -> [UUID] {
     let reloaded = try JSONDecoder().decode(RacePlan.self, from: JSONEncoder().encode(copy))
     #expect(reloaded.adjustmentBaseline(for: try #require(reloaded.pacePlans.first)) == copiedBaseline)
 }
+
+@Test func preRaceActivitiesPersistAndDuplicateIndependently() throws {
+    var source = reusableRaceFixture()
+    let earlier = PreRaceActivity(name: "受付", date: source.startTime.addingTimeInterval(-86_400), location: "会場", note: "身分証")
+    let later = PreRaceActivity(name: "荷物預け", date: source.startTime.addingTimeInterval(-3_600))
+    source.preRaceActivities = [later, earlier]
+    let reloaded = try JSONDecoder().decode(RacePlan.self, from: JSONEncoder().encode(source))
+    #expect(reloaded.preRaceActivities == source.preRaceActivities)
+    #expect(reloaded.preRaceActivities.chronologicallySorted.map(\.name) == ["受付", "荷物預け"])
+    let suite = "activity-persistence-\(UUID().uuidString)"
+    let defaults = try #require(UserDefaults(suiteName: suite))
+    defer { defaults.removePersistentDomain(forName: suite) }
+    let storage = UserDefaultsRacePlanStorage(userDefaults: defaults)
+    let store = RacePlanStore(storage: storage)
+    #expect(store.addRacePlan(source))
+    #expect(try storage.loadRacePlans().first?.preRaceActivities == source.preRaceActivities)
+
+    var copy = reloaded.duplicated()
+    #expect(copy.preRaceActivities.map(\.date) == source.preRaceActivities.map(\.date))
+    #expect(Set(copy.preRaceActivities.map(\.id)).isDisjoint(with: source.preRaceActivities.map(\.id)))
+    copy.preRaceActivities[0].name = "変更"
+    #expect(source.preRaceActivities[0].name == "荷物預け")
+    let template = RacePlanTemplate(name: "再利用", source: source)
+    let destination = basicReuseDestination(distance: 10)
+    let applied = try template.applying(to: destination, components: Set(RacePlanReuseComponent.allCases))
+    #expect(applied.preRaceActivities.isEmpty)
+    let serializedTemplate = try #require(String(data: JSONEncoder().encode(template), encoding: .utf8))
+    #expect(!serializedTemplate.contains("preRaceActivities"))
+}
+
+@Test func existingRaceWithoutActivitiesStillLoads() throws {
+    let source = reusableRaceFixture()
+    var object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(source)) as? [String: Any])
+    object.removeValue(forKey: "preRaceActivities")
+    let restored = try JSONDecoder().decode(RacePlan.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(restored.preRaceActivities.isEmpty)
+    #expect(restored.name == source.name)
+    #expect(restored.checklistItems == source.checklistItems)
+    #expect(restored.memo == source.memo)
+}

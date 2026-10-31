@@ -23,6 +23,7 @@ struct RaceCreatePlaceholderView: View {
     @State private var courseAdjustments: [CourseAdjustmentRecord] = []
     @State private var selectedPacePlanID: UUID?
     @State private var fuelingEvents: [RaceFuelingEvent] = []
+    @State private var preRaceActivities: [PreRaceActivity] = []
     @State private var checklistItems = RacePlan.defaultChecklistItems
     @State private var checklistNotificationsEnabled = false
     @State private var draftRacePlanID = UUID()
@@ -88,6 +89,7 @@ struct RaceCreatePlaceholderView: View {
         _courseAdjustments = State(initialValue: plan.courseAdjustments)
         _selectedPacePlanID = State(initialValue: plan.selectedPacePlanID)
         _fuelingEvents = State(initialValue: plan.fuelingEvents)
+        _preRaceActivities = State(initialValue: plan.preRaceActivities)
         _checklistItems = State(initialValue: plan.checklistItems)
         _checklistNotificationsEnabled = State(initialValue: plan.checklistNotificationsEnabled)
         _draftRacePlanID = State(initialValue: plan.id)
@@ -311,7 +313,7 @@ struct RaceCreatePlaceholderView: View {
             Text("保存した設定を選び、内容を確認してから適用できます。使わずに新しく作ることもできます。")
                 .font(.footnote).foregroundStyle(.secondary)
             if isDuplicate {
-                Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。")
+                Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。行動予定の日時は元のままなので、作成後に確認してください。")
                     .foregroundStyle(.secondary)
             }
             ProFeatureButton(feature: .planReuse, title: "テンプレート・保存済みレースを選ぶ") {
@@ -533,7 +535,8 @@ struct RaceCreatePlaceholderView: View {
             checklistItems: checklistItems,
             checklistNotificationsEnabled: checklistNotificationsEnabled,
             checkpoints: checkpoints, pacePlans: pacePlans,
-            selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents
+            selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents,
+            preRaceActivities: preRaceActivities
         )
         racePlan.courseElevation = courseElevation
         racePlan.courseAdjustments = courseAdjustments
