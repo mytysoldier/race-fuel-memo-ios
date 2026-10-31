@@ -224,6 +224,16 @@ struct RaceDetailView: View {
                         Label(fuelTiming.displayText, systemImage: "drop.fill")
                     }
                 }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("補給の計画はこのアプリ、走行中の補給通知はランニング補給タイマーで。通知時刻は別途設定します。")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                    Link(destination: URL(string: "https://apps.apple.com/jp/app/id6809106831")!) {
+                        Label("ランニング補給タイマーをApp Storeで見る", systemImage: "arrow.up.right.square")
+                    }
+                    .accessibilityIdentifier("raceDetail.fuelTimerStoreLink")
+                }
+                .padding(.vertical, 4)
             }
 
             Section(String(localized: "race_detail.section.checklist")) {
