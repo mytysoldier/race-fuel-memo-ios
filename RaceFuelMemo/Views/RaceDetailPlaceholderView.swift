@@ -17,7 +17,6 @@ struct RaceDetailView: View {
     @State private var preparationEditorStep: RacePreparationStep?
     @State private var isShowingPreparationOutput = false
     @State private var isShowingPaceComparison = false
-    @State private var isShowingCourseElevation = false
     @State private var isShowingPacePlanSelectionError = false
     @State private var pacePlanSelectionError = ""
     @State private var showsClockTimes = false
@@ -98,15 +97,6 @@ struct RaceDetailView: View {
                     ProFeatureButton(feature: .paceStrategies, title: "A・B・Cプランを比較") {
                         isShowingPaceComparison = true
                     }
-                }
-            }
-
-            Section("コースの標高") {
-                if let profile = currentRacePlan.courseElevation {
-                    LabeledContent("GPXの距離", value: RacePlanCalculator.formatDistance(profile.distanceKm))
-                }
-                ProFeatureButton(feature: .courseElevation, title: "GPX・標高とペース補正", systemImage: "mountain.2") {
-                    isShowingCourseElevation = true
                 }
             }
 
@@ -377,12 +367,6 @@ struct RaceDetailView: View {
                 var updated = currentRacePlan
                 updated.checklistItems = items
                 updated.checklistNotificationsEnabled = notificationsEnabled
-                return racePlanStore.updateRacePlan(updated)
-            }
-        }
-        .sheet(isPresented: $isShowingCourseElevation) {
-            RaceCourseElevationView(racePlan: currentRacePlan) { updated in
-                guard proStore.canUse(.courseElevation) else { return false }
                 return racePlanStore.updateRacePlan(updated)
             }
         }

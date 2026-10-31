@@ -247,7 +247,7 @@ extension RacePlan {
     }
 }
 
-/// GPX points are kept as distance/elevation samples; coordinates are not retained.
+/// Legacy fields are retained so existing saved races can be read and preserved.
 struct CourseElevationSample: Codable, Equatable {
     var distanceKm: Double
     var elevationMeters: Double
@@ -261,91 +261,6 @@ struct CourseElevationProfile: Codable, Equatable {
     }
     var descentMeters: Double {
         zip(samples, samples.dropFirst()).reduce(0) { $0 + max(0, $1.0.elevationMeters - $1.1.elevationMeters) }
-    }
-}
-
-enum GPXImportError: Error, LocalizedError {
-    case invalidFile, missingElevation, tooLarge
-    var errorDescription: String? {
-        switch self {
-        case .invalidFile: "GPXの形式またはコースの座標を確認してください。"
-        case .missingElevation: "標高のない地点が含まれています。標高付きのGPXを選んでください。"
-        case .tooLarge: "ファイルが大きすぎます。10MB以下のGPXを選んでください。"
-        }
-    }
-}
-
-final class GPXCourseParser: NSObject, XMLParserDelegate {
-    private var samples: [CourseElevationSample] = []
-    private var previous: (Double, Double)?
-    private var coordinate: (Double, Double)?
-    private var elevationText: String?
-    private var elevation: Double?
-    private var inPoint = false
-    private var invalid = false
-    private var missingElevation = false
-    private var segmentCount = 0
-    private var sawRoot = false
-
-    static func parse(_ data: Data) throws -> CourseElevationProfile {
-        guard data.count <= 10_000_000 else { throw GPXImportError.tooLarge }
-        let delegate = GPXCourseParser()
-        let parser = XMLParser(data: data)
-        parser.delegate = delegate
-        parser.shouldResolveExternalEntities = false
-        guard parser.parse(), delegate.sawRoot, !delegate.invalid, delegate.segmentCount == 1 else { throw GPXImportError.invalidFile }
-        guard !delegate.missingElevation else { throw GPXImportError.missingElevation }
-        guard delegate.samples.count >= 2, (delegate.samples.last?.distanceKm ?? 0) > 0 else {
-            throw GPXImportError.invalidFile
-        }
-        return CourseElevationProfile(samples: delegate.samples)
-    }
-
-    func parser(_ parser: XMLParser, didStartElement elementName: String, namespaceURI: String?,
-                qualifiedName qName: String?, attributes: [String: String]) {
-        let name = elementName.split(separator: ":").last.map(String.init) ?? elementName
-        if !sawRoot { sawRoot = name == "gpx"; if !sawRoot { invalid = true } }
-        if name == "trkseg" || name == "rte" { segmentCount += 1; previous = nil }
-        if name == "trkpt" || name == "rtept" {
-            inPoint = true
-            elevation = nil
-            guard let lat = attributes["lat"].flatMap(Double.init),
-                  let lon = attributes["lon"].flatMap(Double.init),
-                  lat.isFinite, lon.isFinite, (-90...90).contains(lat), (-180...180).contains(lon) else {
-                invalid = true; return
-            }
-            coordinate = (lat, lon)
-        } else if name == "ele", inPoint { elevationText = "" }
-    }
-
-    func parser(_ parser: XMLParser, foundCharacters string: String) {
-        if elevationText != nil { elevationText?.append(string) }
-    }
-
-    func parser(_ parser: XMLParser, didEndElement elementName: String, namespaceURI: String?, qualifiedName qName: String?) {
-        let name = elementName.split(separator: ":").last.map(String.init) ?? elementName
-        if name == "ele", let text = elevationText {
-            elevation = Double(text.trimmingCharacters(in: .whitespacesAndNewlines))
-            elevationText = nil
-        } else if name == "trkpt" || name == "rtept" {
-            defer { coordinate = nil; inPoint = false }
-            guard let coordinate else { invalid = true; return }
-            guard let elevation, elevation.isFinite, abs(elevation) <= 12_000 else {
-                missingElevation = true; return
-            }
-            var distance = samples.last?.distanceKm ?? 0
-            if let previous { distance += Self.distance(previous, coordinate) }
-            samples.append(CourseElevationSample(distanceKm: distance, elevationMeters: elevation))
-            previous = coordinate
-        }
-    }
-
-    private static func distance(_ a: (Double, Double), _ b: (Double, Double)) -> Double {
-        let radians = Double.pi / 180
-        let lat1 = a.0 * radians, lat2 = b.0 * radians
-        let dLat = (b.0 - a.0) * radians, dLon = (b.1 - a.1) * radians
-        let h = pow(sin(dLat / 2), 2) + cos(lat1) * cos(lat2) * pow(sin(dLon / 2), 2)
-        return 12_742 * asin(sqrt(min(1, max(0, h))))
     }
 }
 
@@ -370,80 +285,5 @@ extension RacePlan {
 
     mutating func removeCourseAdjustment(for planID: UUID) {
         courseAdjustments.removeAll { $0.adjusted.id == planID }
-    }
-}
-
-enum CourseTerrain: String, CaseIterable {
-    case automatic, uphill, downhill, flat
-    var title: String {
-        switch self {
-        case .automatic: "自動"
-        case .uphill: "上り"
-        case .downhill: "下り"
-        case .flat: "平坦"
-        }
-    }
-}
-
-enum CoursePaceAdjustment {
-    static func elevation(at raceKm: Double, raceDistance: Double, profile: CourseElevationProfile) -> Double {
-        let km = raceKm / raceDistance * profile.distanceKm
-        guard let upper = profile.samples.firstIndex(where: { $0.distanceKm >= km }) else {
-            return profile.samples.last?.elevationMeters ?? 0
-        }
-        guard upper > 0 else { return profile.samples[0].elevationMeters }
-        let a = profile.samples[upper - 1], b = profile.samples[upper]
-        guard b.distanceKm > a.distanceKm else { return b.elevationMeters }
-        return a.elevationMeters + (b.elevationMeters - a.elevationMeters)
-            * (km - a.distanceKm) / (b.distanceKm - a.distanceKm)
-    }
-
-    static func gainLoss(start: Double, end: Double, raceDistance: Double, profile: CourseElevationProfile) -> (Double, Double) {
-        guard raceDistance > 0, profile.distanceKm > 0, end > start else { return (0, 0) }
-        let scale = raceDistance / profile.distanceKm
-        var heights = [elevation(at: start, raceDistance: raceDistance, profile: profile)]
-        heights += profile.samples.filter { $0.distanceKm * scale > start && $0.distanceKm * scale < end }.map(\.elevationMeters)
-        heights.append(elevation(at: end, raceDistance: raceDistance, profile: profile))
-        return zip(heights, heights.dropFirst()).reduce((0.0, 0.0)) {
-            ($0.0 + max(0, $1.1 - $1.0), $0.1 + max(0, $1.0 - $1.1))
-        }
-    }
-
-    /// Estimates are intentionally simple, not a prediction of race performance.
-    static func apply(to plan: RacePacePlan, profile: CourseElevationProfile,
-                      terrain: [CourseTerrain], maintainTarget: Bool) -> RacePacePlan? {
-        guard plan.segments.count == terrain.count, profile.samples.count >= 2,
-              profile.distanceKm > 0, let raceDistance = plan.segments.last?.endDistanceKm,
-              raceDistance > 0, abs(profile.distanceKm - raceDistance) / raceDistance <= 0.05 else { return nil }
-        let weights = zip(plan.segments, terrain).map { segment, classification -> Double in
-            let length = segment.endDistanceKm - segment.startDistanceKm
-            let changes = gainLoss(start: segment.startDistanceKm, end: segment.endDistanceKm, raceDistance: raceDistance, profile: profile)
-            let grade = (changes.0 - changes.1 * 0.5) / (length * 1_000)
-            let effectiveGrade: Double
-            switch classification {
-            case .automatic: effectiveGrade = grade
-            case .uphill: effectiveGrade = 0.03
-            case .downhill: effectiveGrade = -0.03
-            case .flat: effectiveGrade = 0
-            }
-            return Double(segment.targetSeconds) * max(0.7, min(1.5, 1 + effectiveGrade * 5))
-        }
-        let sum = weights.reduce(0, +)
-        guard sum.isFinite, sum > 0 else { return nil }
-        let desired = maintainTarget ? plan.targetSeconds : Int(sum.rounded())
-        guard desired >= weights.count, desired <= 240 * 3_600 + 59 * 60 else { return nil }
-        var result = plan
-        result.strategy = .custom
-        result.targetSeconds = desired
-        var used = 0, cumulative = 0.0
-        for index in weights.indices {
-            cumulative += weights[index]
-            let remaining = weights.count - index - 1
-            let end = index == weights.count - 1 ? desired : min(desired - remaining,
-                max(used + 1, Int((Double(desired) * cumulative / sum).rounded())))
-            result.segments[index].targetSeconds = end - used
-            used = end
-        }
-        return result
     }
 }

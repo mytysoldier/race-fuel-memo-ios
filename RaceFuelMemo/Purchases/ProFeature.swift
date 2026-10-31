@@ -4,7 +4,7 @@ import Foundation
 /// legacy calculations and checking existing checklist items remain free.
 enum ProFeature: String, CaseIterable, Identifiable, Codable {
     case checkpoints, paceStrategies, fuelingPlan, customChecklist
-    case planReuse, raceCard, preparationDashboard, courseElevation
+    case planReuse, raceCard, preparationDashboard
 
     var id: String { rawValue }
 
@@ -17,7 +17,6 @@ enum ProFeature: String, CaseIterable, Identifiable, Codable {
         case .planReuse: "計画の複製・再利用"
         case .raceCard: "Race Card出力"
         case .preparationDashboard: "準備状況ダッシュボード"
-        case .courseElevation: "GPX・標高とペース補正"
         }
     }
 
@@ -30,7 +29,6 @@ enum ProFeature: String, CaseIterable, Identifiable, Codable {
         case .planReuse: "保存済みの計画を複製し、テンプレートや別レースから設定を適用。"
         case .raceCard: "画像・PDF・印刷・ペースバンドで、計画を持ち出し・共有。"
         case .preparationDashboard: "関門超過・補給不足・未完了の必須項目をまとめて確認。"
-        case .courseElevation: "GPXの標高を表示し、区間ペースを調整。"
         }
     }
 }
