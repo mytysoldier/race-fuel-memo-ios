@@ -17,6 +17,8 @@ struct RacePlan: Identifiable, Codable, Equatable {
     var pacePlans: [RacePacePlan]
     var selectedPacePlanID: UUID?
     var fuelingEvents: [RaceFuelingEvent]
+    var courseElevation: CourseElevationProfile?
+    var courseAdjustment: CourseAdjustmentRecord?
 
     init(
         id: UUID = UUID(),
@@ -52,12 +54,14 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.pacePlans = pacePlans
         self.selectedPacePlanID = selectedPacePlanID
         self.fuelingEvents = fuelingEvents
+        self.courseElevation = nil
+        self.courseAdjustment = nil
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
         case gelCount, gelNames, memo, checklistItems, checklistNotificationsEnabled, checkpoints, pacePlans
-        case selectedPacePlanID, fuelingEvents
+        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustment
     }
 
     init(from decoder: Decoder) throws {
@@ -77,6 +81,8 @@ struct RacePlan: Identifiable, Codable, Equatable {
         pacePlans = try values.decodeIfPresent([RacePacePlan].self, forKey: .pacePlans) ?? []
         selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
         fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
+        courseElevation = try values.decodeIfPresent(CourseElevationProfile.self, forKey: .courseElevation)
+        courseAdjustment = try values.decodeIfPresent(CourseAdjustmentRecord.self, forKey: .courseAdjustment)
 
         checkpoints = try values.decodeIfPresent([RaceCheckpoint].self, forKey: .checkpoints) ?? []
         // Checkpoint kind was introduced after v2 storage. A legacy checkpoint at

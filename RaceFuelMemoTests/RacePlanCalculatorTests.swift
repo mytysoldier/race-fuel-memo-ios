@@ -322,3 +322,48 @@ private func makeRacePlan() -> RacePlan {
     #expect(RacePacePlanCalculator.elapsedSeconds(at: 10, in: race.pacePlans[0],
                                                    raceDistanceKm: 20) == 2_000)
 }
+
+@Test func gpxImportsElevationAndRejectsInvalidInput() throws {
+    let xml = """
+    <gpx version="1.1"><trk><trkseg>
+    <trkpt lat="0" lon="0"><ele>10</ele></trkpt>
+    <trkpt lat="0" lon="0.01"><ele>30</ele></trkpt>
+    <trkpt lat="0" lon="0.02"><ele>20</ele></trkpt>
+    </trkseg></trk></gpx>
+    """
+    let profile = try GPXCourseParser.parse(Data(xml.utf8))
+    #expect(abs(profile.distanceKm - 2.2239) < 0.01)
+    #expect(profile.ascentMeters == 20)
+    #expect(profile.descentMeters == 10)
+    #expect(throws: GPXImportError.self) { try GPXCourseParser.parse(Data("<gpx>".utf8)) }
+    #expect(throws: GPXImportError.self) {
+        try GPXCourseParser.parse(Data(xml.replacingOccurrences(of: "<ele>30</ele>", with: "").utf8))
+    }
+    #expect(throws: GPXImportError.self) {
+        try GPXCourseParser.parse(Data(xml.replacingOccurrences(of: "</trkseg>", with: "</trkseg><trkseg></trkseg>").utf8))
+    }
+}
+
+@Test func elevationAdjustmentPreservesTargetAndRejectsDistanceMismatch() throws {
+    let plan = RacePacePlan(order: 0, name: "A", targetSeconds: 1200, segments: [
+        RacePaceSegment(order: 0, startDistanceKm: 0, endDistanceKm: 1, targetSeconds: 600),
+        RacePaceSegment(order: 1, startDistanceKm: 1, endDistanceKm: 2, targetSeconds: 600)
+    ], strategy: .custom)
+    let profile = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 0),
+        CourseElevationSample(distanceKm: 1, elevationMeters: 100),
+        CourseElevationSample(distanceKm: 2, elevationMeters: 0)
+    ])
+    let adjusted = try #require(CoursePaceAdjustment.apply(to: plan, profile: profile,
+                              terrain: [.automatic, .automatic], maintainTarget: true))
+    #expect(adjusted.targetSeconds == 1200)
+    #expect(adjusted.segments.map(\.targetSeconds).reduce(0, +) == 1200)
+    #expect(adjusted.segments[0].targetSeconds > adjusted.segments[1].targetSeconds)
+    let flat = try #require(CoursePaceAdjustment.apply(to: plan, profile: profile,
+                          terrain: [.flat, .flat], maintainTarget: false))
+    #expect(flat.segments.map(\.targetSeconds) == [600, 600])
+    var mismatch = profile
+    mismatch.samples[2].distanceKm = 3
+    #expect(CoursePaceAdjustment.apply(to: plan, profile: mismatch,
+            terrain: [.automatic, .automatic], maintainTarget: true) == nil)
+}
