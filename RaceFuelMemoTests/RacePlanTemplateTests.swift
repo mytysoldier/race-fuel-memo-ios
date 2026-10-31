@@ -267,3 +267,28 @@ private func allReuseIDs(_ plan: RacePlan) -> [UUID] {
     #expect(restored.checklistItems == source.checklistItems)
     #expect(restored.memo == source.memo)
 }
+
+@Test func preRaceSuggestionsCalculateAcrossMidnightAndKeepExistingPlans() throws {
+    var calendar = Calendar(identifier: .gregorian)
+    calendar.timeZone = try #require(TimeZone(secondsFromGMT: 9 * 3600))
+    let start = try #require(calendar.date(from: DateComponents(year: 2027, month: 3, day: 7, hour: 0, minute: 30)))
+    var suggestions = PreRaceActivitySuggestion.examples
+    suggestions[0].isSelected = true
+    suggestions[0].minutesBeforeStart = 60
+    suggestions[3].isSelected = true
+    suggestions[3].minutesBeforeStart = 5
+    let existing = PreRaceActivity(name: "会場到着", date: start)
+    let added = PreRaceActivitySuggestion.createSelected(suggestions, start: start)
+    #expect(added.count == 2)
+    #expect(added.map(\.name) == ["会場到着", "整列"])
+    #expect(calendar.component(.day, from: added[0].date) == 6)
+    #expect(calendar.component(.hour, from: added[0].date) == 23)
+    #expect(calendar.component(.minute, from: added[0].date) == 30)
+    #expect(added[1].date == start.addingTimeInterval(-300))
+    #expect(added[0].id != existing.id)
+    let combined = [existing] + added
+    #expect(combined.first == existing)
+    #expect(PreRaceActivitySuggestion.createSelected(PreRaceActivitySuggestion.examples, start: start).isEmpty)
+    let decoded = try JSONDecoder().decode([PreRaceActivity].self, from: JSONEncoder().encode(combined))
+    #expect(decoded == combined)
+}
