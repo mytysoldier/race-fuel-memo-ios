@@ -51,6 +51,17 @@ struct RacePlanTemplate: Identifiable, Codable, Equatable {
             .map(ChecklistTemplateItem.init)
     }
 
+    /// Detailed events take precedence, matching the fueling editor's legacy fallback.
+    var previewGelNames: [String] {
+        guard fuelingEvents.isEmpty else { return [] }
+        return (0..<max(0, gelCount, gelNames.count)).map { index in
+            if index < gelNames.count && !gelNames[index].isEmpty { return gelNames[index] }
+            return "補給ジェル \(index + 1)"
+        }
+    }
+
+    var previewFuelingCount: Int { fuelingEvents.isEmpty ? previewGelNames.count : fuelingEvents.count }
+
     func applying(to destination: RacePlan, components: Set<RacePlanReuseComponent>) throws -> RacePlan {
         var result = destination
         if components.contains(.basics) {

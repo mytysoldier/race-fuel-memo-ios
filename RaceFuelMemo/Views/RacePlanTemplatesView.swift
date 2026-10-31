@@ -103,7 +103,7 @@ struct RacePlanReuseView: View {
             }
         }
         if components.contains(.fueling) {
-            if template.fuelingEvents.isEmpty && template.gelNames.isEmpty {
+            if template.previewFuelingCount == 0 {
                 LabeledContent("補給", value: "未設定")
             } else {
                 ForEach(template.fuelingEvents.sorted(by: { $0.order < $1.order })) { event in
@@ -116,7 +116,7 @@ struct RacePlanReuseView: View {
                         }
                     }
                 }
-                ForEach(Array(template.gelNames.enumerated()), id: \.offset) { _, name in
+                ForEach(Array(template.previewGelNames.enumerated()), id: \.offset) { _, name in
                     Text("ジェル：\(name)")
                 }
             }
@@ -141,7 +141,7 @@ struct RacePlanReuseView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     Text(template.name).foregroundStyle(.primary)
-                    Text("\(RacePlanCalculator.formatDistance(template.distanceKm))・ペース\(template.pacePlans.count)件・補給\(template.fuelingEvents.count + template.gelNames.count)件・持ち物\(template.checklistItems.count)件")
+                    Text("\(RacePlanCalculator.formatDistance(template.distanceKm))・ペース\(template.pacePlans.count)件・補給\(template.previewFuelingCount)件・持ち物\(template.checklistItems.count)件")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
