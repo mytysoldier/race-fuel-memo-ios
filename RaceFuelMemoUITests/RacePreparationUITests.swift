@@ -339,7 +339,7 @@ final class RacePreparationUITests: XCTestCase {
         let saved = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reuse.template.")).firstMatch
         tap(saved)
         XCTAssertTrue(app.staticTexts["内容の確認"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["Required gear"].exists)
+        tap(app.staticTexts["Required gear"])
         tap(app.buttons["キャンセル"])
         XCTAssertTrue(app.textFields["creation.name"].exists)
         XCTAssertNotEqual(app.textFields["creation.name"].value as? String, "Warning race")
@@ -376,7 +376,7 @@ final class RacePreparationUITests: XCTestCase {
         tap(app.buttons["activities.generate"])
         XCTAssertTrue(app.navigationBars["スタートから逆算"].waitForExistence(timeout: 5))
         tap(app.switches["activities.suggestion.arrival"])
-        tap(app.buttons["キャンセル"])
+        tap(app.navigationBars["スタートから逆算"].buttons["キャンセル"])
         XCTAssertFalse(app.textFields["予定名"].exists)
         tap(app.buttons["activities.generate"])
         tap(app.switches["activities.suggestion.arrival"])
@@ -388,8 +388,8 @@ final class RacePreparationUITests: XCTestCase {
         tap(app.buttons["activities.generate"])
         tap(app.switches["activities.suggestion.arrival"])
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "同じ名前の予定")).firstMatch.waitForExistence(timeout: 5))
-        tap(app.buttons["キャンセル"])
-        tap(app.buttons["キャンセル"])
+        tap(app.navigationBars["スタートから逆算"].buttons["キャンセル"])
+        tap(app.navigationBars["行動予定を編集"].buttons["キャンセル"])
     }
 
     func testProCreationCanOpenAdvancedEditorsWithoutPaywall() {
