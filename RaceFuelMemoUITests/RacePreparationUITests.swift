@@ -325,6 +325,26 @@ final class RacePreparationUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["標準の持ち物10項目"].exists)
     }
 
+    func testTemplateSavePreviewAndCancelDuringCreation() {
+        app.launchArguments.append("--preparation-fixture")
+        app.launch()
+        tap(app.staticTexts["Warning race"])
+        tap(app.buttons.matching(NSPredicate(format: "identifier == %@ AND label CONTAINS %@", "pro.planReuse", "テンプレートとして保存")).firstMatch)
+        XCTAssertTrue(app.alerts["計画テンプレートを保存"].waitForExistence(timeout: 5))
+        tap(app.alerts.buttons["保存"])
+        tap(app.alerts.buttons["OK"])
+        app.navigationBars.buttons.firstMatch.tap()
+        tap(app.buttons["races.add"])
+        tap(app.buttons["pro.planReuse"])
+        let saved = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "reuse.template.")).firstMatch
+        tap(saved)
+        XCTAssertTrue(app.staticTexts["内容の確認"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Required gear"].exists)
+        tap(app.buttons["キャンセル"])
+        XCTAssertTrue(app.textFields["creation.name"].exists)
+        XCTAssertNotEqual(app.textFields["creation.name"].value as? String, "Warning race")
+    }
+
     func testProCreationCanOpenAdvancedEditorsWithoutPaywall() {
         app.launch()
         tap(app.buttons["races.add"])

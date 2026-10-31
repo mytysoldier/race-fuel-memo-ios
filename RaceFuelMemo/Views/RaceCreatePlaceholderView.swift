@@ -307,12 +307,14 @@ struct RaceCreatePlaceholderView: View {
     }
 
     private var reuseSection: some View {
-        formSection("計画を再利用") {
+        formSection("テンプレートから始める") {
+            Text("保存した設定を選び、内容を確認してから適用できます。使わずに新しく作ることもできます。")
+                .font(.footnote).foregroundStyle(.secondary)
             if isDuplicate {
                 Text("元の計画を複製しています。大会名・開催日・スタート時刻を確認してから作成してください。チェック済み状態と通知オン状態はリセットされています。")
                     .foregroundStyle(.secondary)
             }
-            ProFeatureButton(feature: .planReuse, title: "テンプレート・保存済みレースから設定を再利用") {
+            ProFeatureButton(feature: .planReuse, title: "テンプレート・保存済みレースを選ぶ") {
                 isShowingReuse = true
             }
         }

@@ -115,6 +115,26 @@ import Testing
     #expect(fuelOnly.fuelingEvents[0].checkpointID == nil)
 }
 
+@Test func templateFuelingPreviewMatchesLegacyAndDetailedFueling() throws {
+    var source = basicReuseDestination(distance: 10)
+    source.gelCount = 2
+    source.gelNames = nil
+    let countOnly = RacePlanTemplate(name: "個数のみ", source: source)
+    #expect(countOnly.previewFuelingCount == 2)
+    #expect(countOnly.previewGelNames == ["補給ジェル 1", "補給ジェル 2"])
+    source.gelCount = 3
+    source.gelNames = ["お気に入り", ""]
+    let template = RacePlanTemplate(name: "旧データ", source: source)
+    #expect(template.previewFuelingCount == 3)
+    #expect(template.previewGelNames == ["お気に入り", "補給ジェル 2", "補給ジェル 3"])
+    let applied = try template.applying(to: basicReuseDestination(distance: 10), components: [.fueling])
+    #expect(RaceFuelingPlanCalculator.initialEvents(for: applied).map(\.name) == template.previewGelNames)
+    source.fuelingEvents = [RaceFuelingEvent(order: 0, name: "ドリンク", quantity: 1)]
+    let detailed = RacePlanTemplate(name: "詳細", source: source)
+    #expect(detailed.previewFuelingCount == 1)
+    #expect(detailed.previewGelNames.isEmpty)
+}
+
 @Test func planTemplateStorePersistsCreationRenameApplicationAndDeletion() throws {
     let suite = "plan-templates-\(UUID().uuidString)"
     let defaults = try #require(UserDefaults(suiteName: suite))
