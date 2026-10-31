@@ -278,7 +278,6 @@ struct RaceCourseElevationView: View {
     @State private var message: String?
     @State private var terrain: [CourseTerrain] = []
     @State private var maintainTarget = true
-    @State private var originalPlan: RacePacePlan?
     let onSave: (RacePlan) -> Bool
 
     init(racePlan: RacePlan, onSave: @escaping (RacePlan) -> Bool) {
@@ -307,7 +306,7 @@ struct RaceCourseElevationView: View {
                             Text("距離の差は比率で調整して地点に割り当てます。標高の値はGPSの誤差を含む場合があります。")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
-                        Button("GPXを削除", role: .destructive) { draft.courseElevation = nil; originalPlan = nil }
+                        Button("GPXを削除", role: .destructive) { draft.courseElevation = nil }
                     }
                 }
                 if let profile = draft.courseElevation, let index = selectedIndex,
@@ -334,14 +333,14 @@ struct RaceCourseElevationView: View {
                             }
                         }
                         Button("補正を適用") { applyAdjustment() }
-                        if originalPlan != nil || canRestoreSaved {
-                            Button("補正を元に戻す") { restoreOriginal() }
-                        }
                         Text("適用後はペース戦略画面で各区間を手動調整できます。")
                             .font(.footnote).foregroundStyle(.secondary)
                     }
                 } else if draft.pacePlans.isEmpty, draft.courseElevation != nil {
                     Section { Text("補正するには、先にペース戦略でプランを作成してください。") }
+                }
+                if canRestoreSaved {
+                    Section { Button("補正を元に戻す") { restoreOriginal() } }
                 }
                 if let message { Section { Text(message).foregroundStyle(.red) } }
             }
@@ -363,14 +362,12 @@ struct RaceCourseElevationView: View {
                     let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
                     guard size <= 10_000_000 else { throw GPXImportError.tooLarge }
                     draft.courseElevation = try GPXCourseParser.parse(Data(contentsOf: url))
-                    originalPlan = nil
                     message = nil
                 } catch { message = error.localizedDescription }
             }
             .onAppear {
                 if let index = selectedIndex {
                     terrain = Array(repeating: .automatic, count: draft.pacePlans[index].segments.count)
-                    if canRestoreSaved { originalPlan = draft.courseAdjustment?.original }
                 }
             }
             .proProtected(.courseElevation)
@@ -381,28 +378,27 @@ struct RaceCourseElevationView: View {
 
     private func applyAdjustment() {
         guard let index = selectedIndex, let profile = draft.courseElevation else { return }
-        let baseline = originalPlan ?? draft.pacePlans[index]
+        let baseline = draft.courseAdjustment?.baseline(for: draft.pacePlans[index]) ?? draft.pacePlans[index]
         guard let adjusted = CoursePaceAdjustment.apply(to: baseline, profile: profile,
                                                         terrain: terrain, maintainTarget: maintainTarget) else {
             message = "このプランには補正を適用できません。距離と目標タイムを確認してください。"
             return
         }
-        originalPlan = baseline
         draft.courseAdjustment = CourseAdjustmentRecord(original: baseline, adjusted: adjusted)
         draft.pacePlans[index] = adjusted
         message = nil
     }
 
     private func restoreOriginal() {
-        guard let index = selectedIndex, let originalPlan else { return }
-        draft.pacePlans[index] = originalPlan
-        self.originalPlan = nil
+        guard let index = selectedIndex,
+              let baseline = draft.courseAdjustment?.baseline(for: draft.pacePlans[index]) else { return }
+        draft.pacePlans[index] = baseline
         draft.courseAdjustment = nil
     }
 
     private var canRestoreSaved: Bool {
         guard let index = selectedIndex, let record = draft.courseAdjustment else { return false }
-        return draft.pacePlans[index] == record.adjusted
+        return record.baseline(for: draft.pacePlans[index]) != nil
     }
 }
 

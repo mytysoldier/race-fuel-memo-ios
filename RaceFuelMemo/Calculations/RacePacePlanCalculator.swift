@@ -352,6 +352,10 @@ final class GPXCourseParser: NSObject, XMLParserDelegate {
 struct CourseAdjustmentRecord: Codable, Equatable {
     var original: RacePacePlan
     var adjusted: RacePacePlan
+
+    func baseline(for current: RacePacePlan) -> RacePacePlan? {
+        current == adjusted ? original : nil
+    }
 }
 
 enum CourseTerrain: String, CaseIterable {

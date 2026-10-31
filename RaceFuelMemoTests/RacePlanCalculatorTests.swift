@@ -367,3 +367,33 @@ private func makeRacePlan() -> RacePlan {
     #expect(CoursePaceAdjustment.apply(to: plan, profile: mismatch,
             terrain: [.automatic, .automatic], maintainTarget: true) == nil)
 }
+
+@Test func courseAdjustmentKeepsOriginalBaselineWhenProfileChanges() throws {
+    let original = RacePacePlan(order: 0, name: "A", targetSeconds: 1200, segments: [
+        RacePaceSegment(order: 0, startDistanceKm: 0, endDistanceKm: 1, targetSeconds: 600),
+        RacePaceSegment(order: 1, startDistanceKm: 1, endDistanceKm: 2, targetSeconds: 600)
+    ], strategy: .custom)
+    let first = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 0),
+        CourseElevationSample(distanceKm: 1, elevationMeters: 100),
+        CourseElevationSample(distanceKm: 2, elevationMeters: 0)
+    ])
+    let second = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 0),
+        CourseElevationSample(distanceKm: 1, elevationMeters: -50),
+        CourseElevationSample(distanceKm: 2, elevationMeters: 0)
+    ])
+    let adjusted = try #require(CoursePaceAdjustment.apply(to: original, profile: first,
+                                terrain: [.automatic, .automatic], maintainTarget: true))
+    let record = CourseAdjustmentRecord(original: original, adjusted: adjusted)
+    let baseline = try #require(record.baseline(for: adjusted))
+    let replaced = try #require(CoursePaceAdjustment.apply(to: baseline, profile: second,
+                               terrain: [.automatic, .automatic], maintainTarget: true))
+    let direct = try #require(CoursePaceAdjustment.apply(to: original, profile: second,
+                             terrain: [.automatic, .automatic], maintainTarget: true))
+    #expect(replaced == direct)
+    #expect(record.baseline(for: adjusted) == original)
+    var manuallyEdited = adjusted
+    manuallyEdited.name = "編集済み"
+    #expect(record.baseline(for: manuallyEdited) == nil)
+}
