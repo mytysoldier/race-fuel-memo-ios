@@ -18,7 +18,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     var selectedPacePlanID: UUID?
     var fuelingEvents: [RaceFuelingEvent]
     var courseElevation: CourseElevationProfile?
-    var courseAdjustment: CourseAdjustmentRecord?
+    var courseAdjustments: [CourseAdjustmentRecord]
 
     init(
         id: UUID = UUID(),
@@ -55,14 +55,16 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.selectedPacePlanID = selectedPacePlanID
         self.fuelingEvents = fuelingEvents
         self.courseElevation = nil
-        self.courseAdjustment = nil
+        self.courseAdjustments = []
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
         case gelCount, gelNames, memo, checklistItems, checklistNotificationsEnabled, checkpoints, pacePlans
-        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustment
+        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustments
     }
+
+    private enum LegacyCodingKeys: String, CodingKey { case courseAdjustment }
 
     init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -82,7 +84,12 @@ struct RacePlan: Identifiable, Codable, Equatable {
         selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
         fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
         courseElevation = try values.decodeIfPresent(CourseElevationProfile.self, forKey: .courseElevation)
-        courseAdjustment = try values.decodeIfPresent(CourseAdjustmentRecord.self, forKey: .courseAdjustment)
+        if let records = try values.decodeIfPresent([CourseAdjustmentRecord].self, forKey: .courseAdjustments) {
+            courseAdjustments = records
+        } else {
+            let legacy = try decoder.container(keyedBy: LegacyCodingKeys.self)
+            courseAdjustments = try legacy.decodeIfPresent(CourseAdjustmentRecord.self, forKey: .courseAdjustment).map { [$0] } ?? []
+        }
 
         checkpoints = try values.decodeIfPresent([RaceCheckpoint].self, forKey: .checkpoints) ?? []
         // Checkpoint kind was introduced after v2 storage. A legacy checkpoint at

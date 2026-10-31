@@ -358,6 +358,21 @@ struct CourseAdjustmentRecord: Codable, Equatable {
     }
 }
 
+extension RacePlan {
+    func adjustmentBaseline(for plan: RacePacePlan) -> RacePacePlan? {
+        courseAdjustments.first { $0.adjusted.id == plan.id }?.baseline(for: plan)
+    }
+
+    mutating func setCourseAdjustment(original: RacePacePlan, adjusted: RacePacePlan) {
+        courseAdjustments.removeAll { $0.adjusted.id == adjusted.id }
+        courseAdjustments.append(CourseAdjustmentRecord(original: original, adjusted: adjusted))
+    }
+
+    mutating func removeCourseAdjustment(for planID: UUID) {
+        courseAdjustments.removeAll { $0.adjusted.id == planID }
+    }
+}
+
 enum CourseTerrain: String, CaseIterable {
     case automatic, uphill, downhill, flat
     var title: String {

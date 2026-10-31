@@ -397,3 +397,31 @@ private func makeRacePlan() -> RacePlan {
     manuallyEdited.name = "編集済み"
     #expect(record.baseline(for: manuallyEdited) == nil)
 }
+
+@Test func courseAdjustmentBaselinesAreIndependentAndPersist() throws {
+    var race = makeRacePlan()
+    let a = RacePacePlanCalculator.initialPlan(for: race)
+    let b = RacePacePlanCalculator.normalized(
+        RacePacePlan(order: 1, name: "B", targetSeconds: a.targetSeconds),
+        raceDistanceKm: race.distanceKm, checkpoints: race.checkpoints)
+    let adjustedA = RacePacePlanCalculator.changingSegment(a, at: 0, to: a.segments[0].targetSeconds + 60)
+    let adjustedB = RacePacePlanCalculator.changingSegment(b, at: 0, to: b.segments[0].targetSeconds + 120)
+    race.pacePlans = [adjustedA, adjustedB]
+    race.selectedPacePlanID = a.id
+    race.setCourseAdjustment(original: a, adjusted: adjustedA)
+    race.setCourseAdjustment(original: b, adjusted: adjustedB)
+    #expect(race.adjustmentBaseline(for: adjustedA) == a)
+    #expect(race.adjustmentBaseline(for: adjustedB) == b)
+    let decoded = try JSONDecoder().decode(RacePlan.self, from: JSONEncoder().encode(race))
+    #expect(decoded.adjustmentBaseline(for: adjustedA) == a)
+    #expect(decoded.adjustmentBaseline(for: adjustedB) == b)
+    race.removeCourseAdjustment(for: b.id)
+    #expect(race.adjustmentBaseline(for: adjustedA) == a)
+    #expect(race.adjustmentBaseline(for: adjustedB) == nil)
+
+    var legacy = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(race)) as? [String: Any])
+    let records = try #require(legacy.removeValue(forKey: "courseAdjustments") as? [[String: Any]])
+    legacy["courseAdjustment"] = try #require(records.first)
+    let migrated = try JSONDecoder().decode(RacePlan.self, from: JSONSerialization.data(withJSONObject: legacy))
+    #expect(migrated.adjustmentBaseline(for: adjustedA) == a)
+}

@@ -378,27 +378,27 @@ struct RaceCourseElevationView: View {
 
     private func applyAdjustment() {
         guard let index = selectedIndex, let profile = draft.courseElevation else { return }
-        let baseline = draft.courseAdjustment?.baseline(for: draft.pacePlans[index]) ?? draft.pacePlans[index]
+        let baseline = draft.adjustmentBaseline(for: draft.pacePlans[index]) ?? draft.pacePlans[index]
         guard let adjusted = CoursePaceAdjustment.apply(to: baseline, profile: profile,
                                                         terrain: terrain, maintainTarget: maintainTarget) else {
             message = "このプランには補正を適用できません。距離と目標タイムを確認してください。"
             return
         }
-        draft.courseAdjustment = CourseAdjustmentRecord(original: baseline, adjusted: adjusted)
+        draft.setCourseAdjustment(original: baseline, adjusted: adjusted)
         draft.pacePlans[index] = adjusted
         message = nil
     }
 
     private func restoreOriginal() {
         guard let index = selectedIndex,
-              let baseline = draft.courseAdjustment?.baseline(for: draft.pacePlans[index]) else { return }
+              let baseline = draft.adjustmentBaseline(for: draft.pacePlans[index]) else { return }
         draft.pacePlans[index] = baseline
-        draft.courseAdjustment = nil
+        draft.removeCourseAdjustment(for: baseline.id)
     }
 
     private var canRestoreSaved: Bool {
-        guard let index = selectedIndex, let record = draft.courseAdjustment else { return false }
-        return record.baseline(for: draft.pacePlans[index]) != nil
+        guard let index = selectedIndex else { return false }
+        return draft.adjustmentBaseline(for: draft.pacePlans[index]) != nil
     }
 }
 
