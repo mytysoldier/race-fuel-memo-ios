@@ -322,3 +322,106 @@ private func makeRacePlan() -> RacePlan {
     #expect(RacePacePlanCalculator.elapsedSeconds(at: 10, in: race.pacePlans[0],
                                                    raceDistanceKm: 20) == 2_000)
 }
+
+@Test func gpxImportsElevationAndRejectsInvalidInput() throws {
+    let xml = """
+    <gpx version="1.1"><trk><trkseg>
+    <trkpt lat="0" lon="0"><ele>10</ele></trkpt>
+    <trkpt lat="0" lon="0.01"><ele>30</ele></trkpt>
+    <trkpt lat="0" lon="0.02"><ele>20</ele></trkpt>
+    </trkseg></trk></gpx>
+    """
+    let profile = try GPXCourseParser.parse(Data(xml.utf8))
+    #expect(abs(profile.distanceKm - 2.2239) < 0.01)
+    #expect(profile.ascentMeters == 20)
+    #expect(profile.descentMeters == 10)
+    #expect(throws: GPXImportError.self) { try GPXCourseParser.parse(Data("<gpx>".utf8)) }
+    #expect(throws: GPXImportError.self) {
+        try GPXCourseParser.parse(Data(xml.replacingOccurrences(of: "<ele>30</ele>", with: "").utf8))
+    }
+    #expect(throws: GPXImportError.self) {
+        try GPXCourseParser.parse(Data(xml.replacingOccurrences(of: "</trkseg>", with: "</trkseg><trkseg></trkseg>").utf8))
+    }
+}
+
+@Test func elevationAdjustmentPreservesTargetAndRejectsDistanceMismatch() throws {
+    let plan = RacePacePlan(order: 0, name: "A", targetSeconds: 1200, segments: [
+        RacePaceSegment(order: 0, startDistanceKm: 0, endDistanceKm: 1, targetSeconds: 600),
+        RacePaceSegment(order: 1, startDistanceKm: 1, endDistanceKm: 2, targetSeconds: 600)
+    ], strategy: .custom)
+    let profile = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 0),
+        CourseElevationSample(distanceKm: 1, elevationMeters: 100),
+        CourseElevationSample(distanceKm: 2, elevationMeters: 0)
+    ])
+    let adjusted = try #require(CoursePaceAdjustment.apply(to: plan, profile: profile,
+                              terrain: [.automatic, .automatic], maintainTarget: true))
+    #expect(adjusted.targetSeconds == 1200)
+    #expect(adjusted.segments.map(\.targetSeconds).reduce(0, +) == 1200)
+    #expect(adjusted.segments[0].targetSeconds > adjusted.segments[1].targetSeconds)
+    let flat = try #require(CoursePaceAdjustment.apply(to: plan, profile: profile,
+                          terrain: [.flat, .flat], maintainTarget: false))
+    #expect(flat.segments.map(\.targetSeconds) == [600, 600])
+    var mismatch = profile
+    mismatch.samples[2].distanceKm = 3
+    #expect(CoursePaceAdjustment.apply(to: plan, profile: mismatch,
+            terrain: [.automatic, .automatic], maintainTarget: true) == nil)
+}
+
+@Test func courseAdjustmentKeepsOriginalBaselineWhenProfileChanges() throws {
+    let original = RacePacePlan(order: 0, name: "A", targetSeconds: 1200, segments: [
+        RacePaceSegment(order: 0, startDistanceKm: 0, endDistanceKm: 1, targetSeconds: 600),
+        RacePaceSegment(order: 1, startDistanceKm: 1, endDistanceKm: 2, targetSeconds: 600)
+    ], strategy: .custom)
+    let first = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 0),
+        CourseElevationSample(distanceKm: 1, elevationMeters: 100),
+        CourseElevationSample(distanceKm: 2, elevationMeters: 0)
+    ])
+    let second = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 0),
+        CourseElevationSample(distanceKm: 1, elevationMeters: -50),
+        CourseElevationSample(distanceKm: 2, elevationMeters: 0)
+    ])
+    let adjusted = try #require(CoursePaceAdjustment.apply(to: original, profile: first,
+                                terrain: [.automatic, .automatic], maintainTarget: true))
+    let record = CourseAdjustmentRecord(original: original, adjusted: adjusted)
+    let baseline = try #require(record.baseline(for: adjusted))
+    let replaced = try #require(CoursePaceAdjustment.apply(to: baseline, profile: second,
+                               terrain: [.automatic, .automatic], maintainTarget: true))
+    let direct = try #require(CoursePaceAdjustment.apply(to: original, profile: second,
+                             terrain: [.automatic, .automatic], maintainTarget: true))
+    #expect(replaced == direct)
+    #expect(record.baseline(for: adjusted) == original)
+    var manuallyEdited = adjusted
+    manuallyEdited.name = "編集済み"
+    #expect(record.baseline(for: manuallyEdited) == nil)
+}
+
+@Test func courseAdjustmentBaselinesAreIndependentAndPersist() throws {
+    var race = makeRacePlan()
+    let a = RacePacePlanCalculator.initialPlan(for: race)
+    let b = RacePacePlanCalculator.normalized(
+        RacePacePlan(order: 1, name: "B", targetSeconds: a.targetSeconds),
+        raceDistanceKm: race.distanceKm, checkpoints: race.checkpoints)
+    let adjustedA = RacePacePlanCalculator.changingSegment(a, at: 0, to: a.segments[0].targetSeconds + 60)
+    let adjustedB = RacePacePlanCalculator.changingSegment(b, at: 0, to: b.segments[0].targetSeconds + 120)
+    race.pacePlans = [adjustedA, adjustedB]
+    race.selectedPacePlanID = a.id
+    race.setCourseAdjustment(original: a, adjusted: adjustedA)
+    race.setCourseAdjustment(original: b, adjusted: adjustedB)
+    #expect(race.adjustmentBaseline(for: adjustedA) == a)
+    #expect(race.adjustmentBaseline(for: adjustedB) == b)
+    let decoded = try JSONDecoder().decode(RacePlan.self, from: JSONEncoder().encode(race))
+    #expect(decoded.adjustmentBaseline(for: adjustedA) == a)
+    #expect(decoded.adjustmentBaseline(for: adjustedB) == b)
+    race.removeCourseAdjustment(for: b.id)
+    #expect(race.adjustmentBaseline(for: adjustedA) == a)
+    #expect(race.adjustmentBaseline(for: adjustedB) == nil)
+
+    var legacy = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(race)) as? [String: Any])
+    let records = try #require(legacy.removeValue(forKey: "courseAdjustments") as? [[String: Any]])
+    legacy["courseAdjustment"] = try #require(records.first)
+    let migrated = try JSONDecoder().decode(RacePlan.self, from: JSONSerialization.data(withJSONObject: legacy))
+    #expect(migrated.adjustmentBaseline(for: adjustedA) == a)
+}

@@ -267,3 +267,155 @@ struct RacePaceComparisonView: View {
         .proProtected(.paceStrategies)
     }
 }
+
+import UniformTypeIdentifiers
+
+struct RaceCourseElevationView: View {
+    @Environment(ProStore.self) private var proStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: RacePlan
+    @State private var isImporting = false
+    @State private var message: String?
+    @State private var terrain: [CourseTerrain] = []
+    @State private var maintainTarget = true
+    let onSave: (RacePlan) -> Bool
+
+    init(racePlan: RacePlan, onSave: @escaping (RacePlan) -> Bool) {
+        _draft = State(initialValue: racePlan)
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("コース") {
+                    Button("GPXを選択") { isImporting = true }
+                    Text("標高付きの単一コースを選択してください。位置情報は保存せず、距離と標高のみを保存します。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    if let profile = draft.courseElevation {
+                        LabeledContent("GPXの距離", value: RacePlanCalculator.formatDistance(profile.distanceKm))
+                        LabeledContent("累積上昇", value: "\(Int(profile.ascentMeters.rounded())) m")
+                        LabeledContent("累積下降", value: "\(Int(profile.descentMeters.rounded())) m")
+                        CourseElevationGraph(profile: profile)
+                        .frame(height: 180)
+                        .accessibilityLabel("標高グラフ")
+                        if abs(profile.distanceKm - draft.distanceKm) / draft.distanceKm > 0.05 {
+                            Text("レース距離との差が5%を超えるため補正できません。コースまたはレース距離を確認してください。")
+                                .foregroundStyle(.red)
+                        } else {
+                            Text("距離の差は比率で調整して地点に割り当てます。標高の値はGPSの誤差を含む場合があります。")
+                                .font(.footnote).foregroundStyle(.secondary)
+                        }
+                        Button("GPXを削除", role: .destructive) { draft.courseElevation = nil }
+                    }
+                }
+                if let profile = draft.courseElevation, let index = selectedIndex,
+                   abs(profile.distanceKm - draft.distanceKm) / draft.distanceKm <= 0.05 {
+                    Section("ペース補正 · \(draft.pacePlans[index].name)") {
+                        LabeledContent("現在の目標", value: RacePlanCalculator.formatDuration(draft.pacePlans[index].targetSeconds))
+                        Picker("補正方法", selection: $maintainTarget) {
+                            Text("目標タイムを維持").tag(true)
+                            Text("単純補正").tag(false)
+                        }
+                        Text("標高による簡易的な目安です。実際のペースを保証するものではありません。")
+                            .font(.footnote).foregroundStyle(.secondary)
+                        ForEach(draft.pacePlans[index].segments.indices, id: \.self) { segmentIndex in
+                            let segment = draft.pacePlans[index].segments[segmentIndex]
+                            if terrain.indices.contains(segmentIndex) {
+                                let changes = CoursePaceAdjustment.gainLoss(start: segment.startDistanceKm, end: segment.endDistanceKm, raceDistance: draft.distanceKm, profile: profile)
+                                Text("区間の上昇 \(Int(changes.0.rounded())) m・下降 \(Int(changes.1.rounded())) m · \(RacePlanCalculator.formatDuration(segment.targetSeconds))")
+                                    .font(.footnote).foregroundStyle(.secondary)
+                                Picker("\(RacePlanCalculator.formatDistance(segment.startDistanceKm)) → \(RacePlanCalculator.formatDistance(segment.endDistanceKm))", selection: $terrain[segmentIndex]) {
+                                    ForEach(CourseTerrain.allCases, id: \.self) { value in
+                                        Text(value.title).tag(value)
+                                    }
+                                }
+                            }
+                        }
+                        Button("補正を適用") { applyAdjustment() }
+                        Text("適用後はペース戦略画面で各区間を手動調整できます。")
+                            .font(.footnote).foregroundStyle(.secondary)
+                    }
+                } else if draft.pacePlans.isEmpty, draft.courseElevation != nil {
+                    Section { Text("補正するには、先にペース戦略でプランを作成してください。") }
+                }
+                if canRestoreSaved {
+                    Section { Button("補正を元に戻す") { restoreOriginal() } }
+                }
+                if let message { Section { Text(message).foregroundStyle(.red) } }
+            }
+            .navigationTitle("GPX・標高")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        guard proStore.canUse(.courseElevation) else { return }
+                        if onSave(draft) { dismiss() } else { message = "保存できませんでした。" }
+                    }
+                }
+            }
+            .fileImporter(isPresented: $isImporting, allowedContentTypes: [.data]) { result in
+                do {
+                    let url = try result.get()
+                    let scoped = url.startAccessingSecurityScopedResource()
+                    defer { if scoped { url.stopAccessingSecurityScopedResource() } }
+                    let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+                    guard size <= 10_000_000 else { throw GPXImportError.tooLarge }
+                    draft.courseElevation = try GPXCourseParser.parse(Data(contentsOf: url))
+                    message = nil
+                } catch { message = error.localizedDescription }
+            }
+            .onAppear {
+                if let index = selectedIndex {
+                    terrain = Array(repeating: .automatic, count: draft.pacePlans[index].segments.count)
+                }
+            }
+            .proProtected(.courseElevation)
+        }
+    }
+
+    private var selectedIndex: Int? { draft.pacePlans.firstIndex { $0.id == draft.selectedPacePlanID } }
+
+    private func applyAdjustment() {
+        guard let index = selectedIndex, let profile = draft.courseElevation else { return }
+        let baseline = draft.adjustmentBaseline(for: draft.pacePlans[index]) ?? draft.pacePlans[index]
+        guard let adjusted = CoursePaceAdjustment.apply(to: baseline, profile: profile,
+                                                        terrain: terrain, maintainTarget: maintainTarget) else {
+            message = "このプランには補正を適用できません。距離と目標タイムを確認してください。"
+            return
+        }
+        draft.setCourseAdjustment(original: baseline, adjusted: adjusted)
+        draft.pacePlans[index] = adjusted
+        message = nil
+    }
+
+    private func restoreOriginal() {
+        guard let index = selectedIndex,
+              let baseline = draft.adjustmentBaseline(for: draft.pacePlans[index]) else { return }
+        draft.pacePlans[index] = baseline
+        draft.removeCourseAdjustment(for: baseline.id)
+    }
+
+    private var canRestoreSaved: Bool {
+        guard let index = selectedIndex else { return false }
+        return draft.adjustmentBaseline(for: draft.pacePlans[index]) != nil
+    }
+}
+
+private struct CourseElevationGraph: View {
+    let profile: CourseElevationProfile
+    var body: some View {
+        GeometryReader { geometry in
+            let minElevation = profile.samples.map(\.elevationMeters).min() ?? 0
+            let maxElevation = profile.samples.map(\.elevationMeters).max() ?? 0
+            let range = max(1, maxElevation - minElevation)
+            Path { path in
+                for (index, sample) in profile.samples.enumerated() {
+                    let point = CGPoint(x: geometry.size.width * sample.distanceKm / max(0.001, profile.distanceKm),
+                                        y: geometry.size.height * (1 - (sample.elevationMeters - minElevation) / range))
+                    if index == 0 { path.move(to: point) } else { path.addLine(to: point) }
+                }
+            }.stroke(Color.accentColor, lineWidth: 2)
+        }
+    }
+}

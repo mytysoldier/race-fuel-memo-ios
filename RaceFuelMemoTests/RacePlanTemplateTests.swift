@@ -182,3 +182,28 @@ private func allReuseIDs(_ plan: RacePlan) -> [UUID] {
         + plan.pacePlans.flatMap { $0.segments.map(\.id) }
         + plan.fuelingEvents.map(\.id) + plan.checklistItems.map(\.id)
 }
+
+@Test func duplicateKeepsCourseAndIndependentAdjustmentBaselines() throws {
+    var source = reusableRaceFixture()
+    let baseline = source.pacePlans[0]
+    let adjusted = RacePacePlanCalculator.changingSegment(baseline, at: 0,
+                     to: baseline.segments[0].targetSeconds + 60)
+    source.pacePlans[0] = adjusted
+    source.setCourseAdjustment(original: baseline, adjusted: adjusted)
+    source.courseElevation = CourseElevationProfile(samples: [
+        CourseElevationSample(distanceKm: 0, elevationMeters: 10),
+        CourseElevationSample(distanceKm: source.distanceKm, elevationMeters: 100)
+    ])
+
+    let copy = source.duplicated()
+    #expect(copy.courseElevation == source.courseElevation)
+    let copiedPlan = try #require(copy.pacePlans.first)
+    let copiedBaseline = try #require(copy.adjustmentBaseline(for: copiedPlan))
+    #expect(copiedPlan.id != adjusted.id)
+    #expect(copiedBaseline.id == copiedPlan.id)
+    #expect(copiedBaseline.segments.map(\.targetSeconds) == baseline.segments.map(\.targetSeconds))
+    #expect(copiedBaseline.segments.map(\.id) == copiedPlan.segments.map(\.id))
+    #expect(Set(copiedBaseline.segments.map(\.id)).isDisjoint(with: baseline.segments.map(\.id)))
+    let reloaded = try JSONDecoder().decode(RacePlan.self, from: JSONEncoder().encode(copy))
+    #expect(reloaded.adjustmentBaseline(for: try #require(reloaded.pacePlans.first)) == copiedBaseline)
+}
