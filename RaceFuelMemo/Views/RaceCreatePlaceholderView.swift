@@ -19,6 +19,8 @@ struct RaceCreatePlaceholderView: View {
     @State private var memo = ""
     @State private var checkpoints: [RaceCheckpoint] = []
     @State private var pacePlans: [RacePacePlan] = []
+    @State private var courseElevation: CourseElevationProfile?
+    @State private var courseAdjustments: [CourseAdjustmentRecord] = []
     @State private var selectedPacePlanID: UUID?
     @State private var fuelingEvents: [RaceFuelingEvent] = []
     @State private var checklistItems = RacePlan.defaultChecklistItems
@@ -82,6 +84,8 @@ struct RaceCreatePlaceholderView: View {
         _memo = State(initialValue: plan.memo)
         _checkpoints = State(initialValue: plan.checkpoints)
         _pacePlans = State(initialValue: plan.pacePlans)
+        _courseElevation = State(initialValue: plan.courseElevation)
+        _courseAdjustments = State(initialValue: plan.courseAdjustments)
         _selectedPacePlanID = State(initialValue: plan.selectedPacePlanID)
         _fuelingEvents = State(initialValue: plan.fuelingEvents)
         _checklistItems = State(initialValue: plan.checklistItems)
@@ -529,6 +533,8 @@ struct RaceCreatePlaceholderView: View {
             checkpoints: checkpoints, pacePlans: pacePlans,
             selectedPacePlanID: selectedPacePlanID, fuelingEvents: fuelingEvents
         )
+        racePlan.courseElevation = courseElevation
+        racePlan.courseAdjustments = courseAdjustments
         racePlan.normalizeFinishCheckpoints()
         racePlan.normalizePacePlans()
         return racePlan
@@ -548,6 +554,8 @@ struct RaceCreatePlaceholderView: View {
         targetHours = plan.targetHours
         targetMinutes = plan.targetMinutes
         pacePlans = plan.pacePlans
+        courseElevation = plan.courseElevation
+        courseAdjustments = plan.courseAdjustments
         selectedPacePlanID = plan.selectedPacePlanID
         fuelingEvents = plan.fuelingEvents
         let names = plan.gelNames ?? []

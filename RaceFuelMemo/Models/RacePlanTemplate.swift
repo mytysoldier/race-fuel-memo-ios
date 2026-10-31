@@ -118,7 +118,7 @@ extension RacePlan {
                                   kind: checkpoint.kind, segmentNote: checkpoint.segmentNote, cautionNote: checkpoint.cautionNote)
         }
         let copiedPace = pacePlans.freshCopies(selectedID: selectedPacePlanID)
-        return RacePlan(
+        var duplicate = RacePlan(
             name: "\(name) コピー", raceDate: raceDate, startTime: startTime,
             distanceKm: distanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gelCount, gelNames: gelNames ?? [], memo: memo,
@@ -133,6 +133,22 @@ extension RacePlan {
                 $0.freshCopy(checkpointID: $0.checkpointID.flatMap { checkpointIDs[$0] })
             }
         )
+        duplicate.courseElevation = courseElevation
+        for (source, copy) in zip(pacePlans, copiedPace.plans) {
+            guard let baseline = adjustmentBaseline(for: source) else { continue }
+            let ids = Dictionary(uniqueKeysWithValues: zip(source.segments, copy.segments).map { ($0.id, $1.id) })
+            let copiedBaseline = RacePacePlan(
+                id: copy.id, order: baseline.order, name: baseline.name,
+                targetSeconds: baseline.targetSeconds,
+                segments: baseline.segments.map {
+                    RacePaceSegment(id: ids[$0.id] ?? UUID(), order: $0.order,
+                                    startDistanceKm: $0.startDistanceKm, endDistanceKm: $0.endDistanceKm,
+                                    targetSeconds: $0.targetSeconds)
+                }, strategy: baseline.strategy, halfDifferenceSeconds: baseline.halfDifferenceSeconds,
+                kickDistanceKm: baseline.kickDistanceKm, kickGainSecondsPerKm: baseline.kickGainSecondsPerKm)
+            duplicate.setCourseAdjustment(original: copiedBaseline, adjusted: copy)
+        }
+        return duplicate
     }
 }
 
