@@ -53,7 +53,7 @@ final class ProStoreTests: XCTestCase {
     func testPaywallCatalogMatchesAdvancedFeatureBoundary() {
         XCTAssertEqual(Set(ProFeature.allCases), Set([
             .checkpoints, .paceStrategies, .fuelingPlan, .customChecklist,
-            .planReuse, .raceCard, .preparationDashboard, .courseElevation]))
+            .planReuse, .raceCard, .preparationDashboard]))
         XCTAssertEqual(Set(ProFeature.allCases.map(\.id)).count, ProFeature.allCases.count)
         XCTAssertTrue(ProFeature.allCases.allSatisfy { !$0.title.isEmpty && !$0.summary.isEmpty })
     }
