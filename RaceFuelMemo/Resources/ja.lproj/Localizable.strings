@@ -92,3 +92,5 @@
 "settings.privacy.storage" = "レースプラン、チェック状態、メモは端末に保存され、本アプリの外部サーバーへ送信されません。端末のバックアップを復元した場合、保存したレースプランやメモも新しい端末に復元されます。アプリを削除すると、端末上のデータが削除される場合があります。";
 "settings.privacy.section.third_party" = "第三者提供";
 "settings.privacy.third_party" = "開発者は入力されたレースプランやメモなどを収集せず、第三者へ提供・販売しません。利用者がRace Cardを保存・共有・印刷した場合は、選択した保存先・共有先・プリンタへ出力内容が渡されます。";
+"checklist.notification.title" = "%@の準備";
+"checklist.notification.body" = "必須項目「%@」が未完了です。";

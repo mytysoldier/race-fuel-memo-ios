@@ -5,22 +5,22 @@ enum RacePreparationStep: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .basic: "大会情報"
-        case .pace: "ペース"
-        case .checkpoints: "通過地点"
-        case .fueling: "補給"
-        case .checklist: "持ち物・準備"
-        case .output: "確認・出力"
+        case .basic: String(localized: "大会情報")
+        case .pace: String(localized: "ペース")
+        case .checkpoints: String(localized: "通過地点")
+        case .fueling: String(localized: "補給")
+        case .checklist: String(localized: "持ち物・準備")
+        case .output: String(localized: "確認・出力")
         }
     }
     var guidance: String {
         switch self {
-        case .basic: "大会名・開催日・スタート・距離を入力しましょう。"
-        case .pace: "目標タイムを決めましょう。基本の均等ペースだけでも作成できます。"
-        case .checkpoints: "Proでは関門・給水所を追加できます。未設定でも5kmごとの通過時間を無料で表示します。"
-        case .fueling: "携行するジェル、または詳細な補給・給水を設定しましょう。"
-        case .checklist: "必須の持ち物を確認しましょう。チェックは保存後も変更できます。"
-        case .output: "計画を保存しましょう。Proでは準備状況の確認とRace Card出力も利用できます。注意が残っていても保存できます。"
+        case .basic: String(localized: "大会名・開催日・スタート・距離を入力しましょう。")
+        case .pace: String(localized: "目標タイムを決めましょう。基本の均等ペースだけでも作成できます。")
+        case .checkpoints: String(localized: "Proでは関門・給水所を追加できます。未設定でも5kmごとの通過時間を無料で表示します。")
+        case .fueling: String(localized: "携行するジェル、または詳細な補給・給水を設定しましょう。")
+        case .checklist: String(localized: "必須の持ち物を確認しましょう。チェックは保存後も変更できます。")
+        case .output: String(localized: "計画を保存しましょう。Proでは準備状況の確認とRace Card出力も利用できます。注意が残っていても保存できます。")
         }
     }
 }
@@ -33,9 +33,9 @@ struct RacePreparationStatus: Identifiable {
     var id: String { step.rawValue }
     var label: String {
         switch state {
-        case .ready: "入力済み"
-        case .unset: "未設定"
-        case .attention: "注意"
+        case .ready: String(localized: "入力済み")
+        case .unset: String(localized: "未設定")
+        case .attention: String(localized: "注意")
         }
     }
 }

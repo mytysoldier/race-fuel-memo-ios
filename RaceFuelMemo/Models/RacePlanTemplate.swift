@@ -6,10 +6,10 @@ enum RacePlanReuseComponent: String, CaseIterable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .basics: "距離・基本目標タイム"
-        case .pace: "ペース戦略・A・B・Cプラン"
-        case .fueling: "補給・給水セット"
-        case .checklist: "チェックリスト"
+        case .basics: String(localized: "距離・基本目標タイム")
+        case .pace: String(localized: "ペース戦略・A・B・Cプラン")
+        case .fueling: String(localized: "補給・給水セット")
+        case .checklist: String(localized: "チェックリスト")
         }
     }
 }
