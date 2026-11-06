@@ -11,12 +11,12 @@ struct RacePlanCalculation: Equatable {
 
     var fuelTimingText: String {
         guard !fuelTimings.isEmpty else {
-            return "補給予定なし"
+            return String(localized: "補給予定なし")
         }
 
         return fuelTimings
             .map(\.displayText)
-            .joined(separator: "、")
+            .joined(separator: String(localized: "list.separator"))
     }
 }
 
@@ -27,7 +27,7 @@ struct RacePace: Equatable {
         let minutes = secondsPerKilometer / 60
         let seconds = secondsPerKilometer % 60
 
-        return "\(minutes)分\(seconds)秒/km"
+        return String(format: String(localized: "pace.format"), minutes, seconds)
     }
 }
 
@@ -56,7 +56,7 @@ struct FuelTiming: Identifiable, Equatable {
     let distanceKm: Double
 
     var displayText: String {
-        "\(RacePlanCalculator.formatDistance(distanceKm))地点"
+        String(format: String(localized: "fuel.checkpoint"), RacePlanCalculator.formatDistance(distanceKm))
     }
 }
 
@@ -72,57 +72,57 @@ struct RaceCheckpointSchedule: Identifiable, Equatable {
 enum RaceCheckpointValidator {
     static func error(for racePlan: RacePlan) -> String? {
         guard racePlan.distanceKm.isFinite, (1...200).contains(racePlan.distanceKm) else {
-            return "レース距離は1〜200kmで入力してください。"
+            return String(localized: "レース距離は1〜200kmで入力してください。")
         }
         let targetSeconds = RacePlanCalculator.targetDurationSeconds(
             hours: racePlan.targetHours, minutes: racePlan.targetMinutes
         )
-        guard targetSeconds > 0 else { return "目標タイムを入力してください。" }
+        guard targetSeconds > 0 else { return String(localized: "目標タイムを入力してください。") }
         if let error = RacePacePlanCalculator.validationError(for: racePlan) { return error }
 
         let checkpoints = racePlan.checkpoints.sorted { $0.order < $1.order }
         guard Set(checkpoints.map(\.id)).count == checkpoints.count,
               Set(checkpoints.map(\.order)).count == checkpoints.count else {
-            return "地点の並び順に重複があります。"
+            return String(localized: "地点の並び順に重複があります。")
         }
         var previousDistance = 0.0
         var previousElapsed = 0
         var finishCount = 0
         for checkpoint in checkpoints {
             guard !checkpoint.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                return "地点名を入力してください。"
+                return String(localized: "地点名を入力してください。")
             }
             guard checkpoint.distanceKm.isFinite,
                   checkpoint.distanceKm > previousDistance + 0.000_001,
                   checkpoint.distanceKm <= racePlan.distanceKm + 0.000_001 else {
-                return "地点の距離は重複せず、ゴールまで昇順に入力してください。"
+                return String(localized: "地点の距離は重複せず、ゴールまで昇順に入力してください。")
             }
             if checkpoint.kind == .finish {
                 finishCount += 1
                 guard abs(checkpoint.distanceKm - racePlan.distanceKm) < 0.000_001 else {
-                    return "ゴール地点の距離をレース距離と一致させてください。"
+                    return String(localized: "ゴール地点の距離をレース距離と一致させてください。")
                 }
             } else if abs(checkpoint.distanceKm - racePlan.distanceKm) < 0.000_001 {
-                return "レース距離の地点はゴールに設定してください。"
+                return String(localized: "レース距離の地点はゴールに設定してください。")
             }
             if let elapsed = checkpoint.plannedElapsedSeconds {
                 guard elapsed > previousElapsed,
                       elapsed <= targetSeconds,
                       (checkpoint.kind == .finish) == (elapsed == targetSeconds) else {
-                    return "地点の予定経過時間は距離順に増え、ゴール時に目標タイムと一致させてください。"
+                    return String(localized: "地点の予定経過時間は距離順に増え、ゴール時に目標タイムと一致させてください。")
                 }
                 previousElapsed = elapsed
             }
             if let cutoffTime = checkpoint.cutoffTime,
                cutoffTime <= racePlan.startTime {
-                return "関門時刻はスタートより後に設定してください。"
+                return String(localized: "関門時刻はスタートより後に設定してください。")
             }
             if checkpoint.kind == .cutoff && checkpoint.cutoffTime == nil {
-                return "関門地点には関門時刻を設定してください。"
+                return String(localized: "関門地点には関門時刻を設定してください。")
             }
             previousDistance = checkpoint.distanceKm
         }
-        guard finishCount <= 1 else { return "ゴール地点は1つだけ設定してください。" }
+        guard finishCount <= 1 else { return String(localized: "ゴール地点は1つだけ設定してください。") }
 
         // Explicit times are anchors. Every intervening point must fit between them.
         let anchors = checkpoints.compactMap { checkpoint -> (Double, Int)? in
@@ -131,7 +131,7 @@ enum RaceCheckpointValidator {
         var previousAnchor = (distance: 0.0, elapsed: 0)
         for anchor in anchors + [(racePlan.distanceKm, targetSeconds)] {
             if anchor.0 > previousAnchor.distance + 0.000_001 && anchor.1 <= previousAnchor.elapsed {
-                return "距離が進む地点の予定経過時間は前の地点より後にしてください。"
+                return String(localized: "距離が進む地点の予定経過時間は前の地点より後にしてください。")
             }
             previousAnchor = (anchor.0, anchor.1)
         }
@@ -361,9 +361,7 @@ enum RacePlanCalculator {
             return "\(Int(rounded))km"
         }
 
-        var text = String(format: "%.4f", distanceKm)
-        while text.last == "0" { text.removeLast() }
-        if text.last == "." { text.removeLast() }
+        let text = distanceKm.formatted(.number.precision(.fractionLength(0...4)).grouping(.never))
         return "\(text)km"
     }
 
@@ -373,10 +371,10 @@ enum RacePlanCalculator {
         let seconds = totalSeconds % 60
 
         if hours > 0 {
-            return "\(hours)時間\(minutes)分\(seconds)秒"
+            return String(format: String(localized: "duration.hours"), hours, minutes, seconds)
         }
 
-        return "\(minutes)分\(seconds)秒"
+        return String(format: String(localized: "duration.minutes"), minutes, seconds)
     }
 
     private static func evenlySpacedDistances(count: Int, startKm: Double, endKm: Double) -> [Double] {

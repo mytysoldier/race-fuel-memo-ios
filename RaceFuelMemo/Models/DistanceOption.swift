@@ -22,11 +22,11 @@ enum DistanceOption: Double, CaseIterable, Codable, Identifiable {
         case .tenKilometers:
             return "10km"
         case .halfMarathon:
-            return "ハーフ"
+            return String(localized: "ハーフ")
         case .thirtyKilometers:
             return "30km"
         case .fullMarathon:
-            return "フル"
+            return String(localized: "フル")
         }
     }
 }

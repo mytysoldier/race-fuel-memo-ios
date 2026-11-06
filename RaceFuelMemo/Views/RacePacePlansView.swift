@@ -253,8 +253,8 @@ struct RacePaceComparisonView: View {
                                     racePlan.startTime.addingTimeInterval(TimeInterval(elapsed))
                                 ).rounded())
                                 Label(margin >= 0
-                                      ? "関門余裕 \(RacePlanCalculator.formatDuration(margin))"
-                                      : "関門超過 \(RacePlanCalculator.formatDuration(-margin))",
+                                      ? String(format: String(localized: "関門余裕 %@"), RacePlanCalculator.formatDuration(margin))
+                                      : String(format: String(localized: "関門超過 %@"), RacePlanCalculator.formatDuration(-margin)),
                                       systemImage: margin >= 0 ? "checkmark.circle" : "exclamationmark.triangle.fill")
                                     .foregroundStyle(margin >= 0 ? Color.secondary : Color.red)
                             }

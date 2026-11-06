@@ -56,7 +56,7 @@ struct RacePlanTemplate: Identifiable, Codable, Equatable {
         guard fuelingEvents.isEmpty else { return [] }
         return (0..<max(0, gelCount, gelNames.count)).map { index in
             if index < gelNames.count && !gelNames[index].isEmpty { return gelNames[index] }
-            return "補給ジェル \(index + 1)"
+            return String(format: String(localized: "fuel.default_name"), index + 1)
         }
     }
 
@@ -110,7 +110,7 @@ enum RacePlanReuseError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .incompatibleDistance:
-            "距離が異なるため、ペース・補給を適用できません。「距離・基本目標タイム」も選ぶか、同じ距離の設定を選んでください。"
+            String(localized: "reuse.incompatible_distance")
         case .invalidSettings(let message): message
         }
     }
@@ -130,7 +130,7 @@ extension RacePlan {
         }
         let copiedPace = pacePlans.freshCopies(selectedID: selectedPacePlanID)
         var duplicate = RacePlan(
-            name: "\(name) コピー", raceDate: raceDate, startTime: startTime,
+            name: String(format: String(localized: "race.copy_name"), name), raceDate: raceDate, startTime: startTime,
             distanceKm: distanceKm, targetHours: targetHours, targetMinutes: targetMinutes,
             gelCount: gelCount, gelNames: gelNames ?? [], memo: memo,
             checklistItems: checklistItems.map {

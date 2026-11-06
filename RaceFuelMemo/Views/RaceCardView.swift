@@ -45,7 +45,7 @@ struct RaceCardView: View {
                         Text(format.title).tag(format)
                     }
                 }
-                Text(audience == .runner ? "区間ペースを先に表示します。" : "通過地点・関門・補給と受け取り方法を先に表示します。")
+                Text(audience == .runner ? String(localized: "区間ペースを先に表示します。") : String(localized: "通過地点・関門・補給と受け取り方法を先に表示します。"))
                     .font(.footnote)
                     .foregroundStyle(.secondary)
                 if format == .paceBand {
@@ -229,7 +229,7 @@ private final class RaceCardPrintController: UIViewController, UIPrintInteractio
         hasPresented = true
         guard UIPrintInteractionController.isPrintingAvailable,
               UIPrintInteractionController.canPrint(output.pdfURL) else {
-            completion?("印刷を利用できません。PDFを保存・共有してください。")
+            completion?(String(localized: "印刷を利用できません。PDFを保存・共有してください。"))
             return
         }
         let printer = UIPrintInteractionController.shared
@@ -251,7 +251,7 @@ private final class RaceCardPrintController: UIViewController, UIPrintInteractio
         } else {
             presented = printer.present(animated: true, completionHandler: handler)
         }
-        if !presented { completion?("印刷画面を開けませんでした。PDFを保存・共有してください。") }
+        if !presented { completion?(String(localized: "印刷画面を開けませんでした。PDFを保存・共有してください。")) }
     }
 
     func printInteractionController(_ printInteractionController: UIPrintInteractionController,
@@ -262,7 +262,7 @@ private final class RaceCardPrintController: UIViewController, UIPrintInteractio
             || paper.printableRect.height < RaceCardRenderer.bandSize.height {
             DispatchQueue.main.async { [weak self] in
                 printInteractionController.dismiss(animated: true)
-                self?.completion?("ペースバンドの原寸印刷に必要な領域がありません。A4用紙に対応するプリンタを選択してください。")
+                self?.completion?(String(localized: "ペースバンドの原寸印刷に必要な領域がありません。A4用紙に対応するプリンタを選択してください。"))
             }
         }
         return paper

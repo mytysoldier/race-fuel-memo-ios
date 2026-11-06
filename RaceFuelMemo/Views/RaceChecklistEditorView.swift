@@ -146,7 +146,7 @@ struct RaceChecklistEditorView: View {
                     if let id = deleteTemplateID { _ = templateStore.delete(id: id) }
                 }
             }
-            .alert(didSaveWithoutNotifications ? "チェックリストを保存しました" : "保存できません", isPresented: $isShowingError) {
+            .alert(didSaveWithoutNotifications ? String(localized: "チェックリストを保存しました") : String(localized: "保存できません"), isPresented: $isShowingError) {
                 Button("OK", role: .cancel) {
                     if didSaveWithoutNotifications { dismiss() }
                 }
@@ -185,7 +185,7 @@ struct RaceChecklistEditorView: View {
                     Button(timing.title) { dueTimingBinding(for: item).wrappedValue = timing }
                 }
             } label: {
-                LabeledContent("期限", value: dueTimingBinding(for: item).wrappedValue?.title ?? "なし")
+                LabeledContent("期限", value: dueTimingBinding(for: item).wrappedValue?.title ?? String(localized: "なし"))
             }
             .buttonStyle(.borderless)
             if item.wrappedValue.dueTiming == nil, let dueDate = item.wrappedValue.dueDate {
@@ -248,8 +248,8 @@ struct RaceChecklistEditorView: View {
             } else {
                 didSaveWithoutNotifications = saved && denied
                 errorText = saved
-                    ? "通知は許可されなかったためオフにしました。チェックリストは保存済みです。"
-                    : (racePlanStore.storageError ?? racePlanStore.validationError ?? "保存処理に失敗しました。")
+                    ? String(localized: "通知は許可されなかったためオフにしました。チェックリストは保存済みです。")
+                    : (racePlanStore.storageError ?? racePlanStore.validationError ?? String(localized: "保存処理に失敗しました。"))
                 isShowingError = true
             }
         }
@@ -307,7 +307,7 @@ struct ChecklistTemplatesView: View {
             Button("保存") {
                 guard proStore.canUse(.customChecklist) else { showsPaywall = true; return }
                 if let template = rename, !templateStore.rename(id: template.id, to: name) {
-                    operationError = "名前を変更できませんでした。"
+                    operationError = String(localized: "名前を変更できませんでした。")
                 }
             }
             Button("キャンセル", role: .cancel) {}
@@ -315,7 +315,7 @@ struct ChecklistTemplatesView: View {
         .alert("テンプレートを削除しますか？", isPresented: $showsDelete) {
             Button("削除", role: .destructive) {
                 if let template = deletion, !templateStore.delete(id: template.id) {
-                    operationError = "テンプレートを削除できませんでした。"
+                    operationError = String(localized: "テンプレートを削除できませんでした。")
                 }
             }
             Button("キャンセル", role: .cancel) {}

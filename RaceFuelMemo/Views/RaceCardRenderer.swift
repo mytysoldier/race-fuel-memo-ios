@@ -173,7 +173,7 @@ final class RaceCardRenderer {
             manager.drawBackground(forGlyphRange: glyphRanges[index], at: origin)
             manager.drawGlyphs(forGlyphRange: glyphRanges[index], at: origin)
         }
-        let footer = "\(page + 1) / \(pageCount)" + (format == .paceBand ? "　A4・100%（実際のサイズ）で印刷し、点線に沿って切り取ってください" : "　時刻は月/日・24時間表示")
+        let footer = "\(page + 1) / \(pageCount)" + (format == .paceBand ? String(localized: "band.print_instruction") : String(localized: "card.clock_instruction"))
         footer.draw(at: CGPoint(x: 30, y: Self.pageSize.height - 30), withAttributes: [
             .font: UIFont.systemFont(ofSize: 8), .foregroundColor: UIColor.darkGray
         ])
@@ -184,7 +184,7 @@ final class RaceCardRenderer {
         context.setLineDash(phase: 0, lengths: [3, 3])
         context.stroke(rect)
         context.setLineDash(phase: 0, lengths: [])
-        "帯 \(index + 1)/\(containers.count)・180 × 55 mm".draw(
+        String(format: String(localized: "band.label"), index + 1, containers.count).draw(
             at: CGPoint(x: rect.minX + 10, y: rect.minY + 5),
             withAttributes: [.font: UIFont.systemFont(ofSize: 8), .foregroundColor: UIColor.darkGray])
         let origin = CGPoint(x: rect.minX + 10, y: rect.minY + 22)
@@ -226,7 +226,7 @@ class RaceCardPrintRenderer: UIPrintPageRenderer {
             // printable area cannot hold the physical band; tell the user to select A4.
             guard printableRect.width >= RaceCardRenderer.bandSize.width,
                   printableRect.height >= RaceCardRenderer.bandSize.height else {
-                "ペースバンドの原寸印刷には、180 × 55 mm以上の印刷可能領域が必要です。A4用紙を選択してください。".draw(
+                String(localized: "band.paper_error").draw(
                     in: printableRect, withAttributes: [.font: UIFont.systemFont(ofSize: 12)])
                 return
             }

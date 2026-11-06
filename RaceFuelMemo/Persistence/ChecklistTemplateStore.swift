@@ -11,7 +11,7 @@ struct ChecklistTemplate: Identifiable, Codable, Equatable {
     var isStandard: Bool { id == Self.standardID }
 
     static var standard: ChecklistTemplate {
-        ChecklistTemplate(id: standardID, name: "標準の持ち物10項目", items: RacePlan.defaultChecklistItems.map(ChecklistTemplateItem.init))
+        ChecklistTemplate(id: standardID, name: String(localized: "標準の持ち物10項目"), items: RacePlan.defaultChecklistItems.map(ChecklistTemplateItem.init))
     }
 
     init(id: UUID = UUID(), name: String, items: [ChecklistItem]) {
@@ -63,7 +63,7 @@ struct ChecklistTemplateItem: Codable, Equatable {
             let saved = try JSONDecoder().decode([ChecklistTemplate].self, from: data)
             templates += saved.filter { !$0.isStandard }
         } catch {
-            self.error = "保存済みチェックリストのテンプレートを読み込めません。データ保護のため変更を停止しました。"
+            self.error = String(localized: "保存済みチェックリストのテンプレートを読み込めません。データ保護のため変更を停止しました。")
         }
     }
 
@@ -94,7 +94,7 @@ struct ChecklistTemplateItem: Codable, Equatable {
             templates = updated
             return true
         } catch {
-            self.error = "チェックリストのテンプレートを保存できませんでした。"
+            self.error = String(localized: "チェックリストのテンプレートを保存できませんでした。")
             return false
         }
     }

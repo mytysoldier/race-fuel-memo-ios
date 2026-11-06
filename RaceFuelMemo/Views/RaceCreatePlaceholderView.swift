@@ -15,7 +15,7 @@ struct RaceCreatePlaceholderView: View {
     @State private var customDistanceKm = 21.0975
     @State private var targetHours = 2
     @State private var targetMinutes = 0
-    @State private var gels = [GelDraft(name: "補給ジェル 1")]
+    @State private var gels = [GelDraft(name: String(format: String(localized: "fuel.default_name"), 1))]
     @State private var memo = ""
     @State private var checkpoints: [RaceCheckpoint] = []
     @State private var pacePlans: [RacePacePlan] = []
@@ -80,7 +80,7 @@ struct RaceCreatePlaceholderView: View {
         _gels = State(
             initialValue: (0..<max(0, max(plan.gelCount, plan.gelNames?.count ?? 0))).map {
                 GelDraft(
-                    name: $0 < (plan.gelNames?.count ?? 0) ? plan.gelNames![$0] : "補給ジェル \($0 + 1)")
+                    name: $0 < (plan.gelNames?.count ?? 0) ? plan.gelNames![$0] : String(format: String(localized: "fuel.default_name"), $0 + 1))
             })
         _memo = State(initialValue: plan.memo)
         _checkpoints = State(initialValue: plan.checkpoints)
@@ -112,7 +112,7 @@ struct RaceCreatePlaceholderView: View {
                         }
                         Text(
                             isDuplicate
-                                ? "複製の入力はこの画面内で保持します。" : "入力は下書きとして自動保存します。編集画面の変更は「保存」で反映してください。"
+                                ? String(localized: "複製の入力はこの画面内で保持します。") : String(localized: "入力は下書きとして自動保存します。編集画面の変更は「保存」で反映してください。")
                         )
                         .font(.footnote).foregroundStyle(.secondary)
                         if let error = draftStore.error, !isDuplicate {
@@ -323,7 +323,7 @@ struct RaceCreatePlaceholderView: View {
     }
 
     private var basicSection: some View {
-        formSection(String(localized: "race_create.section.basic_info")) {
+        formSection("race_create.section.basic_info") {
             TextField(String(localized: "race_create.field.name"), text: $raceName)
                 .accessibilityIdentifier("creation.name")
                 .textInputAutocapitalization(.never)
@@ -392,7 +392,7 @@ struct RaceCreatePlaceholderView: View {
 
     private var paceSection: some View {
         formSection("ペース戦略・Pro対象") {
-            Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
+            Text(pacePlans.isEmpty ? String(localized: "基本の均等ペースを使用") : String(format: String(localized: "preparation.plans"), pacePlans.count))
                 .foregroundStyle(.secondary)
             ProFeatureButton(feature: .paceStrategies, title: "A・B・Cプランを設定") {
                 isShowingPacePlanEditor = true
@@ -404,7 +404,7 @@ struct RaceCreatePlaceholderView: View {
     }
 
     private var fuelingSection: some View {
-        formSection(String(localized: "race_create.section.fueling")) {
+        formSection("race_create.section.fueling") {
             if fuelingEvents.isEmpty {
                 Text("従来の補給ジェル")
                     .font(.subheadline)
@@ -423,14 +423,14 @@ struct RaceCreatePlaceholderView: View {
                 }
 
                 Button {
-                    gels.append(GelDraft(name: "補給ジェル \(gels.count + 1)"))
+                    gels.append(GelDraft(name: String(format: String(localized: "fuel.default_name"), gels.count + 1)))
                 } label: {
                     Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                 }
             }
 
             Divider()
-            Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
+            Text(fuelingEvents.isEmpty ? String(localized: "詳細な補給イベントは未設定") : String(format: String(localized: "preparation.fueling"), fuelingEvents.count))
                 .foregroundStyle(.secondary)
             ProFeatureButton(feature: .fuelingPlan, title: "補給・給水プランを設定", systemImage: "drop.fill") {
                 isShowingFuelingEditor = true
@@ -443,7 +443,7 @@ struct RaceCreatePlaceholderView: View {
 
     private var checkpointSection: some View {
         formSection("チェックポイント") {
-            Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
+            Text(checkpoints.isEmpty ? String(localized: "地点未設定（従来の5kmごとの表示を使用）") : String(format: String(localized: "preparation.checkpoints"), checkpoints.count))
                 .foregroundStyle(.secondary)
             ProFeatureButton(feature: .checkpoints, title: "地点を編集", systemImage: "mappin.and.ellipse") {
                 isShowingCheckpointEditor = true
@@ -468,7 +468,7 @@ struct RaceCreatePlaceholderView: View {
     }
 
     private var memoSection: some View {
-        formSection(String(localized: "race_create.section.memo")) {
+        formSection("race_create.section.memo") {
             TextField(
                 String(localized: "race_create.section.memo"),
                 text: $memo,
@@ -491,7 +491,7 @@ struct RaceCreatePlaceholderView: View {
         }
     }
 
-    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content)
+    private func formSection<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content)
         -> some View
     {
         VStack(alignment: .leading, spacing: 14) {
@@ -565,7 +565,7 @@ struct RaceCreatePlaceholderView: View {
         fuelingEvents = plan.fuelingEvents
         let names = plan.gelNames ?? []
         gels = (0..<max(0, max(plan.gelCount, names.count))).map {
-            GelDraft(name: $0 < names.count ? names[$0] : "補給ジェル \($0 + 1)")
+            GelDraft(name: $0 < names.count ? names[$0] : String(format: String(localized: "fuel.default_name"), $0 + 1))
         }
         checkpoints = plan.checkpoints
         checklistItems = plan.checklistItems

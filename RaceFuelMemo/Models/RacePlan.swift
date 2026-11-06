@@ -134,10 +134,10 @@ struct PreRaceActivitySuggestion: Identifiable, Equatable {
 
     static var examples: [PreRaceActivitySuggestion] {
         [
-            .init(id: "arrival", name: "会場到着", minutesBeforeStart: 120),
-            .init(id: "registration", name: "受付", minutesBeforeStart: 90),
-            .init(id: "baggage", name: "荷物預け", minutesBeforeStart: 60),
-            .init(id: "assembly", name: "整列", minutesBeforeStart: 30)
+            .init(id: "arrival", name: String(localized: "会場到着"), minutesBeforeStart: 120),
+            .init(id: "registration", name: String(localized: "受付"), minutesBeforeStart: 90),
+            .init(id: "baggage", name: String(localized: "荷物預け"), minutesBeforeStart: 60),
+            .init(id: "assembly", name: String(localized: "整列"), minutesBeforeStart: 30)
         ]
     }
 
@@ -445,16 +445,16 @@ extension Array where Element == RaceCheckpoint {
 extension RacePlan {
     static var defaultChecklistItems: [ChecklistItem] {
         let items = [
-            ChecklistItem(title: "ランニングシューズ", category: ChecklistCategory.gear.rawValue),
-            ChecklistItem(title: "ウェア", category: ChecklistCategory.gear.rawValue),
-            ChecklistItem(title: "ゼッケン", category: ChecklistCategory.registration.rawValue),
-            ChecklistItem(title: "計測チップ", category: ChecklistCategory.registration.rawValue),
-            ChecklistItem(title: "ランニングウォッチ", category: ChecklistCategory.gear.rawValue),
-            ChecklistItem(title: "補給ジェル", category: ChecklistCategory.fueling.rawValue),
-            ChecklistItem(title: "塩タブレット", category: ChecklistCategory.fueling.rawValue),
-            ChecklistItem(title: "着替え", category: ChecklistCategory.afterFinish.rawValue),
-            ChecklistItem(title: "タオル", category: ChecklistCategory.afterFinish.rawValue),
-            ChecklistItem(title: "モバイルバッテリー", category: ChecklistCategory.gear.rawValue)
+            ChecklistItem(title: String(localized: "ランニングシューズ"), category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: String(localized: "ウェア"), category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: String(localized: "ゼッケン"), category: ChecklistCategory.registration.rawValue),
+            ChecklistItem(title: String(localized: "計測チップ"), category: ChecklistCategory.registration.rawValue),
+            ChecklistItem(title: String(localized: "ランニングウォッチ"), category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: String(localized: "補給ジェル"), category: ChecklistCategory.fueling.rawValue),
+            ChecklistItem(title: String(localized: "塩タブレット"), category: ChecklistCategory.fueling.rawValue),
+            ChecklistItem(title: String(localized: "着替え"), category: ChecklistCategory.afterFinish.rawValue),
+            ChecklistItem(title: String(localized: "タオル"), category: ChecklistCategory.afterFinish.rawValue),
+            ChecklistItem(title: String(localized: "モバイルバッテリー"), category: ChecklistCategory.gear.rawValue)
         ]
         return items.enumerated().map { index, item in
             var orderedItem = item

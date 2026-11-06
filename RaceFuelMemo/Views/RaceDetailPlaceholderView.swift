@@ -159,8 +159,8 @@ struct RaceDetailView: View {
                             }
                             if let margin = schedule.cutoffMarginSeconds {
                                 Text(margin >= 0
-                                     ? "関門余裕 \(RacePlanCalculator.formatDuration(margin))"
-                                     : "関門超過 \(RacePlanCalculator.formatDuration(-margin))")
+                                     ? String(format: String(localized: "関門余裕 %@"), RacePlanCalculator.formatDuration(margin))
+                                     : String(format: String(localized: "関門超過 %@"), RacePlanCalculator.formatDuration(-margin)))
                                     .foregroundStyle(margin >= 0 ? Color.secondary : Color.red)
                             }
                             if !schedule.checkpoint.segmentNote.isEmpty {
@@ -224,7 +224,7 @@ struct RaceDetailView: View {
                     }
                     DisclosureGroup("必要な補給品") {
                         ForEach(RaceFuelingPlanCalculator.requirements(for: currentRacePlan.fuelingEvents)) { item in
-                            LabeledContent("\(item.kind.title)・\(item.name)", value: "\(item.quantity)個")
+                            LabeledContent("\(item.kind.title)・\(item.name)", value: String(format: String(localized: "race_create.value.items"), item.quantity))
                         }
                     }
                 } else if calculation.fuelTimings.isEmpty {
@@ -243,7 +243,7 @@ struct RaceDetailView: View {
                         Toggle(checklistItem.title, isOn: checklistItemBinding(for: checklistItem))
                         HStack(spacing: 8) {
                             let category = ChecklistCategory(rawValue: checklistItem.category ?? "")
-                            Text(category?.title ?? "その他")
+                            Text(category?.title ?? String(localized: "その他"))
                             if checklistItem.isRequired {
                                 Label("必須", systemImage: "exclamationmark.circle.fill")
                             }
@@ -283,7 +283,7 @@ struct RaceDetailView: View {
                 Text("この計画のペース・補給・持ち物を保存し、次のレースに使えます。")
                     .font(.footnote).foregroundStyle(.secondary)
                 ProFeatureButton(feature: .planReuse, title: "テンプレートとして保存") {
-                    templateName = "\(currentRacePlan.name)の設定"
+                    templateName = String(format: String(localized: "template.default_name"), currentRacePlan.name)
                     isShowingSaveTemplate = true
                 }
                 ProFeatureButton(feature: .planReuse, title: "テンプレート・別のレースから設定を適用") {
@@ -374,8 +374,8 @@ struct RaceDetailView: View {
             Button("保存") {
                 guard proStore.canUse(.planReuse) else { paywallFeature = .planReuse; return }
                 let saved = templateStore.save(name: templateName, source: currentRacePlan)
-                templateMessage = saved ? "テンプレートを保存しました。" :
-                    (templateStore.error ?? "保存できませんでした。名前と計画の設定を確認してください。")
+                templateMessage = saved ? String(localized: "テンプレートを保存しました。") :
+                    (templateStore.error ?? String(localized: "保存できませんでした。名前と計画の設定を確認してください。"))
                 isShowingTemplateMessage = true
             }
             Button("キャンセル", role: .cancel) {}
@@ -516,7 +516,7 @@ struct RaceDetailView: View {
         if racePlanStore.updateRacePlan(updated) {
             rescheduleRemindersIfNeeded(for: updated)
         } else {
-            pacePlanSelectionError = racePlanStore.validationError ?? "ペースプランを変更できませんでした。"
+            pacePlanSelectionError = racePlanStore.validationError ?? String(localized: "ペースプランを変更できませんでした。")
             isShowingPacePlanSelectionError = true
         }
     }
@@ -795,7 +795,7 @@ private struct RacePlanEditView: View {
 
             formSection("基本目標タイム") {
                 Stepper(value: $targetHours, in: 0...240) {
-                    LabeledContent("時間", value: "\(targetHours)時間")
+                    LabeledContent("時間", value: String(format: String(localized: "race_create.value.hours"), targetHours))
                 }
 
                 HStack(spacing: 16) {
@@ -834,13 +834,13 @@ private struct RacePlanEditView: View {
                     }
 
                     Button {
-                        gels.append(EditableGelDraft(name: "補給ジェル \(gels.count + 1)"))
+                        gels.append(EditableGelDraft(name: String(format: String(localized: "fuel.default_name"), gels.count + 1)))
                     } label: {
                         Label("補給ジェルを追加", systemImage: "plus.circle.fill")
                     }
                 }
                 Divider()
-                Text(fuelingEvents.isEmpty ? "詳細な補給イベントは未設定" : "\(fuelingEvents.count)件の補給イベントを設定済み")
+                Text(fuelingEvents.isEmpty ? String(localized: "詳細な補給イベントは未設定") : String(format: String(localized: "preparation.fueling"), fuelingEvents.count))
                     .foregroundStyle(.secondary)
                 ProFeatureButton(feature: .fuelingPlan, title: "補給・給水プランを設定", systemImage: "drop.fill") {
                     isShowingFuelingEditor = true
@@ -853,7 +853,7 @@ private struct RacePlanEditView: View {
             }
 
             formSection("チェックポイント") {
-                Text(checkpoints.isEmpty ? "地点未設定（従来の5kmごとの表示を使用）" : "\(checkpoints.count)地点を設定済み")
+                Text(checkpoints.isEmpty ? String(localized: "地点未設定（従来の5kmごとの表示を使用）") : String(format: String(localized: "preparation.checkpoints"), checkpoints.count))
                     .foregroundStyle(.secondary)
                 ProFeatureButton(feature: .checkpoints, title: "地点を編集", systemImage: "mappin.and.ellipse") {
                     isShowingCheckpointEditor = true
@@ -870,13 +870,13 @@ private struct RacePlanEditView: View {
                     Text("新しい距離・目標タイムに合わない保存済みデータがあります。対象を確認して整理できます。")
                         .foregroundStyle(.secondary)
                     if !basicEditCleanup.removedCheckpoints.isEmpty {
-                        Text("削除する地点: \(basicEditCleanup.removedCheckpoints.map(\.name).joined(separator: "、"))")
+                        Text("削除する地点: \(basicEditCleanup.removedCheckpoints.map(\.name).joined(separator: String(localized: "list.separator")))")
                     }
                     if !basicEditCleanup.clearedCheckpointTimes.isEmpty {
-                        Text("手動通過時刻を解除する地点: \(basicEditCleanup.clearedCheckpointTimes.map(\.name).joined(separator: "、"))")
+                        Text("手動通過時刻を解除する地点: \(basicEditCleanup.clearedCheckpointTimes.map(\.name).joined(separator: String(localized: "list.separator")))")
                     }
                     if !basicEditCleanup.removedFuelingEvents.isEmpty {
-                        Text("削除する補給予定: \(basicEditCleanup.removedFuelingEvents.map(\.name).joined(separator: "、"))")
+                        Text("削除する補給予定: \(basicEditCleanup.removedFuelingEvents.map(\.name).joined(separator: String(localized: "list.separator")))")
                     }
                     Button("合わないデータを整理", role: .destructive) {
                         isShowingBasicEditCleanupConfirmation = true
@@ -886,7 +886,7 @@ private struct RacePlanEditView: View {
             }
 
             formSection("ペース戦略") {
-                Text(pacePlans.isEmpty ? "基本の均等ペースを使用" : "\(pacePlans.count)プランを設定済み")
+                Text(pacePlans.isEmpty ? String(localized: "基本の均等ペースを使用") : String(format: String(localized: "preparation.plans"), pacePlans.count))
                     .foregroundStyle(.secondary)
                 ProFeatureButton(feature: .paceStrategies, title: "A・B・Cプランを設定", systemImage: "figure.run") {
                     isShowingPacePlanEditor = true
@@ -956,7 +956,7 @@ private struct RacePlanEditView: View {
         .alert("保存できません", isPresented: $isShowingSaveError) {
             Button("OK", role: .cancel) {}
         } message: {
-            Text(racePlanStore.storageError ?? racePlanStore.validationError ?? "保存処理に失敗しました。")
+            Text(racePlanStore.storageError ?? racePlanStore.validationError ?? String(localized: "保存処理に失敗しました。"))
         }
         .alert("保存済みデータを整理しますか？", isPresented: $isShowingBasicEditCleanupConfirmation) {
             Button("整理する", role: .destructive) {
@@ -986,7 +986,7 @@ private struct RacePlanEditView: View {
         }
     }
 
-    private func formSection<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+    private func formSection<Content: View>(_ title: LocalizedStringKey, @ViewBuilder content: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(title)
                 .font(.headline)
@@ -1083,7 +1083,7 @@ private struct RacePlanEditView: View {
             return names.map(EditableGelDraft.init)
         }
 
-        return (0..<racePlan.gelCount).map { EditableGelDraft(name: "補給ジェル \($0 + 1)") }
+        return (0..<racePlan.gelCount).map { EditableGelDraft(name: String(format: String(localized: "fuel.default_name"), $0 + 1)) }
     }
 }
 
@@ -1292,7 +1292,7 @@ private struct PreRaceActivitiesEditor: View {
                             activities.removeAll { $0.id == id }
                         }
                     } header: {
-                        Text(activity.name.isEmpty ? "新しい予定" : activity.name)
+                        Text(activity.name.isEmpty ? String(localized: "新しい予定") : activity.name)
                     }
                 }
                 Section {
