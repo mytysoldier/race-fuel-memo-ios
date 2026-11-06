@@ -83,6 +83,14 @@ private func cardRace() -> RacePlan {
 
 @MainActor
 final class RaceCardRenderingTests: XCTestCase {
+    func testEnglishLocalizationIncludesCardAndNotificationFormats() throws {
+        let path = try XCTUnwrap(Bundle.main.path(forResource: "en", ofType: "lproj"))
+        let bundle = try XCTUnwrap(Bundle(path: path))
+        let card = bundle.localizedString(forKey: "card.goal_pace", value: nil, table: nil)
+        let notification = bundle.localizedString(forKey: "checklist.notification.body", value: nil, table: nil)
+        XCTAssertEqual(String(format: card, "2:00", "5:41/km"), "Goal 2:00 · Average 5:41/km")
+        XCTAssertEqual(String(format: notification, "Water"), "Required item “Water” is incomplete.")
+    }
     func testCancelledExportCanBeRetried() async throws {
         let race = cardRace()
         let document = try RaceCardDocument(plan: race, pacePlanID: race.selectedPacePlanID, audience: .runner)
@@ -204,13 +212,4 @@ final class RaceCardRenderingTests: XCTestCase {
 private final class FixedPaperRaceCardPrintRenderer: RaceCardPrintRenderer {
     override var paperRect: CGRect { CGRect(origin: .zero, size: RaceCardRenderer.pageSize) }
     override var printableRect: CGRect { CGRect(x: 40, y: 60, width: 515, height: 600) }
-}
-
-@Test func englishLocalizationIncludesCardAndNotificationFormats() throws {
-    let path = try #require(Bundle.main.path(forResource: "en", ofType: "lproj"))
-    let bundle = try #require(Bundle(path: path))
-    let card = bundle.localizedString(forKey: "card.goal_pace", value: nil, table: nil)
-    let notification = bundle.localizedString(forKey: "checklist.notification.body", value: nil, table: nil)
-    #expect(String(format: card, "2:00", "5:41/km") == "Goal 2:00 · Average 5:41/km")
-    #expect(String(format: notification, "Water") == "Required item “Water” is incomplete.")
 }
