@@ -336,6 +336,12 @@ final class RacePreparationUITests: XCTestCase {
         tap(app.buttons["pro.information"])
         XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 10))
         screenshot("paywall-maximum-text-dark")
+        let terms = app.staticTexts["買い切り・一度の購入でPro機能を解放。サブスクリプションではありません。"]
+        for _ in 0..<5 where !terms.isHittable {
+            app.scrollViews.firstMatch.swipeUp()
+        }
+        XCTAssertTrue(terms.isHittable, "The purchase terms must be reachable at the largest text size")
+        screenshot("paywall-maximum-text-terms")
         tap(app.buttons["paywall.close"])
         XCTAssertTrue(app.buttons["races.add"].waitForExistence(timeout: 10))
     }
