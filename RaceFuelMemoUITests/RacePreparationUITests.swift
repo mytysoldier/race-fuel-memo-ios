@@ -97,11 +97,13 @@ final class RacePreparationUITests: XCTestCase {
         screenshot("english-race-card")
         tap(app.buttons["creation.done"])
         XCTAssertTrue(app.staticTexts["City Marathon"].waitForExistence(timeout: 10))
+        screenshot("english-race-list")
         app.terminate()
         app.launchArguments = ["--ui-testing", "-AppleLanguages", "(ja)", "-AppleLocale", "ja_JP", "--pro-ui-testing"]
         app.launch()
         XCTAssertTrue(app.staticTexts["City Marathon"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.navigationBars["レース一覧"].exists)
+        screenshot("japanese-race-list")
     }
 
     func testGuidedCreationPersistsAndLeadsToRaceCard() {

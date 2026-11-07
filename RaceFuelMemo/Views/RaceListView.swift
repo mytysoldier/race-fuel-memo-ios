@@ -164,7 +164,7 @@ private struct RacePlanRow: View {
                 Spacer(minLength: 54)
             }
 
-            HStack(spacing: 8) {
+            VStack(spacing: 8) {
                 metric(title: "距離", value: formattedDistance, systemImage: "figure.run")
                 metric(title: "目標", value: formattedTargetTime, systemImage: "timer")
                 metric(title: "ペース", value: racePlan.calculation.targetPaceText, systemImage: "speedometer")
@@ -201,16 +201,18 @@ private struct RacePlanRow: View {
     }
 
     private func metric(title: LocalizedStringKey, value: String, systemImage: String) -> some View {
-        VStack(alignment: .leading, spacing: 5) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Label(title, systemImage: systemImage)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(.secondary)
-                .lineLimit(1)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
             Text(value)
                 .font(.subheadline.weight(.bold))
                 .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
+                .multilineTextAlignment(.trailing)
+                .fixedSize(horizontal: false, vertical: true)
+                .layoutPriority(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(10)
