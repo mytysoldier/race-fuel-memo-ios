@@ -319,6 +319,37 @@ final class ProStoreTests: XCTestCase {
         XCTAssertTrue(store.canPurchase)
     }
 
+    func testPendingPurchaseDoesNotWaitForEntitlementsAndLaterVerifiedUpdateGrantsPro() async throws {
+        let client = MockProClient()
+        let store = try await purchasableStore(client)
+        var stalledQuery: CheckedContinuation<[ProVerificationResult], Never>?
+        client.entitlementsHandler = {
+            await withCheckedContinuation { stalledQuery = $0 }
+        }
+        client.purchaseHandler = { _ in .pending }
+
+        let completed = expectation(description: "Pending purchase completes without waiting for entitlements")
+        let operation = Task {
+            await store.purchase()
+            completed.fulfill()
+        }
+        await fulfillment(of: [completed], timeout: 2)
+        XCTAssertEqual(store.operationState, .idle)
+        XCTAssertEqual(store.purchaseFeedback, .pending)
+        XCTAssertFalse(store.isPro)
+        try await eventually { stalledQuery != nil }
+
+        client.entitlementsHandler = nil
+        client.entitlements = [verified()]
+        client.send(verified())
+        try await eventually { store.isPro }
+        XCTAssertEqual(store.purchaseFeedback, .purchased)
+        stalledQuery?.resume(returning: [])
+        await operation.value
+        await Task.yield()
+        XCTAssertTrue(store.isPro)
+    }
+
     func testPurchaseAndRestoreAreMutuallyExclusiveAndCallerCancellationDoesNotLosePurchase() async throws {
         let client = MockProClient()
         let store = try await purchasableStore(client)
@@ -530,6 +561,11 @@ final class ProStoreTests: XCTestCase {
                 return result
             }
             await store.purchase()
+            if case .pending = result {
+                try await eventually { store.isPro }
+                XCTAssertEqual(store.purchaseFeedback, .purchased)
+                continue
+            }
             XCTAssertTrue(store.isPro)
             XCTAssertEqual(store.purchaseFeedback, .entitlementConfirmed)
         }
