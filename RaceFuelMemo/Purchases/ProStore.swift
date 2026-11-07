@@ -221,9 +221,11 @@ final class ProStore {
                     $0.purchased ? .entitlementConfirmed : .cancelled
                 }
             case .pending:
-                await refreshEntitlementsForOperation {
-                    $0.purchased ? .entitlementConfirmed : .pending
-                }
+                // StoreKit may not finish enumerating entitlements while an Ask to
+                // Buy transaction is pending. Show the pending result immediately;
+                // reconcile in the background and grant access only if verified.
+                purchaseFeedback = isPro ? .entitlementConfirmed : .pending
+                Task { [weak self] in await self?.refreshEntitlements() }
             case .success(let update):
                 guard case .verified(let entitlement) = update.result,
                       entitlement.isActive(at: Date()) else {
