@@ -87,6 +87,9 @@ final class RacePreparationUITests: XCTestCase {
         screenshot("english-race-details")
         tap(app.buttons["creation.next"])
         XCTAssertTrue(app.staticTexts["creation.step"].label.contains("Pace"))
+        let minutes = app.staticTexts["Minutes"]
+        XCTAssertTrue(minutes.waitForExistence(timeout: 5))
+        XCTAssertLessThan(minutes.frame.height, 40, "Minutes should remain on one line at the default text size")
         for _ in 0..<4 { tap(app.buttons["creation.next"]) }
         screenshot("english-race-review")
         tap(app.buttons["creation.save"])

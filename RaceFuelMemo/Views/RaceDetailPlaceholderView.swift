@@ -800,7 +800,8 @@ private struct RacePlanEditView: View {
 
                 HStack(spacing: 16) {
                     Text("分")
-                        .frame(width: 52, alignment: .leading)
+                        .fixedSize(horizontal: true, vertical: false)
+                        .layoutPriority(1)
                     Picker("", selection: $targetMinutes) {
                         ForEach(0..<60) { minute in
                             Text("\(minute)分").tag(minute)
