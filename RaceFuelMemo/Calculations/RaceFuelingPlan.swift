@@ -28,7 +28,7 @@ enum RaceFuelingPlanCalculator {
             .enumerated().map { index, timing in
                 RaceFuelingEvent(
                     order: index,
-                    name: index < names.count && !names[index].isEmpty ? names[index] : "補給ジェル \(index + 1)",
+                    name: index < names.count && !names[index].isEmpty ? names[index] : String(format: String(localized: "fuel.default_name"), index + 1),
                     quantity: 1, distanceKm: timing.distanceKm
                 )
             }
@@ -38,18 +38,18 @@ enum RaceFuelingPlanCalculator {
         let events = plan.fuelingEvents
         guard Set(events.map(\.id)).count == events.count,
               Set(events.map(\.order)).count == events.count else {
-            return "補給イベントの並び順に重複があります。"
+            return String(localized: "補給イベントの並び順に重複があります。")
         }
         for event in events {
             guard !event.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-                return "補給品名を入力してください。"
+                return String(localized: "補給品名を入力してください。")
             }
             guard (1...999).contains(event.quantity) else {
-                return "補給品の個数は1〜999個で入力してください。"
+                return String(localized: "補給品の個数は1〜999個で入力してください。")
             }
             if let grams = event.carbohydrateGramsPerItem,
                !grams.isFinite || !(0...1_000).contains(grams) {
-                return "炭水化物量は1個あたり0〜1000gで入力してください。"
+                return String(localized: "炭水化物量は1個あたり0〜1000gで入力してください。")
             }
             if let checkpointID = event.checkpointID,
                plan.checkpoints.contains(where: { $0.id == checkpointID }) {
@@ -57,7 +57,7 @@ enum RaceFuelingPlanCalculator {
             }
             if let seconds = event.elapsedSeconds {
                 guard (0...plan.activeTargetSeconds).contains(seconds) else {
-                    return "補給の経過時間は目標タイム以内にしてください。"
+                    return String(localized: "補給の経過時間は目標タイム以内にしてください。")
                 }
             } else if let distance = event.distanceKm {
                 guard plan.distanceKm.isFinite,
@@ -65,10 +65,10 @@ enum RaceFuelingPlanCalculator {
                       distance.isFinite,
                       distance >= 0,
                       distance <= plan.distanceKm else {
-                    return "補給地点の距離はコース内にしてください。"
+                    return String(localized: "補給地点の距離はコース内にしてください。")
                 }
             } else {
-                return "補給の距離・経過時間・地点のいずれかを指定してください。"
+                return String(localized: "補給の距離・経過時間・地点のいずれかを指定してください。")
             }
         }
         return nil
@@ -220,7 +220,7 @@ struct RaceFuelingPreset: Identifiable, Codable, Equatable {
         do {
             presets = try JSONDecoder().decode([RaceFuelingPreset].self, from: data)
         } catch {
-            self.error = "保存済み補給プリセットを読み込めません。データ保護のため変更を停止しました。"
+            self.error = String(localized: "保存済み補給プリセットを読み込めません。データ保護のため変更を停止しました。")
         }
     }
 
@@ -239,7 +239,7 @@ struct RaceFuelingPreset: Identifiable, Codable, Equatable {
             presets = updated
             return true
         } catch {
-            self.error = "補給プリセットを保存できませんでした。"
+            self.error = String(localized: "補給プリセットを保存できませんでした。")
             return false
         }
     }

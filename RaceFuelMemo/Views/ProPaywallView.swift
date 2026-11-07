@@ -149,7 +149,7 @@ struct ProPurchaseStatusView: View {
 
     var body: some View {
         if proStore.operationState != .idle {
-            ProgressView(proStore.operationState == .purchasing ? "購入手続き中" : "購入を復元中")
+            ProgressView(proStore.operationState == .purchasing ? String(localized: "購入手続き中") : String(localized: "購入を復元中"))
                 .accessibilityIdentifier("pro.processing")
         } else if let feedback = proStore.purchaseFeedback {
             Text(feedback.message)
@@ -175,7 +175,7 @@ struct ProFeatureButton: View {
         Button {
             if proStore.canUse(feature) { action() } else { showsPaywall = true }
         } label: {
-            Label("\(title) · Pro", systemImage: systemImage)
+            Label { Text(LocalizedStringKey(title)) + Text(" · Pro") } icon: { Image(systemName: systemImage) }
                 .fixedSize(horizontal: false, vertical: true)
         }
         .accessibilityIdentifier("pro.\(feature.rawValue)")
@@ -208,7 +208,7 @@ struct ProInformationButton: View {
         } label: {
             HStack {
                 Image(systemName: "sparkles")
-                Text(proStore.isPro ? "Pro 解放済み" : "Pro機能を見る")
+                Text(proStore.isPro ? String(localized: "Pro 解放済み") : String(localized: "Pro機能を見る"))
             }
         }
         .accessibilityIdentifier("pro.information")

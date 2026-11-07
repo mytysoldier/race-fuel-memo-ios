@@ -44,7 +44,7 @@ struct RaceFuelingPlanEditorView: View {
                 if !events.isEmpty {
                     Section("必要な補給品") {
                         ForEach(RaceFuelingPlanCalculator.requirements(for: events)) { item in
-                            LabeledContent("\(item.kind.title)・\(item.name)", value: "\(item.quantity)個")
+                            LabeledContent("\(item.kind.title)・\(item.name)", value: String(format: String(localized: "race_create.value.items"), item.quantity))
                         }
                     }
 

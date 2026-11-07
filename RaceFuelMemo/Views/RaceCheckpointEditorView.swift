@@ -21,8 +21,8 @@ struct RaceCheckpointEditorView: View {
             Form {
                 Section {
                     Text(racePlan.pacePlans.isEmpty
-                         ? "地点ごとの通過時間は、目標タイムから自動計算されます。必要な地点だけ手動指定できます。"
-                         : "手動通過時間は基本目標の記録です。ペースプラン選択中の表示には、そのプランの区間配分を使用します。")
+                         ? String(localized: "地点ごとの通過時間は、目標タイムから自動計算されます。必要な地点だけ手動指定できます。")
+                         : String(localized: "手動通過時間は基本目標の記録です。ペースプラン選択中の表示には、そのプランの区間配分を使用します。"))
                         .font(.footnote)
                         .foregroundStyle(.secondary)
                 }
@@ -37,7 +37,7 @@ struct RaceCheckpointEditorView: View {
                         let insertionIndex = checkpoints.firstIndex { $0.kind == .finish } ?? checkpoints.count
                         checkpoints.insert(RaceCheckpoint(
                             order: insertionIndex,
-                            name: "新しい地点",
+                            name: String(localized: "新しい地点"),
                             distanceKm: suggestedDistance(before: insertionIndex)
                         ), at: insertionIndex)
                         normalizeOrders()

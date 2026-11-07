@@ -95,7 +95,7 @@ struct RacePlanReuseView: View {
         }
         if components.contains(.pace) {
             if template.pacePlans.isEmpty {
-                LabeledContent("ペース戦略", value: "未設定")
+                LabeledContent("ペース戦略", value: String(localized: "未設定"))
             } else {
                 ForEach(template.pacePlans.sorted(by: { $0.order < $1.order })) { plan in
                     LabeledContent(plan.name, value: "\(plan.strategy.title)・\(RacePlanCalculator.formatDuration(plan.targetSeconds))")
@@ -104,11 +104,11 @@ struct RacePlanReuseView: View {
         }
         if components.contains(.fueling) {
             if template.previewFuelingCount == 0 {
-                LabeledContent("補給", value: "未設定")
+                LabeledContent("補給", value: String(localized: "未設定"))
             } else {
                 ForEach(template.fuelingEvents.sorted(by: { $0.order < $1.order })) { event in
                     VStack(alignment: .leading) {
-                        LabeledContent(event.name, value: "\(event.quantity)個・\(event.kind.title)")
+                        LabeledContent(event.name, value: String(format: String(localized: "template.item_quantity"), event.quantity, event.kind.title))
                         if let distance = event.distanceKm {
                             Text(RacePlanCalculator.formatDistance(distance)).font(.caption).foregroundStyle(.secondary)
                         } else if let elapsed = event.elapsedSeconds {
@@ -123,7 +123,7 @@ struct RacePlanReuseView: View {
         }
         if components.contains(.checklist) {
             if template.checklistItems.isEmpty {
-                LabeledContent("持ち物", value: "未設定")
+                LabeledContent("持ち物", value: String(localized: "未設定"))
             } else {
                 ForEach(Array(template.checklistItems.enumerated()), id: \.offset) { _, item in
                     Text(item.title)
@@ -160,7 +160,7 @@ struct RacePlanReuseView: View {
         do {
             let updated = try selectedTemplate.applying(to: destination, components: components)
             if onApply(updated) { dismiss() }
-            else { error = racePlanStore.storageError ?? racePlanStore.validationError ?? "計画を更新できませんでした。" }
+            else { error = racePlanStore.storageError ?? racePlanStore.validationError ?? String(localized: "計画を更新できませんでした。") }
         } catch {
             self.error = error.localizedDescription
         }
@@ -216,7 +216,7 @@ struct RacePlanTemplatesView: View {
                 guard proStore.canUse(.planReuse) else { showsPaywall = true; return }
                 operationError = nil
                 if let template = templateToRename, !templateStore.rename(id: template.id, to: name) {
-                    operationError = "名称を変更できません。空でない名前を入力してください。"
+                    operationError = String(localized: "名称を変更できません。空でない名前を入力してください。")
                 }
             }
             Button("キャンセル", role: .cancel) {}
@@ -225,7 +225,7 @@ struct RacePlanTemplatesView: View {
             Button("削除", role: .destructive) {
                 operationError = nil
                 if let template = templateToDelete, !templateStore.delete(id: template.id) {
-                    operationError = "テンプレートを削除できませんでした。"
+                    operationError = String(localized: "テンプレートを削除できませんでした。")
                 }
             }
             Button("キャンセル", role: .cancel) {}

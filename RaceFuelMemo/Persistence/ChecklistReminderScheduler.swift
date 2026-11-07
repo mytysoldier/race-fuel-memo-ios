@@ -150,8 +150,8 @@ enum ChecklistReminderPlanner {
 
     private static func notificationContent(raceName: String, reminder: ChecklistReminder) -> UNMutableNotificationContent {
         let content = UNMutableNotificationContent()
-        content.title = "\(raceName)の準備"
-        content.body = "必須項目「\(reminder.title)」が未完了です。"
+        content.title = String(format: String(localized: "checklist.notification.title"), raceName)
+        content.body = String(format: String(localized: "checklist.notification.body"), reminder.title)
         content.sound = .default
         return content
     }

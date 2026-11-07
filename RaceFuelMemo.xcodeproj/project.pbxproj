@@ -91,6 +91,7 @@
 		8A1A00242DFF000200000001 /* RacePlanStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStorage.swift; sourceTree = "<group>"; };
 		8A1A00252DFF000200000001 /* RacePlanStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanStore.swift; sourceTree = "<group>"; };
 		8A1A002A2DFF000200000001 /* RacePlanCalculator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RacePlanCalculator.swift; sourceTree = "<group>"; };
+		8A1A0E872DFF000200000001 /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8A1A002E2DFF000200000001 /* ja */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ja; path = ja.lproj/Localizable.strings; sourceTree = "<group>"; };
 		8A1A00312DFF000200000001 /* RaceReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RaceReminderScheduler.swift; sourceTree = "<group>"; };
 		8A1A00432DFF000200000001 /* RaceFuelMemoTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RaceFuelMemoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -380,6 +381,7 @@
 			isa = PBXVariantGroup;
 			children = (
 				8A1A002E2DFF000200000001 /* ja */,
+				8A1A0E872DFF000200000001 /* en */,
 			);
 			name = Localizable.strings;
 			sourceTree = "<group>";

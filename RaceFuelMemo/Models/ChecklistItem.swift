@@ -64,13 +64,13 @@ enum ChecklistCategory: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .gear: "持ち物"
-        case .registration: "手続き"
-        case .travel: "移動"
-        case .fueling: "補給"
-        case .raceMorning: "当日朝"
-        case .afterFinish: "ゴール後"
-        case .other: "その他"
+        case .gear: String(localized: "持ち物")
+        case .registration: String(localized: "手続き")
+        case .travel: String(localized: "移動")
+        case .fueling: String(localized: "補給")
+        case .raceMorning: String(localized: "当日朝")
+        case .afterFinish: String(localized: "ゴール後")
+        case .other: String(localized: "その他")
         }
     }
 }
@@ -80,8 +80,8 @@ enum ChecklistDueTiming: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .dayBefore: "前日20:00まで"
-        case .raceMorning: "スタート2時間前まで"
+        case .dayBefore: String(localized: "前日20:00まで")
+        case .raceMorning: String(localized: "スタート2時間前まで")
         }
     }
 }

@@ -74,6 +74,33 @@ final class RacePreparationUITests: XCTestCase {
         add(attachment)
     }
 
+    func testEnglishGuidedCreation() {
+        app.launchArguments = ["--ui-testing", "--reset-ui-testing", "-AppleLanguages", "(en)", "-AppleLocale", "en_US", "--pro-ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.navigationBars["Races"].waitForExistence(timeout: 10))
+        tap(app.buttons["races.add"])
+        XCTAssertTrue(app.textFields["creation.name"].waitForExistence(timeout: 10))
+        app.textFields["creation.name"].tap()
+        app.textFields["creation.name"].typeText("City Marathon")
+        tap(app.buttons["creation.keyboardDone"])
+        app.swipeDown()
+        screenshot("english-race-details")
+        tap(app.buttons["creation.next"])
+        XCTAssertTrue(app.staticTexts["creation.step"].label.contains("Pace"))
+        for _ in 0..<4 { tap(app.buttons["creation.next"]) }
+        screenshot("english-race-review")
+        tap(app.buttons["creation.save"])
+        XCTAssertTrue(app.navigationBars["Race Card export"].waitForExistence(timeout: 10))
+        screenshot("english-race-card")
+        tap(app.buttons["creation.done"])
+        XCTAssertTrue(app.staticTexts["City Marathon"].waitForExistence(timeout: 10))
+        app.terminate()
+        app.launchArguments = ["--ui-testing", "-AppleLanguages", "(ja)", "-AppleLocale", "ja_JP", "--pro-ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["City Marathon"].waitForExistence(timeout: 10))
+        XCTAssertTrue(app.navigationBars["レース一覧"].exists)
+    }
+
     func testGuidedCreationPersistsAndLeadsToRaceCard() {
         app.launch()
         tap(app.buttons["races.add"])

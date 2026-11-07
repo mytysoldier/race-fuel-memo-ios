@@ -5,7 +5,7 @@ enum RacePacePlanCalculator {
         let target = RacePlanCalculator.targetDurationSeconds(
             hours: racePlan.targetHours, minutes: racePlan.targetMinutes
         )
-        var plan = normalized(RacePacePlan(order: 0, name: "A・目標達成",
+        var plan = normalized(RacePacePlan(order: 0, name: String(localized: "A・目標達成"),
                                            targetSeconds: target),
                               raceDistanceKm: racePlan.distanceKm,
                               checkpoints: racePlan.checkpoints)
@@ -28,7 +28,7 @@ enum RacePacePlanCalculator {
                     * (distance - lower.0) / (upper.0 - lower.0)).rounded())
             }
             guard elapsed > previousElapsed else {
-                return normalized(RacePacePlan(order: 0, name: "A・目標達成",
+                return normalized(RacePacePlan(order: 0, name: String(localized: "A・目標達成"),
                                                targetSeconds: target),
                                   raceDistanceKm: racePlan.distanceKm,
                                   checkpoints: racePlan.checkpoints)
@@ -161,26 +161,26 @@ enum RacePacePlanCalculator {
 
     static func validationError(for racePlan: RacePlan) -> String? {
         let plans = racePlan.pacePlans
-        guard plans.count <= 3 else { return "ペースプランはA・B・Cの最大3つです。" }
+        guard plans.count <= 3 else { return String(localized: "ペースプランはA・B・Cの最大3つです。") }
         guard Set(plans.map(\.id)).count == plans.count,
               Set(plans.map(\.order)).count == plans.count else {
-            return "ペースプランの識別子または順序が重複しています。"
+            return String(localized: "ペースプランの識別子または順序が重複しています。")
         }
         if let selected = racePlan.selectedPacePlanID,
            !plans.contains(where: { $0.id == selected }) {
-            return "選択中のペースプランが見つかりません。"
+            return String(localized: "選択中のペースプランが見つかりません。")
         }
         if !plans.isEmpty && racePlan.selectedPacePlanID == nil {
-            return "使用するペースプランを選択してください。"
+            return String(localized: "使用するペースプランを選択してください。")
         }
         for plan in plans {
             guard !plan.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
                   plan.targetSeconds > 0,
                   plan.targetSeconds <= 240 * 3_600 + 59 * 60 else {
-                return "ペースプラン名と目標タイムを確認してください。"
+                return String(localized: "ペースプラン名と目標タイムを確認してください。")
             }
             guard hasValidSegments(plan, distanceKm: racePlan.distanceKm) else {
-                return "区間の距離と時間の合計を確認してください。"
+                return String(localized: "区間の距離と時間の合計を確認してください。")
             }
         }
         return nil

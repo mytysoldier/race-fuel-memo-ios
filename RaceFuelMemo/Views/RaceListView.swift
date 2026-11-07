@@ -156,7 +156,7 @@ private struct RacePlanRow: View {
                         .foregroundStyle(.primary)
                         .lineLimit(2)
 
-                    Text(racePlan.startTime.formatted(date: .omitted, time: .shortened) + " スタート")
+                    Text(String(format: String(localized: "race.start_time"), racePlan.startTime.formatted(date: .omitted, time: .shortened)))
                         .font(.subheadline.weight(.medium))
                         .foregroundStyle(.secondary)
                 }
@@ -200,7 +200,7 @@ private struct RacePlanRow: View {
         .background(.tint.opacity(0.12), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
     }
 
-    private func metric(title: String, value: String, systemImage: String) -> some View {
+    private func metric(title: LocalizedStringKey, value: String, systemImage: String) -> some View {
         VStack(alignment: .leading, spacing: 5) {
             Label(title, systemImage: systemImage)
                 .font(.caption2.weight(.semibold))

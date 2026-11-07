@@ -5,22 +5,22 @@ enum RacePreparationStep: String, CaseIterable, Codable, Identifiable {
     var id: String { rawValue }
     var title: String {
         switch self {
-        case .basic: "大会情報"
-        case .pace: "ペース"
-        case .checkpoints: "通過地点"
-        case .fueling: "補給"
-        case .checklist: "持ち物・準備"
-        case .output: "確認・出力"
+        case .basic: String(localized: "大会情報")
+        case .pace: String(localized: "ペース")
+        case .checkpoints: String(localized: "通過地点")
+        case .fueling: String(localized: "補給")
+        case .checklist: String(localized: "持ち物・準備")
+        case .output: String(localized: "確認・出力")
         }
     }
     var guidance: String {
         switch self {
-        case .basic: "大会名・開催日・スタート・距離を入力しましょう。"
-        case .pace: "目標タイムを決めましょう。基本の均等ペースだけでも作成できます。"
-        case .checkpoints: "Proでは関門・給水所を追加できます。未設定でも5kmごとの通過時間を無料で表示します。"
-        case .fueling: "携行するジェル、または詳細な補給・給水を設定しましょう。"
-        case .checklist: "必須の持ち物を確認しましょう。チェックは保存後も変更できます。"
-        case .output: "計画を保存しましょう。Proでは準備状況の確認とRace Card出力も利用できます。注意が残っていても保存できます。"
+        case .basic: String(localized: "大会名・開催日・スタート・距離を入力しましょう。")
+        case .pace: String(localized: "目標タイムを決めましょう。基本の均等ペースだけでも作成できます。")
+        case .checkpoints: String(localized: "Proでは関門・給水所を追加できます。未設定でも5kmごとの通過時間を無料で表示します。")
+        case .fueling: String(localized: "携行するジェル、または詳細な補給・給水を設定しましょう。")
+        case .checklist: String(localized: "必須の持ち物を確認しましょう。チェックは保存後も変更できます。")
+        case .output: String(localized: "計画を保存しましょう。Proでは準備状況の確認とRace Card出力も利用できます。注意が残っていても保存できます。")
         }
     }
 }
@@ -33,9 +33,9 @@ struct RacePreparationStatus: Identifiable {
     var id: String { step.rawValue }
     var label: String {
         switch state {
-        case .ready: "入力済み"
-        case .unset: "未設定"
-        case .attention: "注意"
+        case .ready: String(localized: "入力済み")
+        case .unset: String(localized: "未設定")
+        case .attention: String(localized: "注意")
         }
     }
 }
@@ -66,18 +66,18 @@ struct RacePreparation {
             .init(
                 step: .basic, state: hasName && validDistance ? .ready : .unset,
                 detail: !hasName
-                    ? "大会名を入力してください。"
+                    ? String(localized: "大会名を入力してください。")
                     : !validDistance
-                        ? "距離を1〜200kmで入力してください。" : "大会名・日時・距離を設定済み"))
+                        ? String(localized: "距離を1〜200kmで入力してください。") : String(localized: "大会名・日時・距離を設定済み")))
         let paceError = RacePacePlanCalculator.validationError(for: plan)
         items.append(
             .init(
                 step: .pace, state: !validTarget ? .unset : paceError != nil ? .attention : .ready,
                 detail: !validTarget
-                    ? "目標タイムを入力してください。"
+                    ? String(localized: "目標タイムを入力してください。")
                     : paceError
                         ?? (plan.pacePlans.isEmpty
-                            ? "基本の均等ペースを使用" : "\(plan.pacePlans.count)プランを設定済み")))
+                            ? String(localized: "基本の均等ペースを使用") : String(format: String(localized: "preparation.plans"), plan.pacePlans.count))))
 
         // Validate course and compute cutoff margins independently of fueling errors.
         var coursePlan = plan
@@ -99,18 +99,18 @@ struct RacePreparation {
                 state: courseError != nil || !exceeded.isEmpty || needsCourseRecalculation
                     ? .attention : plan.checkpoints.isEmpty ? .unset : .ready,
                 detail: needsCourseRecalculation
-                    ? "大会情報・ペースを修正すると通過時刻と関門を確認できます。"
+                    ? String(localized: "大会情報・ペースを修正すると通過時刻と関門を確認できます。")
                     : courseError
                         ?? (!exceeded.isEmpty
-                            ? "関門超過: " + exceeded.map { $0.checkpoint.name }.joined(separator: "、")
+                            ? String(localized: "関門超過: ") + exceeded.map { $0.checkpoint.name }.joined(separator: String(localized: "list.separator"))
                             : plan.checkpoints.isEmpty
-                                ? "任意・5kmごとの通過時間を使用" : "\(plan.checkpoints.count)地点を設定済み")))
+                                ? String(localized: "任意・5kmごとの通過時間を使用") : String(format: String(localized: "preparation.checkpoints"), plan.checkpoints.count))))
         let fuelingError = RaceFuelingPlanCalculator.validationError(for: plan)
         let hasFuel = !plan.fuelingEvents.isEmpty || plan.gelCount > 0
         items.append(
             .init(
                 step: .fueling, state: fuelingError != nil ? .attention : hasFuel ? .ready : .unset,
-                detail: fuelingError ?? (hasFuel ? "補給を設定済み" : "補給未設定・必要な補給と給水を確認してください。")))
+                detail: fuelingError ?? (hasFuel ? String(localized: "補給を設定済み") : String(localized: "補給未設定・必要な補給と給水を確認してください。"))))
         let required = plan.checklistItems.filter { $0.isRequired && !$0.isChecked }
         items.append(
             .init(
@@ -118,16 +118,16 @@ struct RacePreparation {
                 state: !required.isEmpty
                     ? .attention : plan.checklistItems.isEmpty ? .unset : .ready,
                 detail: !required.isEmpty
-                    ? "必須項目が\(required.count)件未完了: " + required.map(\.title).joined(separator: "、")
+                    ? String(format: String(localized: "preparation.required"), required.count) + required.map(\.title).joined(separator: String(localized: "list.separator"))
                     : plan.checklistItems.isEmpty
-                        ? "持ち物・準備項目が未設定" : "\(plan.checklistItems.count)項目・必須項目は確認済み"))
+                        ? String(localized: "持ち物・準備項目が未設定") : String(format: String(localized: "preparation.items"), plan.checklistItems.count)))
         let canOutput =
             hasName && validDistance && validTarget
             && RaceCheckpointValidator.error(for: plan) == nil
         items.append(
             .init(
                 step: .output, state: canOutput ? .ready : .unset,
-                detail: canOutput ? "Race Cardを確認・出力できます" : "大会情報と入力エラーを修正してください。"))
+                detail: canOutput ? String(localized: "Race Cardを確認・出力できます") : String(localized: "大会情報と入力エラーを修正してください。")))
         statuses = items
     }
 }

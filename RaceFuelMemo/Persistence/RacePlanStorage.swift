@@ -12,9 +12,9 @@ enum RacePlanStorageError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .unreadableData:
-            return "保存済みレースを読み込めません。データを保護するため、変更を停止しました。"
+            return String(localized: "保存済みレースを読み込めません。データを保護するため、変更を停止しました。")
         case .unsupportedVersion:
-            return "新しい形式のレースデータが見つかりました。対応するアプリで開いてください。"
+            return String(localized: "新しい形式のレースデータが見つかりました。対応するアプリで開いてください。")
         }
     }
 }

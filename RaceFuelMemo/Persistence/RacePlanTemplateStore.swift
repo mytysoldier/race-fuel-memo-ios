@@ -17,7 +17,7 @@ import Observation
         do {
             templates = try JSONDecoder().decode([RacePlanTemplate].self, from: data)
         } catch {
-            self.error = "保存済みの計画テンプレートを読み込めません。データ保護のため変更を停止しました。"
+            self.error = String(localized: "保存済みの計画テンプレートを読み込めません。データ保護のため変更を停止しました。")
         }
     }
 
@@ -48,7 +48,7 @@ import Observation
             templates = updated
             return true
         } catch {
-            self.error = "計画テンプレートを保存できませんでした。"
+            self.error = String(localized: "計画テンプレートを保存できませんでした。")
             return false
         }
     }

@@ -19,7 +19,7 @@ final class RaceCreationDraftStore {
             draft = try decoder.decode(RaceCreationDraft.self, from: data)
         } catch {
             isReadable = false
-            self.error = "作成途中のデータを読み込めません。既存の下書きを保護するため上書きしません。"
+            self.error = String(localized: "作成途中のデータを読み込めません。既存の下書きを保護するため上書きしません。")
         }
     }
 
@@ -36,7 +36,7 @@ final class RaceCreationDraftStore {
             self.draft = draft
             error = nil
         } catch {
-            self.error = "下書きを保存できませんでした。入力値を確認してください。"
+            self.error = String(localized: "下書きを保存できませんでした。入力値を確認してください。")
         }
     }
 

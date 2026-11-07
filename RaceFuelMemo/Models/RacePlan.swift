@@ -134,10 +134,10 @@ struct PreRaceActivitySuggestion: Identifiable, Equatable {
 
     static var examples: [PreRaceActivitySuggestion] {
         [
-            .init(id: "arrival", name: "会場到着", minutesBeforeStart: 120),
-            .init(id: "registration", name: "受付", minutesBeforeStart: 90),
-            .init(id: "baggage", name: "荷物預け", minutesBeforeStart: 60),
-            .init(id: "assembly", name: "整列", minutesBeforeStart: 30)
+            .init(id: "arrival", name: String(localized: "会場到着"), minutesBeforeStart: 120),
+            .init(id: "registration", name: String(localized: "受付"), minutesBeforeStart: 90),
+            .init(id: "baggage", name: String(localized: "荷物預け"), minutesBeforeStart: 60),
+            .init(id: "assembly", name: String(localized: "整列"), minutesBeforeStart: 30)
         ]
     }
 
@@ -167,11 +167,11 @@ enum RaceCheckpointKind: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .regular: "通常地点"
-        case .aidStation: "給水所"
-        case .cutoff: "関門"
-        case .turnaround: "折り返し"
-        case .finish: "ゴール"
+        case .regular: String(localized: "通常地点")
+        case .aidStation: String(localized: "給水所")
+        case .cutoff: String(localized: "関門")
+        case .turnaround: String(localized: "折り返し")
+        case .finish: String(localized: "ゴール")
         }
     }
 }
@@ -283,10 +283,10 @@ enum RacePaceStrategy: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .even: "イーブン"
-        case .negative: "ネガティブ"
-        case .positive: "ポジティブ"
-        case .custom: "区間別カスタム"
+        case .even: String(localized: "イーブン")
+        case .negative: String(localized: "ネガティブ")
+        case .positive: String(localized: "ポジティブ")
+        case .custom: String(localized: "区間別カスタム")
         }
     }
 }
@@ -367,11 +367,11 @@ enum RaceFuelingKind: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .gel: "ジェル"
-        case .drink: "ドリンク"
-        case .salt: "塩分"
-        case .solid: "固形食"
-        case .other: "その他"
+        case .gel: String(localized: "ジェル")
+        case .drink: String(localized: "ドリンク")
+        case .salt: String(localized: "塩分")
+        case .solid: String(localized: "固形食")
+        case .other: String(localized: "その他")
         }
     }
 }
@@ -381,10 +381,10 @@ enum RaceFuelingPickup: String, CaseIterable, Codable {
 
     var title: String {
         switch self {
-        case .carry: "持参"
-        case .dropBag: "ドロップバッグ"
-        case .onsite: "現地受取"
-        case .support: "サポート受取"
+        case .carry: String(localized: "持参")
+        case .dropBag: String(localized: "ドロップバッグ")
+        case .onsite: String(localized: "現地受取")
+        case .support: String(localized: "サポート受取")
         }
     }
 }
@@ -445,16 +445,16 @@ extension Array where Element == RaceCheckpoint {
 extension RacePlan {
     static var defaultChecklistItems: [ChecklistItem] {
         let items = [
-            ChecklistItem(title: "ランニングシューズ", category: ChecklistCategory.gear.rawValue),
-            ChecklistItem(title: "ウェア", category: ChecklistCategory.gear.rawValue),
-            ChecklistItem(title: "ゼッケン", category: ChecklistCategory.registration.rawValue),
-            ChecklistItem(title: "計測チップ", category: ChecklistCategory.registration.rawValue),
-            ChecklistItem(title: "ランニングウォッチ", category: ChecklistCategory.gear.rawValue),
-            ChecklistItem(title: "補給ジェル", category: ChecklistCategory.fueling.rawValue),
-            ChecklistItem(title: "塩タブレット", category: ChecklistCategory.fueling.rawValue),
-            ChecklistItem(title: "着替え", category: ChecklistCategory.afterFinish.rawValue),
-            ChecklistItem(title: "タオル", category: ChecklistCategory.afterFinish.rawValue),
-            ChecklistItem(title: "モバイルバッテリー", category: ChecklistCategory.gear.rawValue)
+            ChecklistItem(title: String(localized: "ランニングシューズ"), category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: String(localized: "ウェア"), category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: String(localized: "ゼッケン"), category: ChecklistCategory.registration.rawValue),
+            ChecklistItem(title: String(localized: "計測チップ"), category: ChecklistCategory.registration.rawValue),
+            ChecklistItem(title: String(localized: "ランニングウォッチ"), category: ChecklistCategory.gear.rawValue),
+            ChecklistItem(title: String(localized: "補給ジェル"), category: ChecklistCategory.fueling.rawValue),
+            ChecklistItem(title: String(localized: "塩タブレット"), category: ChecklistCategory.fueling.rawValue),
+            ChecklistItem(title: String(localized: "着替え"), category: ChecklistCategory.afterFinish.rawValue),
+            ChecklistItem(title: String(localized: "タオル"), category: ChecklistCategory.afterFinish.rawValue),
+            ChecklistItem(title: String(localized: "モバイルバッテリー"), category: ChecklistCategory.gear.rawValue)
         ]
         return items.enumerated().map { index, item in
             var orderedItem = item

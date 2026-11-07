@@ -30,15 +30,15 @@ enum ProPurchaseFeedback: Equatable {
 
     var message: String {
         switch self {
-        case .purchased: "購入が完了しました。Proを利用できます。"
-        case .restored: "購入を復元しました。Proを利用できます。"
-        case .entitlementConfirmed: "Proの購入を確認しました。Proを利用できます。"
-        case .nothingToRestore: "復元できるProの購入が見つかりませんでした。購入時のApple Accountをご確認ください。"
-        case .cancelled: "手続きをキャンセルしました。"
-        case .pending: "購入は承認待ちです。承認されるとProが解放されます。"
-        case .purchaseFailed: "購入を完了できませんでした。通信環境を確認して、もう一度お試しください。"
-        case .restoreFailed: "購入を復元できませんでした。通信環境やApple Accountを確認して、もう一度お試しください。"
-        case .verificationFailed: "購入情報を確認できませんでした。時間をおいて購入の復元をお試しください。"
+        case .purchased: String(localized: "購入が完了しました。Proを利用できます。")
+        case .restored: String(localized: "購入を復元しました。Proを利用できます。")
+        case .entitlementConfirmed: String(localized: "Proの購入を確認しました。Proを利用できます。")
+        case .nothingToRestore: String(localized: "復元できるProの購入が見つかりませんでした。購入時のApple Accountをご確認ください。")
+        case .cancelled: String(localized: "手続きをキャンセルしました。")
+        case .pending: String(localized: "購入は承認待ちです。承認されるとProが解放されます。")
+        case .purchaseFailed: String(localized: "購入を完了できませんでした。通信環境を確認して、もう一度お試しください。")
+        case .restoreFailed: String(localized: "購入を復元できませんでした。通信環境やApple Accountを確認して、もう一度お試しください。")
+        case .verificationFailed: String(localized: "購入情報を確認できませんでした。時間をおいて購入の復元をお試しください。")
         }
     }
 
