@@ -4,6 +4,7 @@ struct ProPaywallView: View {
     @Environment(ProStore.self) private var proStore
     @Environment(\.dismiss) private var dismiss
     let feature: ProFeature
+    @State private var sampleCard: UIImage?
 
     var body: some View {
         NavigationStack {
@@ -22,6 +23,20 @@ struct ProPaywallView: View {
                             .fixedSize(horizontal: false, vertical: true)
                     }
                     price
+                    if let sampleCard {
+                        VStack(alignment: .leading, spacing: 12) {
+                            Text("Race Cardの出力例")
+                                .font(.headline).accessibilityAddTraits(.isHeader)
+                            Text("サンプルの計画です。画像やPDFで保存・共有できます。")
+                                .font(.body).foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Image(uiImage: sampleCard)
+                                .resizable().scaledToFit()
+                                .overlay { RoundedRectangle(cornerRadius: 4).stroke(.secondary.opacity(0.3)) }
+                                .accessibilityLabel(Text("Race Cardの出力例。大会、目標、区間ペース、通過時刻などをまとめたサンプルです。"))
+                                .accessibilityIdentifier("paywall.sampleRaceCard")
+                        }
+                    }
                     VStack(alignment: .leading, spacing: 12) {
                         Text("計画のイメージ（サンプル）")
                             .font(.headline).accessibilityAddTraits(.isHeader)
@@ -73,6 +88,7 @@ struct ProPaywallView: View {
                 .background(.regularMaterial)
             }
             .task {
+                sampleCard = makeSampleCard()
                 if case .notLoaded = proStore.productState { await proStore.loadProduct() }
             }
         }
@@ -86,6 +102,17 @@ struct ProPaywallView: View {
                 }
             }
         #endif
+    }
+
+    @MainActor
+    private func makeSampleCard() -> UIImage? {
+        // A fixed example uses the same renderer as export, without reading or saving user data.
+        let start = Date(timeIntervalSince1970: 1_810_624_400)
+        let plan = RacePlan(name: String(localized: "サンプルレース"), raceDate: start, startTime: start,
+                            distanceKm: 21.0975, targetHours: 2, targetMinutes: 0, gelCount: 2)
+        guard let document = try? RaceCardDocument(plan: plan, pacePlanID: nil, audience: .runner),
+              let renderer = try? RaceCardRenderer(document: document, format: .card) else { return nil }
+        return renderer.image(page: 0, scale: 1)
     }
 
     @ViewBuilder
