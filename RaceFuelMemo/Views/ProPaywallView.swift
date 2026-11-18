@@ -5,6 +5,7 @@ struct ProPaywallView: View {
     @Environment(\.dismiss) private var dismiss
     let feature: ProFeature
     @State private var sampleCard: UIImage?
+    @State private var showsSampleDetail = false
 
     var body: some View {
         NavigationStack {
@@ -35,6 +36,8 @@ struct ProPaywallView: View {
                                 .overlay { RoundedRectangle(cornerRadius: 4).stroke(.secondary.opacity(0.3)) }
                                 .accessibilityLabel(Text("Race Cardの出力例。大会、目標、区間ペース、通過時刻などをまとめたサンプルです。"))
                                 .accessibilityIdentifier("paywall.sampleRaceCard")
+                            Button("出力例を拡大して見る") { showsSampleDetail = true }
+                                .accessibilityIdentifier("paywall.enlargeSample")
                         }
                     }
                     VStack(alignment: .leading, spacing: 12) {
@@ -75,6 +78,26 @@ struct ProPaywallView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Proのご案内")
             .navigationBarTitleDisplayMode(.inline)
+            .sheet(isPresented: $showsSampleDetail) {
+                if let sampleCard {
+                    NavigationStack {
+                        ScrollView([.horizontal, .vertical]) {
+                            Image(uiImage: sampleCard)
+                                .resizable().scaledToFit().frame(width: 900)
+                                .accessibilityLabel(Text("Race Cardの出力例。大会、目標、区間ペース、通過時刻などをまとめたサンプルです。"))
+                        }
+                        .accessibilityIdentifier("paywall.enlargedSample")
+                        .navigationTitle("Race Cardの出力例")
+                        .navigationBarTitleDisplayMode(.inline)
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("閉じる") { showsSampleDetail = false }
+                                    .accessibilityIdentifier("paywall.closeSample")
+                            }
+                        }
+                    }
+                }
+            }
             .safeAreaInset(edge: .bottom) {
                 Button {
                     dismiss()
@@ -112,7 +135,7 @@ struct ProPaywallView: View {
                             distanceKm: 21.0975, targetHours: 2, targetMinutes: 0, gelCount: 2)
         guard let document = try? RaceCardDocument(plan: plan, pacePlanID: nil, audience: .runner),
               let renderer = try? RaceCardRenderer(document: document, format: .card) else { return nil }
-        return renderer.image(page: 0, scale: 1)
+        return renderer.image(page: 0, scale: 2)
     }
 
     @ViewBuilder

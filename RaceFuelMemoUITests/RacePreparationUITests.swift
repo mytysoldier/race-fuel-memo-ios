@@ -321,6 +321,12 @@ final class RacePreparationUITests: XCTestCase {
         tap(app.buttons["pro.information"])
         XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.images["paywall.sampleRaceCard"].waitForExistence(timeout: 10))
+        let enlarge = app.buttons["paywall.enlargeSample"]
+        for _ in 0..<5 where !enlarge.isHittable { app.scrollViews.firstMatch.swipeUp() }
+        tap(enlarge)
+        XCTAssertTrue(app.scrollViews["paywall.enlargedSample"].waitForExistence(timeout: 5))
+        tap(app.buttons["paywall.closeSample"])
+        XCTAssertTrue(app.navigationBars["Proのご案内"].waitForExistence(timeout: 5))
         try app.performAccessibilityAudit(for: [.dynamicType, .textClipped, .sufficientElementDescription]) { issue in
             if let element = issue.element { print("Paywall audit issue: \(element.debugDescription)") }
             return false // Report every issue; never suppress a failed audit.
