@@ -226,6 +226,9 @@ final class RacePreparationUITests: XCTestCase {
         app.launch()
         tap(app.staticTexts["Warning race"])
         tap(app.staticTexts["Late cutoff"])
+        // A partially visible switch can report isHittable even when its center
+        // lies below the screen. Bring the checklist fully into view first.
+        app.swipeUp()
         tap(app.switches["Required gear"])
         XCTAssertEqual(app.switches["Required gear"].value as? String, "1")
         tap(app.buttons["pro.customChecklist"])
@@ -243,6 +246,7 @@ final class RacePreparationUITests: XCTestCase {
         assertPaywallAndClose()
         tap(app.buttons["planEditor.save"])
         tap(app.staticTexts["Late cutoff"])
+        app.swipeUp()
         tap(app.switches["Required gear"])
         // Basic editing has not reset the saved checked state.
         XCTAssertEqual(app.switches["Required gear"].value as? String, "0")
