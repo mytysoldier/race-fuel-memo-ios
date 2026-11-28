@@ -18,6 +18,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     var selectedPacePlanID: UUID?
     var fuelingEvents: [RaceFuelingEvent]
     var preRaceActivities: [PreRaceActivity]
+    var fuelingReview: [FuelingReviewEntry]
     var courseElevation: CourseElevationProfile?
     var courseAdjustments: [CourseAdjustmentRecord]
 
@@ -57,6 +58,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         self.selectedPacePlanID = selectedPacePlanID
         self.fuelingEvents = fuelingEvents
         self.preRaceActivities = preRaceActivities
+        self.fuelingReview = []
         self.courseElevation = nil
         self.courseAdjustments = []
     }
@@ -64,7 +66,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
     private enum CodingKeys: String, CodingKey {
         case id, name, raceDate, startTime, distanceKm, targetHours, targetMinutes
         case gelCount, gelNames, memo, checklistItems, checklistNotificationsEnabled, checkpoints, pacePlans
-        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustments, preRaceActivities
+        case selectedPacePlanID, fuelingEvents, courseElevation, courseAdjustments, preRaceActivities, fuelingReview
     }
 
     private enum LegacyCodingKeys: String, CodingKey { case courseAdjustment }
@@ -87,6 +89,7 @@ struct RacePlan: Identifiable, Codable, Equatable {
         selectedPacePlanID = try values.decodeIfPresent(UUID.self, forKey: .selectedPacePlanID)
         fuelingEvents = try values.decodeIfPresent([RaceFuelingEvent].self, forKey: .fuelingEvents) ?? []
         preRaceActivities = try values.decodeIfPresent([PreRaceActivity].self, forKey: .preRaceActivities) ?? []
+        fuelingReview = try values.decodeIfPresent([FuelingReviewEntry].self, forKey: .fuelingReview) ?? []
         courseElevation = try values.decodeIfPresent(CourseElevationProfile.self, forKey: .courseElevation)
         if let records = try values.decodeIfPresent([CourseAdjustmentRecord].self, forKey: .courseAdjustments) {
             courseAdjustments = records
@@ -519,5 +522,29 @@ struct RacePlanBasicEditCleanup {
         for index in updated.fuelingEvents.indices { updated.fuelingEvents[index].order = index }
         updated.normalizePacePlans()
         return updated
+    }
+}
+
+/// A manually recorded problem or intake; missing location is allowed.
+struct FuelingReviewEntry: Identifiable, Codable, Equatable {
+    let id: UUID
+    var kind: Kind
+    var details: String
+    var distanceKm: Double?
+
+    enum Kind: String, Codable, CaseIterable {
+        case problem, intake
+        var title: String {
+            switch self {
+            case .problem: String(localized: "振り返りの問題")
+            case .intake: String(localized: "実際の補給")
+            }
+        }
+    }
+    init(id: UUID = UUID(), kind: Kind, details: String = "", distanceKm: Double? = nil) {
+        self.id = id
+        self.kind = kind
+        self.details = details
+        self.distanceKm = distanceKm
     }
 }

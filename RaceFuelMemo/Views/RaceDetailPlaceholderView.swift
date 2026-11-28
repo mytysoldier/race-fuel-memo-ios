@@ -9,6 +9,7 @@ struct RaceDetailView: View {
     @State private var isShowingReminderSettings = false
     @State private var isShowingChecklistEditor = false
     @State private var isShowingActivitiesEditor = false
+    @State private var isShowingFuelingReview = false
     @State private var duplicateDraft: RacePlan?
     @State private var isShowingReuse = false
     @State private var isShowingSaveTemplate = false
@@ -270,6 +271,14 @@ struct RaceDetailView: View {
                     .foregroundStyle(.secondary)
             }
 
+            Section("補給の振り返り") {
+                Button("問題と実際の補給を記録", systemImage: "chart.xyaxis.line") {
+                    isShowingFuelingReview = true
+                }
+                Text("失速や足攣りと、実際に摂った補給を地点順に確認できます。")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
+
             Section("Race Card") {
                 ProFeatureButton(feature: .raceCard, title: "画像・PDF・ペースバンド出力", systemImage: "square.and.arrow.up") {
                     isShowingPreparationOutput = true
@@ -349,6 +358,13 @@ struct RaceDetailView: View {
                             Button("閉じる") { isShowingPreparationOutput = false }
                         }
                     }
+            }
+        }
+        .sheet(isPresented: $isShowingFuelingReview) {
+            FuelingReviewView(plan: currentRacePlan) { entries in
+                guard var updated = racePlanStore.racePlans.first(where: { $0.id == currentRacePlan.id }) else { return false }
+                updated.fuelingReview = entries
+                return racePlanStore.updateRacePlan(updated)
             }
         }
         .sheet(item: $duplicateDraft) { draft in
@@ -1390,5 +1406,121 @@ private struct PreRaceSuggestionsView: View {
                 }
             }
         }
+    }
+}
+
+private struct FuelingReviewView: View {
+    @Environment(\.dismiss) private var dismiss
+    let plan: RacePlan
+    let save: ([FuelingReviewEntry]) -> Bool
+    @State private var entries: [FuelingReviewEntry]
+    @State private var showingError = false
+    @State private var invalidIDs: Set<UUID> = []
+    @State private var duplicateDraft: RacePlan?
+
+    init(plan: RacePlan, save: @escaping ([FuelingReviewEntry]) -> Bool) {
+        self.plan = plan
+        self.save = save
+        _entries = State(initialValue: plan.fuelingReview)
+    }
+
+    private var orderedIDs: [UUID] {
+        entries.sorted {
+            switch ($0.distanceKm, $1.distanceKm) {
+            case let (a?, b?): return a == b ? $0.id.uuidString < $1.id.uuidString : a < b
+            case (_?, nil): return true
+            case (nil, _?): return false
+            case (nil, nil): return $0.id.uuidString < $1.id.uuidString
+            }
+        }.map(\.id)
+    }
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Section {
+                    Text("地点が未入力の記録は最後に表示します。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                    ForEach(orderedIDs, id: \.self) { id in
+                        if let index = entries.firstIndex(where: { $0.id == id }) {
+                            FuelingReviewRow(entry: $entries[index], raceDistance: plan.distanceKm, invalidIDs: $invalidIDs)
+                        }
+                    }
+                    .onDelete { offsets in
+                        let ids = offsets.map { orderedIDs[$0] }
+                        entries.removeAll { ids.contains($0.id) }
+                        invalidIDs.subtract(ids)
+                    }
+                    Button("問題を追加", systemImage: "exclamationmark.triangle") {
+                        entries.append(FuelingReviewEntry(kind: .problem))
+                    }
+                    Button("補給を追加", systemImage: "drop") {
+                        entries.append(FuelingReviewEntry(kind: .intake))
+                    }
+                }
+                Section {
+                    ProFeatureButton(feature: .planReuse, title: "次のレース計画を複製", systemImage: "doc.on.doc") {
+                        if save(entries) { duplicateDraft = plan.duplicated() } else { showingError = true }
+                    }
+                    .disabled(!invalidIDs.isEmpty)
+                    Text("現在の振り返りを保存してから、独立した計画を作成します。")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+            }
+            .navigationTitle("補給の振り返り")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("キャンセル") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        if save(entries) { dismiss() } else { showingError = true }
+                    }.disabled(!invalidIDs.isEmpty)
+                }
+            }
+            .sheet(item: $duplicateDraft) { draft in
+                NavigationStack {
+                    RaceCreatePlaceholderView(initialPlan: draft)
+                        .toolbar {
+                            ToolbarItem(placement: .cancellationAction) {
+                                Button("キャンセル") { duplicateDraft = nil }
+                            }
+                        }
+                }
+                .proProtected(.planReuse)
+            }
+            .alert("保存できませんでした", isPresented: $showingError) { Button("OK", role: .cancel) {} }
+        }
+    }
+}
+
+private struct FuelingReviewRow: View {
+    @Binding var entry: FuelingReviewEntry
+    let raceDistance: Double
+    @Binding var invalidIDs: Set<UUID>
+    @State private var distanceText = ""
+    @State private var invalidDistance = false
+
+    var body: some View {
+        VStack(alignment: .leading) {
+            Label(entry.kind.title, systemImage: entry.kind == .problem ? "exclamationmark.triangle" : "drop")
+                .font(.headline)
+            TextField(entry.kind == .problem ? String(localized: "例：足攣り、失速") : String(localized: "例：ジェル、水"), text: $entry.details)
+            HStack {
+                Text("地点（km）")
+                TextField("未入力", text: $distanceText)
+                    .keyboardType(.decimalPad)
+                    .multilineTextAlignment(.trailing)
+                    .onChange(of: distanceText) { _, text in
+                        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                        if trimmed.isEmpty { entry.distanceKm = nil; invalidDistance = false }
+                        else if let value = Double(trimmed.replacingOccurrences(of: ",", with: ".")), value.isFinite, (0...raceDistance).contains(value) {
+                            entry.distanceKm = value; invalidDistance = false
+                        } else { invalidDistance = true }
+                        if invalidDistance { invalidIDs.insert(entry.id) } else { invalidIDs.remove(entry.id) }
+                    }
+            }
+            if invalidDistance { Text("地点はレース距離以内の数値で入力してください。")
+                .font(.footnote).foregroundStyle(.red) }
+        }
+        .onAppear { distanceText = entry.distanceKm.map { String($0) } ?? "" }
     }
 }
