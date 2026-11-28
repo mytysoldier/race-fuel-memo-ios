@@ -574,3 +574,21 @@
 "サンプルの計画です。画像やPDFで保存・共有できます。" = "This is an example plan. Save or share your card as an image or PDF.";
 "Race Cardの出力例。大会、目標、区間ペース、通過時刻などをまとめたサンプルです。" = "Race Card example showing a race, goal, segment paces, and passing times.";
 "サンプルレース" = "Example race";
+
+"補給の振り返り" = "Fueling review";
+"問題と実際の補給を記録" = "Record problems and actual fueling";
+"失速や足攣りと、実際に摂った補給を地点順に確認できます。" = "Review slowing down or cramps alongside what you consumed, in distance order.";
+"振り返りの問題" = "Problem";
+"実際の補給" = "Actual fueling";
+"地点が未入力の記録は最後に表示します。" = "Entries without a distance appear last.";
+"問題を追加" = "Add problem";
+"補給を追加" = "Add fueling";
+"保存後、レース詳細の「この計画を複製」から次の計画を作成・編集できます。複製はPro機能です。" = "After saving, duplicate this plan from race details to create and edit your next plan. Duplication is a Pro feature.";
+"例：足攣り、失速" = "e.g. cramps, slowing down";
+"例：ジェル、水" = "e.g. gel, water";
+"地点（km）" = "Distance (km)";
+"未入力" = "Not entered";
+"地点はレース距離以内の数値で入力してください。" = "Enter a distance within the race distance.";
+
+"次のレース計画を複製" = "Duplicate for the next race";
+"現在の振り返りを保存してから、独立した計画を作成します。" = "Save this review, then create an independent plan.";

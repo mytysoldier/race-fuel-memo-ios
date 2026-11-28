@@ -219,3 +219,28 @@ private struct LegacyChecklistFixture: Encodable {
     let title: String
     let isChecked: Bool
 }
+
+@Test func fuelingReviewRoundTripsAndIsNotCopiedToNextRace() throws {
+    var plan = RacePlan(name: "Race", raceDate: .now, startTime: .now, distanceKm: 42.195,
+                        targetHours: 4, targetMinutes: 0, gelCount: 0)
+    plan.fuelingReview = [
+        FuelingReviewEntry(kind: .intake, details: "Gel", distanceKm: 15),
+        FuelingReviewEntry(kind: .problem, details: "Cramp")
+    ]
+    let decoded = try JSONDecoder().decode(RacePlan.self, from: JSONEncoder().encode(plan))
+    #expect(decoded.fuelingReview == plan.fuelingReview)
+    let copy = decoded.duplicated()
+    #expect(copy.id != decoded.id)
+    #expect(copy.fuelingReview.isEmpty)
+    #expect(decoded.fuelingReview.count == 2)
+}
+
+@Test func olderRaceWithoutFuelingReviewStillDecodes() throws {
+    let plan = RacePlan(name: "Old", raceDate: .now, startTime: .now, distanceKm: 42.195,
+                        targetHours: 4, targetMinutes: 0, gelCount: 0)
+    let data = try JSONEncoder().encode(plan)
+    var object = try #require(JSONSerialization.jsonObject(with: data) as? [String: Any])
+    object.removeValue(forKey: "fuelingReview")
+    let decoded = try JSONDecoder().decode(RacePlan.self, from: JSONSerialization.data(withJSONObject: object))
+    #expect(decoded.fuelingReview.isEmpty)
+}
